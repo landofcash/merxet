@@ -5,3 +5,6 @@ build/
 /aptoosh-frontend/stats.html
 /merxet-frontend/stats.html
 /merxet-smartcontract/.env
+/merxet-smartcontract/artifacts
+/merxet-smartcontract/node_modules
+/merxet-sync/dist
