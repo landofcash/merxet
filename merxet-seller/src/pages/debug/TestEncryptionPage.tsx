@@ -61,7 +61,7 @@ const TestEncryptionPage: React.FC = () => {
 
     return (
         <div className="p-6 max-w-3xl mx-auto space-y-4">
-            <h1 className="text-xl font-bold">🔐 Aptoosh Test Encryption Page</h1>
+            <h1 className="text-xl font-bold">🔐 Merxet Test Encryption Page</h1>
 
             <input
                 type="text"

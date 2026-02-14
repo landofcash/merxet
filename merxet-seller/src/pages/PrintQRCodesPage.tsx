@@ -128,7 +128,7 @@ const PrintQRCodesPage: React.FC = () => {
                     </p>
                   </div>
                   <a
-                    href={`https://promo.aptoosh.com/${seed}`}
+                    href={`https://promo.merxet.com/${seed}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full sm:w-auto justify-center"

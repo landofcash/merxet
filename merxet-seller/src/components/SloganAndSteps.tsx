@@ -115,7 +115,7 @@ const SloganAndSteps: React.FC<SloganAndStepsProps> = ({setShowInstallModal, set
                   <br/>
                   Print or share them — online or offline.
                   <br/>
-                  Use your current price tags or create new with Aptoosh tag designer. </p>
+                  Use your current price tags or create new with Merxet tag designer. </p>
               </div>
             </div>
           </div>

@@ -8,10 +8,10 @@ export default function FinalPage() {
       className="h-full flex items-center justify-center bg-gradient-to-tl from-neutral-100 to-white text-neutral-900 shadow-inner border border-neutral-100">
       <CardContent className="flex flex-col items-center justify-center text-center px-12 space-y-6">
         <h2 className="text-4xl font-semibold tracking-tight text-slate-900">
-          Thank You for Trying Aptoosh! </h2>
+          Thank You for Trying Merxet! </h2>
         <div className="text-base text-slate-700 max-w-md leading-relaxed space-y-4">
           <p>
-            We hope you enjoyed using the Aptoosh app and experienced just how easy and fast shopping can be. </p>
+            We hope you enjoyed using the Merxet app and experienced just how easy and fast shopping can be. </p>
           <div className="text-left space-y-2">
             <div className="inline-flex items-center gap-2 font-medium text-slate-800">
               <Youtube className="w-4 h-4"/>
@@ -26,7 +26,7 @@ export default function FinalPage() {
             <p className="text-sm">
               The full concept description in detail:
               <br/>
-              <a href="https://aptoosh.b-cdn.net/Aptoosh-by-Aptos-Presentation.pdf" target="_blank"
+              <a href="https://merxet.b-cdn.net/Merxet-by-Aptos-Presentation.pdf" target="_blank"
                  className="text-blue-700 hover:text-blue-600 underline font-bold">See Project Presentation</a>
             </p>
             <p className="text-sm">
@@ -44,14 +44,14 @@ export default function FinalPage() {
             <p className="text-sm">
               Start offering instant checkout with just a QR code:
               <br/>
-              <a href="https://s.aptoosh.com" target="_blank"
-                 className="text-blue-700 hover:text-blue-600 underline font-bold">Explore Aptoosh Seller Portal</a>
+              <a href="https://s.merxet.com" target="_blank"
+                 className="text-blue-700 hover:text-blue-600 underline font-bold">Explore Merxet Seller Portal</a>
             </p>
           </div>
           <p className="pt-4 text-center font-medium text-slate-800">
             <span className="text-fuchsia-700">Scan it. Shop it. Pay in a flash.</span>
             <br/>
-            <span className="text-slate-900 text-lg font-semibold">Aptoosh.</span>
+            <span className="text-slate-900 text-lg font-semibold">Merxet.</span>
           </p>
         </div>
       </CardContent>
