@@ -1,0 +1,7 @@
+.aptos/
+build/
+/test
+/aptoosh-sync/dist
+/aptoosh-frontend/stats.html
+/merxet-frontend/stats.html
+/merxet-smartcontract/.env

@@ -1,0 +1,50 @@
+import type {WalletAdapter} from '@/context/wallet/types'
+
+export type WalletActionKind = 'signMessage' | 'signAndSubmit'
+
+type WrapOpts = {
+  onStart: (kind: WalletActionKind, label: string) => () => void
+  getLabel?: (kind: WalletActionKind) => string
+}
+
+const defaultLabel = (kind: WalletActionKind): string => {
+  if (kind === 'signAndSubmit') return 'Waiting for transaction signature in your wallet…'
+  return 'Waiting for signature in your wallet…'
+}
+
+export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: WrapOpts): WalletAdapter {
+  const labelFor = opts.getLabel ?? defaultLabel
+
+  return {
+    chain: adapter.chain,
+    name: adapter.name,
+    id: adapter.id,
+
+    isInstalled: adapter.isInstalled ? () => adapter.isInstalled!() : undefined,
+    getAddress: () => adapter.getAddress(),
+    getNetwork: adapter.getNetwork ? () => adapter.getNetwork!() : undefined,
+    connect: (o) => adapter.connect(o),
+    disconnect: () => adapter.disconnect(),
+
+    onAccountChange: adapter.onAccountChange ? (cb) => adapter.onAccountChange!(cb) : undefined,
+    onNetworkChange: adapter.onNetworkChange ? (cb) => adapter.onNetworkChange!(cb) : undefined,
+
+    signMessage: async (dataToSign: string, message?: string): Promise<Uint8Array> => {
+      const end = opts.onStart('signMessage', labelFor('signMessage'))
+      try {
+        return await adapter.signMessage(dataToSign, message)
+      } finally {
+        end()
+      }
+    },
+
+    signAndSubmit: async (transaction: object): Promise<{ hash: string }> => {
+      const end = opts.onStart('signAndSubmit', labelFor('signAndSubmit'))
+      try {
+        return await adapter.signAndSubmit(transaction)
+      } finally {
+        end()
+      }
+    },
+  }
+}
