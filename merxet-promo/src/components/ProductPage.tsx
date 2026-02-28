@@ -15,7 +15,7 @@ interface Props {
 
 const generateQRData = (catalogueSeed: string, product: Product): string => {
   const config = getCurrentConfig();
-  return `https://aptoosh.com/#${concatenateIDs(catalogueSeed, product.ProductId, config.name)}`
+  return `https://merxet.com/#${concatenateIDs(catalogueSeed, product.ProductId, config.name)}`
 }
 
 export default function ProductPage({catalogueSeed, product, pageNumber, shopWallet}: Props) {
@@ -76,7 +76,7 @@ export default function ProductPage({catalogueSeed, product, pageNumber, shopWal
                 </div>
               </div>
               <div className="text-[9px] text-slate-600 text-center font-mono space-y-0.5">
-                <div>Scan with APTOOSH</div>
+                <div>Scan with MERXET</div>
                 <div>Order Anytime</div>
               </div>
             </div>

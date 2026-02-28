@@ -2,12 +2,12 @@ import type {NetworkId} from "@/context/wallet/types.ts";
 
 declare const __APP_VERSION__: string;
 export const APP_VERSION = __APP_VERSION__
-export const APP_NAME='Aptoosh'
-export const BASE_URL='https://aptoosh.com'
+export const APP_NAME='Merxet'
+export const BASE_URL='https://merxet.com'
 
 // Sign prefix for encryption seed generation
-export const signPrefix = "aptoosh-";
-export const APP_KEY_PREFIX = 'AptooshPromo';
+export const signPrefix = "merxet-";
+export const APP_KEY_PREFIX = 'MerxetPromo';
 const APTOS_EXPLORER_BASE = 'https://explorer.aptoslabs.com';
 
 export const CIRCLE_APP_ID: string = 'a8986a00-6cbf-51f9-82ca-9945055526f6';
@@ -52,10 +52,10 @@ const configs: Record<NetworkId, NetworkConfig> = {
   mainnet: {
     name: 'mainnet',
     account: '0x84171af48f266ba207890b75e78b503336c1cef911f693d65eb770da000f971f',
-    apiUrl: 'https://sync.aptoosh.com/api/m',
-    fileApiUrl: 'https://sync.aptoosh.com/api/cdn',
-    circleApiUrl: 'https://sync.aptoosh.com/api/circle',
-    cdnBasePath: 'https://aptoosh.b-cdn.net',
+    apiUrl: 'https://sync.merxet.com/api/m',
+    fileApiUrl: 'https://sync.merxet.com/api/cdn',
+    circleApiUrl: 'https://sync.merxet.com/api/circle',
+    cdnBasePath: 'https://merxet.b-cdn.net',
     aptos: {
       nodeUrl: 'https://fullnode.mainnet.aptoslabs.com/v1',
       indexerGraphqlUrl: 'https://indexer.mainnet.aptoslabs.com/v1/graphql',
@@ -76,10 +76,10 @@ const configs: Record<NetworkId, NetworkConfig> = {
   testnet: {
     name: 'testnet',
     account: '0x56397d22cd1f3ee037d59677e61ea72c6a11d73777705df4cd489a4dea83244d',
-    apiUrl: 'https://sync.aptoosh.com/api/t',
-    fileApiUrl: 'https://sync.aptoosh.com/api/cdn',
-    circleApiUrl: 'https://sync.aptoosh.com/api/circle',
-    cdnBasePath: 'https://aptoosh.b-cdn.net',
+    apiUrl: 'https://sync.merxet.com/api/t',
+    fileApiUrl: 'https://sync.merxet.com/api/cdn',
+    circleApiUrl: 'https://sync.merxet.com/api/circle',
+    cdnBasePath: 'https://merxet.b-cdn.net',
     aptos: {
       nodeUrl: 'https://fullnode.testnet.aptoslabs.com/v1',
       indexerGraphqlUrl: 'https://indexer.testnet.aptoslabs.com/v1/graphql',
@@ -104,10 +104,10 @@ const configs: Record<NetworkId, NetworkConfig> = {
   devnet: {
     name: 'devnet',
     account: '0x84171af48f266ba207890b75e78b503336c1cef911f693d65eb770da000f971f',
-    apiUrl: 'https://sync.aptoosh.com/api/d',
-    fileApiUrl: 'https://sync.aptoosh.com/api/cdn',
+    apiUrl: 'https://sync.merxet.com/api/d',
+    fileApiUrl: 'https://sync.merxet.com/api/cdn',
     circleApiUrl: 'http://localhost:3000/api/circle',
-    cdnBasePath: 'https://aptoosh.b-cdn.net',
+    cdnBasePath: 'https://merxet.b-cdn.net',
     aptos: {
       nodeUrl: 'https://fullnode.devnet.aptoslabs.com/v1',
       indexerGraphqlUrl: 'https://indexer.devnet.aptoslabs.com/v1/graphql',

@@ -165,7 +165,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({ open, onClose }) => {
         {/* Body */}
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
           <div>
-            <h3 className="text-xl font-semibold">Try Aptoosh on Aptos Testnet</h3>
+            <h3 className="text-xl font-semibold">Try Merxet on Aptos Testnet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Quick start: create a built-in wallet in seconds or connect an existing one. Then (optionally) add free test APT via the faucet to try payments safely.
             </p>

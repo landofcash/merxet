@@ -52,7 +52,7 @@ const ProductQRCodeCard: React.FC<ProductQRCodeCardProps> = ({product, productCa
       </div>
       {/* Simplified IDs for print only */}
       <div className="hidden print:block text-[9px] text-gray-500 text-center font-mono space-y-0.5">
-        <div>Scan with APTOOSH</div>
+        <div>Scan with MERXET</div>
         <div>Order Anytime</div>
         {(config.name !== "mainnet") && (
           <div>[{config.name.toUpperCase()}]</div>
