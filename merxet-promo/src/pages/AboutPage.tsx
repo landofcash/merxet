@@ -8,8 +8,8 @@ export default function AboutPage() {
         className="h-full flex items-center justify-center bg-gradient-to-br from-neutral-50 to-white text-neutral-900 shadow-2xl">
         <CardContent className="w-full h-full flex flex-col px-12 space-y-6">
           <div className="flex flex-col items-center justify-center text-center">
-            <img src="/logo-t-g-128x128.png" alt="Aptoosh logo" className="w-20 h-20 mb-2"/>
-            <h1 className="text-5xl font-bold tracking-tight drop-shadow-sm mb-3 ">Aptoosh </h1>
+            <img src="/logo-t-g-128x128.png" alt="Merxet logo" className="w-20 h-20 mb-2"/>
+            <h1 className="text-5xl font-bold tracking-tight drop-shadow-sm mb-3 ">Merxet </h1>
             <p className="text-base sm:text-2xl  max-w-md text-fuchsia-700">
               Scan. Shop. Pay in a flash. </p>
           </div>
@@ -18,7 +18,7 @@ export default function AboutPage() {
           </blockquote>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-2">✨ Think of Aptoosh as:</h2>
+            <h2 className="text-2xl font-semibold mb-2">✨ Think of Merxet as:</h2>
             <blockquote className="border-l-4 border-neutral-400 pl-4 text-neutral-600 font-medium italic mb-2">
               “QR-native e-commerce — scan, pay, walk away.”
             </blockquote>
@@ -27,7 +27,7 @@ export default function AboutPage() {
               or link that launches the checkout flow. </p>
           </section>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
-            <a href="https://aptoosh.b-cdn.net/Aptoosh-by-Aptos-Presentation.pdf" target="_blank" rel="noopener noreferrer"
+            <a href="https://merxet.b-cdn.net/Merxet-by-Aptos-Presentation.pdf" target="_blank" rel="noopener noreferrer"
                className="inline-flex items-center gap-2 text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded shadow transition-colors">
               <Presentation className="w-4 h-4"/>
               See Presentation
@@ -40,7 +40,7 @@ export default function AboutPage() {
                className="inline-flex items-center gap-2 text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded shadow transition-colors">
               <ShoppingCart className="w-4 h-4"/> Demo catalogue
             </a>
-            <a href="https://s.aptoosh.com" target="_blank" rel="noopener noreferrer"
+            <a href="https://s.merxet.com" target="_blank" rel="noopener noreferrer"
                className="inline-flex items-center gap-2 text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded shadow transition-colors">
               <Store className="w-4 h-4"/> Explore Seller Portal
             </a>
@@ -84,7 +84,7 @@ export default function AboutPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-2">✅ What Aptoosh Is</h2>
+            <h2 className="text-2xl font-semibold mb-2">✅ What Merxet Is</h2>
             <ul className="list-disc list-inside space-y-1">
               <li>A <strong>self-service, trustless, on-chain checkout experience</strong></li>
               <li>Just <strong>scan a QR</strong>, pay, and walk away</li>
@@ -95,13 +95,13 @@ export default function AboutPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-2">🛒 Are You a Seller?</h2>
             <p className="mb-2">
-              Explore the Aptoosh Seller Platform and start offering instant checkout with just a QR code: </p>
-            <a href="https://s.aptoosh.com" className="text-blue-900 hover:text-blue-600 underline" target="_blank">Visit
+              Explore the Merxet Seller Platform and start offering instant checkout with just a QR code: </p>
+            <a href="https://s.merxet.com" className="text-blue-900 hover:text-blue-600 underline" target="_blank">Visit
               Seller Portal</a>
           </section>
         </CardContent>
         <CardFooter className="justify-center text-xs text-muted-foreground py-1">
-          © {new Date().getFullYear()} APTOOSH.COM.
+          © {new Date().getFullYear()} MERXET.COM.
         </CardFooter>
       </Card>
     </main>

@@ -1,7 +1,7 @@
 <div align="center">
-<img src="https://raw.githubusercontent.com/landofcash/aptoosh/refs/heads/main/aptoosh-seller/public/logo-64x64.png" alt="Aptoosh banner"  />
+<img src="https://raw.githubusercontent.com/landofcash/merxet/refs/heads/main/merxet-seller/public/logo-64x64.png" alt="Merxet banner"  />
 
-# Aptoosh
+# Merxet
 
 ### Scan. Shop. Pay in a flash.
 
@@ -11,7 +11,7 @@
 
 **Aptos CTRL+Move 2025 Hackathon Project**
 
-[🔗 Mobile App](https://aptoosh.com) • [🔗 Seller Portal](https://s.aptoosh.com) • [🔗 Promo Catalogue](https://promo.aptoosh.com)
+[🔗 Mobile App](https://merxet.com) • [🔗 Seller Portal](https://s.merxet.com) • [🔗 Promo Catalogue](https://promo.merxet.com)
 
 </div>
 
@@ -19,7 +19,7 @@
 
 ## 🌟 Overview
 
-Aptoosh delivers a **scan, shop, and pay** experience for merchants and buyers on Aptos blockchain. Customers sign a short-lived order seed, encrypt their delivery details client-side, and escrow funds through Move smart contracts. Sellers regenerate the same deterministic keys to decrypt payloads and fulfill orders without ever exposing the plaintext to third parties.
+Merxet delivers a **scan, shop, and pay** experience for merchants and buyers on Aptos blockchain. Customers sign a short-lived order seed, encrypt their delivery details client-side, and escrow funds through Move smart contracts. Sellers regenerate the same deterministic keys to decrypt payloads and fulfill orders without ever exposing the plaintext to third parties.
 
 You don’t need a seller terminal. You don’t need a cashier. You don’t even need a website -- just a QR code or link that launches the checkout flow. 
 
@@ -28,7 +28,7 @@ Product and order data is stored on-chain, sensitive data is end-to-end encrypte
 
 ### Check Promo Catalogue
 
-[<img src="https://i.gyazo.com/d9538a82b6217723bf3bc71364ab6675.png" alt="Promo Catalogue" />](https://promo.aptoosh.com)
+[<img src="https://i.gyazo.com/d9538a82b6217723bf3bc71364ab6675.png" alt="Promo Catalogue" />](https://promo.merxet.com)
 </div>
 
 
@@ -47,12 +47,12 @@ Product and order data is stored on-chain, sensitive data is end-to-end encrypte
 
 ### Check Seller Portal
 
-[<img src="https://i.gyazo.com/f5aefc891a8ca06e50f822e22bd3ab65.png" alt="Promo Catalogue" />](https://s.aptoosh.com)
+[<img src="https://i.gyazo.com/f5aefc891a8ca06e50f822e22bd3ab65.png" alt="Promo Catalogue" />](https://s.merxet.com)
 </div>
 
-## 🔐 Aptoosh Encryption & Decryption Scheme
+## 🔐 Merxet Encryption & Decryption Scheme
 
-Aptoosh ensures private, end-to-end encrypted order communication between buyer and seller using **Curve25519 (ECIES)** and a **deterministic keypair derived from a signed seed**.  
+Merxet ensures private, end-to-end encrypted order communication between buyer and seller using **Curve25519 (ECIES)** and a **deterministic keypair derived from a signed seed**.  
 Only the buyer and seller can decrypt their respective data stored on-chain.
 
 Product and order data is stored on-chain. There is no any database storage.

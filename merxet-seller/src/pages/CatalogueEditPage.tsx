@@ -257,7 +257,7 @@ function CatalogueEditPage() {
             <div className="flex items-start gap-3">
               <Cloud className="h-5 w-5 mt-0.5 text-blue-600 flex-shrink-0"/>
               <div>
-                <p className="font-medium">Create with Aptoosh Seller</p>
+                <p className="font-medium">Create with Merxet Seller</p>
                 <p className="text-blue-600">
                   Use this page to create your product catalogue and store it on our secure servers.
                   This is the easiest way to get started - just add your products and we'll handle the hosting. </p>
