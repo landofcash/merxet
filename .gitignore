@@ -8,3 +8,4 @@ build/
 /merxet-smartcontract/artifacts
 /merxet-smartcontract/node_modules
 /merxet-sync/dist
+/merxet-smartcontract/cache
