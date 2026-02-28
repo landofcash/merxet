@@ -1,0 +1,37 @@
+{
+  "name": "merxet-cache-api",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Caching backend for Merxet project",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev src/index.ts",
+    "build": "tsc",
+    "test": "npm run build && node --test src/__tests__/seed.test.ts src/__tests__/merxetRowMapping.test.ts"
+  },
+  "dependencies": {
+    "@circle-fin/user-controlled-wallets": "^8.0.0",
+    "axios": "^1.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.13.5",
+    "express": "^4.21.2",
+    "lokijs": "^1.5.12",
+    "multer": "^2.0.2",
+    "protobufjs": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.15",
+    "@types/express": "^4.17.21",
+    "@types/lokijs": "^1.5.14",
+    "@types/multer": "^1.4.13",
+    "@types/node": "^20.9.0",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
