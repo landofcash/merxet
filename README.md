@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://raw.githubusercontent.com/landofcash/merxet/refs/heads/main/merxet-seller/public/logo-64x64.png" alt="Merxet banner"  />
+<img src="/merxet-seller/public/logo-64x64.png" alt="Merxet banner"  />
 
 # Merxet
 
