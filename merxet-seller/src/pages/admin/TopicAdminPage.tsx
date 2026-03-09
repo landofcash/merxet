@@ -18,7 +18,7 @@ import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
 
 
 const TopicAdminPage: React.FC = () => {
-  const {walletAddress, walletAdapter, network} = useWallet()
+  const {walletAddress, walletAdapter, network, walletCanTransact, walletKind, walletBootstrapMessage} = useWallet()
 
   const cfg = useMemo(() => getConfig(network), [network])
 
@@ -33,6 +33,10 @@ const TopicAdminPage: React.FC = () => {
     if (!walletAdapter || !walletAddress) {
       toast.error("Connect your wallet first");
       return;
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      toast.error(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
+      return
     }
 
     const batchKey = PrivateKey.generateECDSA();
@@ -67,6 +71,10 @@ const TopicAdminPage: React.FC = () => {
   const handleCreateTopic = async () => {
     if (!walletAdapter || !walletAddress) {
       toast.error('Connect your wallet first')
+      return
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      toast.error(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
     setBusy(true)

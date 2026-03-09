@@ -30,7 +30,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
                                                            onDeliveryConfirmed,
                                                            onCancel
                                                          }) => {
-  const {walletAdapter, walletAddress, signMessage} = useWallet()
+  const {walletAdapter, walletAddress, signMessage, walletCanTransact, walletBootstrapMessage, walletKind} = useWallet()
   const [shipmentCode, setShipmentCode] = useState('')
   const [customInfo, setCustomInfo] = useState('')
 
@@ -88,6 +88,10 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
   const handleSignAndEncrypt = async () => {
     if (!walletAddress) {
       setSigningError('Wallet not connected')
+      return
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      setSigningError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
 
@@ -151,6 +155,10 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
   const handleConfirmDelivery = async () => {
     if (!order || !walletAddress || !walletAdapter) {
       setTransactionError('Order data or wallet not available')
+      return
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      setTransactionError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
 
@@ -278,7 +286,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
         <div className="space-y-4">
           {/* Step 1: Sign Delivery Payload */}
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               {currentStep > 1 ? (
                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="h-4 w-4 text-white"/>
@@ -299,7 +307,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
 
           {/* Step 2: Send Blockchain Transaction */}
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center`}>
                 <span className="text-sm font-medium">2</span>
               </div>
@@ -392,7 +400,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
 
         <div className="bg-red-50 p-4 rounded border-l-4 border-red-400 text-sm text-red-700">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-4 w-4 mt-0.5 text-red-600 flex-shrink-0"/>
+            <AlertCircle className="h-4 w-4 mt-0.5 text-red-600 shrink-0"/>
             <p>
               You are about to <strong>confirm the start of the delivery process</strong>. This will encrypt the
               shipment details

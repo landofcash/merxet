@@ -23,11 +23,10 @@ import {
   Globe,
   Info
 } from 'lucide-react'
-import AptosLogo from "@/components/Crypto/aptos/AptosLogo.tsx";
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 
 function AddProductCataloguePage() {
-  const {walletAddress, signMessage, walletAdapter} = useWallet()
+  const {walletAddress, signMessage, walletAdapter, walletCanTransact, walletBootstrapMessage, walletKind} = useWallet()
   const navigate = useNavigate()
   const location = useLocation();
   const state = location.state as { url?: string };
@@ -131,6 +130,10 @@ function AddProductCataloguePage() {
 
   const handleUploadToBlockchain = async () => {
     if (!walletAddress || !catalogueUrl || !seed || !sellerPubKey || !walletAdapter) return
+    if (!walletCanTransact) {
+      setError(walletBootstrapMessage ?? 'This wallet is not ready to submit Hedera transactions yet.')
+      return
+    }
     setIsUploading(true)
     setError(null)
 
@@ -201,11 +204,11 @@ function AddProductCataloguePage() {
             </div>
 
             <div className="flex items-start gap-3 ">
-              <AptosLogo/>
+              <img src="/hedera-logo.svg" alt="Hedera" className="h-5 w-5 mt-0.5"/>
               <div>
-                <p className="font-medium">What is Aptos?</p>
+                <p className="font-medium">What is Hedera?</p>
                 <p className="text-blue-600">
-                  Aptos is a fast, secure, and energy-efficient blockchain network.
+                  Hedera is a fast, secure, and energy-efficient distributed ledger network.
                   It acts like a shared global database that no single company controls - making your catalogue
                   link permanently available and tamper-proof. </p>
               </div>
@@ -214,6 +217,14 @@ function AddProductCataloguePage() {
           </div>
         </CardContent>
       </Card>
+
+      {walletKind === 'internal' && !walletCanTransact && (
+        <Card className="w-full max-w-4xl mx-auto border-blue-200 bg-blue-50">
+          <CardContent className="pt-6 text-sm text-blue-900">
+            {walletBootstrapMessage ?? 'Activate and fund this internal wallet before submitting marketplace transactions.'}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>

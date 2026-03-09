@@ -93,14 +93,14 @@ export interface ChainAdapter {
   viewSellerData(seed: string): Promise<GetStorageResult>
 
   /**
-   * Resolves an address to name (Aptos Name Service (ANS), ENS on Ethereum or NFD on Algorand.)
+   * Resolves an address to name (ENS on Ethereum or NFD on Algorand.)
    * @param address The address to resolve
    * @returns The address or null if not found
    * */
   resolveAddressToName(address: string): Promise<string | null>
 
   /**
-   * Resolves a name to address (Aptos Name Service (ANS), ENS on Ethereum or NFD on Algorand.)
+   * Resolves a name to address (ENS on Ethereum or NFD on Algorand.)
    * @param name The name to resolve
    * @returns The name or null if not found
    */
@@ -117,5 +117,5 @@ export interface ChainAdapter {
     maximumFractionDigits?: number
   ): string
 
-  requestDevnetFaucet(accountAddress: string, amountOctas: number): Promise<void>
+  requestDevnetFaucet(accountAddress: string, amount: number): Promise<void>
 }

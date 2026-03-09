@@ -1,198 +1,346 @@
-import React, {useCallback, useEffect, useMemo, useState} from "react";
-import { LogOut, X, ExternalLink, HandCoins } from "lucide-react";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { useWallet } from "@/context/WalletContext";
-import CopyableField from "@/components/CopyableField";
-import { formatCoinAmount, requestDevnetFaucet, getAccountCoinAmount } from "@/lib/crypto/cryptoUtils";
-import { getCurrentConfig, explorerAccountUrl } from "@/config";
+import React, {useEffect, useMemo, useState} from "react";
+import {
+  ExternalLink,
+  HandCoins,
+  LockKeyhole,
+  LogOut,
+  RefreshCcw,
+  Shield,
+  Trash2,
+} from "lucide-react";
+import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
+import {Button} from "@/components/ui/button";
+import {useWallet} from "@/context/WalletContext";
+import {explorerAccountUrl, getAvailableNetworkIds, getConfig} from "@/config";
 import walletSvg from "@/assets/wallet.svg";
+import CopyableField from "@/components/CopyableField";
 import TokenIcon from "@/components/TokenIcon";
+import ConfirmModal from "@/components/wallet/ConfirmModal";
+import InternalWalletBackupModal from "@/components/wallet/InternalWalletBackupModal";
+import InternalWalletProtectModal from "@/components/wallet/InternalWalletProtectModal";
+import InternalWalletBootstrapModal from "@/components/wallet/InternalWalletBootstrapModal";
+import type {InternalWalletBackupItem} from "@/lib/internalWallet/types.ts";
 
 const WalletConnected: React.FC = () => {
-  const { walletAddress, disconnect, network } = useWallet();
+  const {
+    walletAddress,
+    walletKind,
+    walletIdentity,
+    walletLifecycleState,
+    walletLocked,
+    walletCanTransact,
+    walletBootstrapTitle,
+    walletBootstrapMessage,
+    walletBalances,
+    walletRequiresPassphraseUpgrade,
+    network,
+    internalWallets,
+    activeInternalWalletId,
+    refreshActiveInternalWallet,
+    changeInternalWalletPassphrase,
+    disconnect,
+    lockInternalWallet,
+    revealInternalWalletBackup,
+    removeInternalWallet,
+    switchNetwork,
+  } = useWallet();
+
   const [open, setOpen] = useState(false);
-  const [balance, setBalance] = useState<bigint | null>(null);
-  const [loadingBal, setLoadingBal] = useState(false);
-  const [faucetLoading, setFaucetLoading] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupItems, setBackupItems] = useState<InternalWalletBackupItem[] | null>(null);
+  const [protectOpen, setProtectOpen] = useState(false);
+  const [protectBusy, setProtectBusy] = useState(false);
+  const [protectError, setProtectError] = useState<string | null>(null);
+  const [bootstrapOpen, setBootstrapOpen] = useState(false);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
-  const aptToken = useMemo(() => {
-    const cfg = getCurrentConfig();
-    return (cfg.supportedTokens && cfg.supportedTokens.length > 0) ? cfg.supportedTokens[0] : undefined;
-  }, [network]);
-
-  const aptBalanceFormatted = useMemo(() => {
-    if (balance == null || !aptToken) return null as string | null;
-    return formatCoinAmount(balance, aptToken.decimals ?? 8);
-  }, [balance, aptToken]);
-
-  // Helper to refresh raw balance only; formatted is derived
-  const refreshBalance = useCallback(async (signal?: { cancelled: boolean }) => {
-    if (!walletAddress || !aptToken) {
-      setBalance(null);
-      return;
-    }
-    try {
-      setLoadingBal(true);
-      const amount = await getAccountCoinAmount(walletAddress, aptToken.tokenId);
-      if (signal?.cancelled) return;
-      const raw = typeof amount === "bigint" ? amount : BigInt(amount);
-      setBalance(raw);
-    } catch (e) {
-      if (!signal?.cancelled) {
-        setBalance(null);
-      }
-      console.error("Failed to fetch balance", e);
-    } finally {
-      if (!signal?.cancelled) setLoadingBal(false);
-    }
-  }, [walletAddress, aptToken]);
+  const activeInternalWallet = useMemo(() => {
+    return internalWallets.find(wallet => wallet.id === activeInternalWalletId) ?? null;
+  }, [activeInternalWalletId, internalWallets]);
 
   useEffect(() => {
-    const state = { cancelled: false };
-    void refreshBalance(state);
-    return () => {
-      state.cancelled = true;
-    };
-  }, [walletAddress, network, aptToken, refreshBalance]);
+    if (open && walletKind === "internal") {
+      void refreshActiveInternalWallet();
+    }
+  }, [open, refreshActiveInternalWallet, walletKind]);
 
-  const handleFaucet = async () => {
-    const cfg = getCurrentConfig();
-    if (!walletAddress) return;
+  useEffect(() => {
+    if (!backupOpen) {
+      setBackupItems(null);
+      setBackupError(null);
+    }
+  }, [backupOpen]);
+
+  if (!walletAddress) {
+    return null;
+  }
+
+  const hbarBalance = walletBalances[0];
+  const networkConfig = getConfig(network);
+
+  const handleRevealBackup = async () => {
     try {
-      if (network === "testnet") {
-        const url = cfg.hedera.faucetUrl;
-        window.open(url, "_blank", "noopener,noreferrer");
-        return;
-      }
-      if (network === "devnet") {
-        setFaucetLoading(true);
-        const amount = 100_000_000; // 1 APT in octas
-        await requestDevnetFaucet(walletAddress, amount);
-        // Refresh balance after a short delay
-        setTimeout(() => {
-          void refreshBalance();
-        }, 800);
-      }
-    } catch (e) {
-      console.error("Faucet action failed", e);
-      alert("Failed to request faucet. Please try again.");
+      setBackupBusy(true);
+      setBackupError(null);
+      const items = await revealInternalWalletBackup();
+      setBackupItems(items);
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : "Failed to reveal wallet backup.");
     } finally {
-      setFaucetLoading(false);
+      setBackupBusy(false);
     }
   };
 
-  if (!walletAddress) return null;
+  const handleProtectWallet = async (input: { currentPassphrase?: string; nextPassphrase: string }) => {
+    try {
+      setProtectBusy(true);
+      setProtectError(null);
+      await changeInternalWalletPassphrase(input);
+      setProtectOpen(false);
+    } catch (error) {
+      setProtectError(error instanceof Error ? error.message : "Failed to update wallet passphrase.");
+    } finally {
+      setProtectBusy(false);
+    }
+  };
 
-  const showFaucet =
-    (network === "testnet" || network === "devnet") &&
-    !!aptToken &&
-    balance !== null &&
-    (balance < (3n * (10n ** BigInt(aptToken!.decimals ?? 8))));
+  const handleRemoveWallet = async () => {
+    if (!activeInternalWalletId) {
+      return;
+    }
+
+    await removeInternalWallet(activeInternalWalletId);
+    setConfirmRemoveOpen(false);
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          aria-label="Wallet Menu"
-          className="flex items-center gap-2 pr-2 pl-1 py-1 text-sm sm:pl-2 sm:gap-3 cursor-pointer rounded-full border border-primary/30 bg-background hover:bg-accent/40"
-        >
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 border border-primary/20">
-            {/* prefer custom wallet svg for a branded touch */}
-            <img src={walletSvg} alt="Wallet" className="w-3.5 h-3.5" />
-          </span>
-          <span className="hidden sm:flex items-center gap-2">
-            <span className="font-mono">
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            aria-label="Wallet menu"
+            className="flex items-center gap-2 rounded-full border border-primary/30 bg-background px-2 py-1 text-sm hover:bg-accent/40"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+              <img src={walletSvg} alt="Wallet" className="h-4 w-4"/>
+            </span>
+            <span className="hidden sm:block font-mono">
               {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
             </span>
-          </span>
-          {/* On mobile, show only balance or address short */}
-          <span className="sm:hidden font-medium">
-            {loadingBal ? "…" : aptBalanceFormatted != null ? `${aptBalanceFormatted} ${aptToken?.name ?? ''}` : `${walletAddress.slice(0, 4)}...${walletAddress.slice(-3)}`}
-          </span>
-        </Button>
-      </PopoverTrigger>
+            {walletKind === "internal" && hbarBalance ? (
+              <span className="hidden md:block text-xs text-muted-foreground">
+                {hbarBalance.formatted} {hbarBalance.symbol}
+              </span>
+            ) : null}
+          </Button>
+        </PopoverTrigger>
 
-      <PopoverContent
-        align="end"
-        className="w-screen sm:w-72 sm:rounded-xl sm:border sm:shadow-lg sm:mt-1 m-0 p-6 space-y-4 text-sm"
-      >
-        {/* Mobile close button */}
-        <div className="flex justify-end sm:hidden -mt-2 -mr-2">
-          <button onClick={() => setOpen(false)} aria-label="Close">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        {/* Wallet Info */}
-        <div className="space-y-3">
-          <p className="text-muted-foreground text-xs">Connected Wallet</p>
-          <div className="rounded-lg border bg-accent/30 p-3 flex items-start gap-3">
-            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 shrink-0">
-              <img src={walletSvg} alt="Wallet" className="w-4 h-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="mt-1">
-                <CopyableField value={walletAddress} length={22} mdLength={22} />
+        <PopoverContent align="end" className="w-176 max-w-[calc(100vw-1.5rem)] space-y-5 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                {walletKind === "internal" ? "Internal wallet" : "Connected wallet"}
               </div>
-              <div className="mt-1">
-                <a
-                  href={explorerAccountUrl(walletAddress, network)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  View on Explorer
-                </a>
+              <div className="text-lg font-semibold">
+                {activeInternalWallet?.label ?? (walletKind === "internal" ? "Internal wallet" : "External wallet")}
               </div>
             </div>
+            <div className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground uppercase">
+              {network}
+            </div>
           </div>
-          <div className="flex items-center justify-between pt-1">
-            <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-              <span>{aptToken?.name ?? "Token"} Balance</span>
-            </span>
-            <span className="font-semibold text-sm">
-              {loadingBal && (<span>Loading…</span>)}
 
-              {aptToken && aptBalanceFormatted && !loadingBal && (
-                <span>
-                  <TokenIcon assetId={aptToken.tokenId} className="w-4 h-4 ml-1 mr-2 " alt={aptToken.name}/>
-                  {aptBalanceFormatted} {aptToken?.name ?? ''}
-                </span>
-              )}
-            </span>
+          <div className={walletKind === "internal" ? "grid gap-5 lg:grid-cols-2" : "space-y-5"}>
+            <div className="space-y-5">
+              <div className="rounded-xl border p-4 space-y-3">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Current address</div>
+                  <CopyableField value={walletAddress} length={32} mdLength={32}/>
+                </div>
+
+                {walletKind === "internal" ? (
+                  <>
+                    {walletIdentity?.accountId ? (
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Account ID</div>
+                        <CopyableField value={walletIdentity.accountId} length={32} mdLength={32}/>
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Alias / EVM address</div>
+                      <CopyableField value={walletIdentity?.evmAddress ?? ""} length={32} mdLength={32}/>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Status</div>
+                      <div className="text-sm font-medium">
+                        {walletLifecycleState === "local_only" ? "Local only" : walletLifecycleState === "funded_or_alias_created" ? "Needs HBAR" : "Ready"}
+                        {walletLocked ? " · Locked" : " · Unlocked"}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+
+                <a
+                  href={explorerAccountUrl(walletIdentity?.accountId ?? walletIdentity?.evmAddress ?? walletAddress, network)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center text-xs text-blue-600 hover:underline"
+                >
+                  <ExternalLink className="mr-1 h-3.5 w-3.5"/>
+                  View on explorer
+                </a>
+              </div>
+
+              <div className="space-y-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Network</div>
+                <div className="flex flex-wrap gap-2">
+                  {getAvailableNetworkIds().map((availableNetwork) => (
+                    <Button
+                      key={availableNetwork}
+                      size="sm"
+                      variant={availableNetwork === network ? "default" : "outline"}
+                      onClick={() => void switchNetwork(availableNetwork)}
+                    >
+                      {availableNetwork.toUpperCase()}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {walletKind === "internal" && walletBootstrapMessage ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+                  <div className="font-medium text-blue-900">{walletBootstrapTitle}</div>
+                  <div className="text-sm text-blue-800">{walletBootstrapMessage}</div>
+                  <Button variant="outline" onClick={() => setBootstrapOpen(true)}>
+                    <HandCoins className="mr-2 h-4 w-4"/>
+                    Funding instructions
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-5">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Balances</div>
+                  {walletKind === "internal" ? (
+                    <Button variant="ghost" size="sm" onClick={() => void refreshActiveInternalWallet()}>
+                      <RefreshCcw className="h-4 w-4"/>
+                    </Button>
+                  ) : null}
+                </div>
+
+                {walletKind === "internal" ? (
+                  <div className="space-y-2">
+                    {walletBalances.map((balance) => (
+                      <div key={balance.tokenId} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <TokenIcon assetId={balance.tokenId} className="h-4 w-4" alt={balance.symbol}/>
+                          <div>
+                            <div className="text-sm font-medium">{balance.symbol}</div>
+                            {!balance.associated ? (
+                              <div className="text-[11px] text-muted-foreground">No token balance relation yet</div>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold">{balance.formatted}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">
+                    Balance details are managed by the connected external wallet.
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {walletKind === "internal" ? (
+                  <>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => setBackupOpen(true)}>
+                      <Shield className="mr-2 h-4 w-4"/>
+                      Back up wallet
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => setProtectOpen(true)}>
+                      <LockKeyhole className="mr-2 h-4 w-4"/>
+                      {walletRequiresPassphraseUpgrade ? "Protect wallet" : "Change passphrase"}
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => void lockInternalWallet()} disabled={walletLocked}>
+                      <LockKeyhole className="mr-2 h-4 w-4"/>
+                      Lock wallet
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start text-destructive" onClick={() => setConfirmRemoveOpen(true)}>
+                      <Trash2 className="mr-2 h-4 w-4"/>
+                      Remove local wallet
+                    </Button>
+                  </>
+                ) : null}
+
+                <Button className="w-full justify-start bg-red-500 hover:bg-red-600 text-white" onClick={() => void disconnect()}>
+                  <LogOut className="mr-2 h-4 w-4"/>
+                  Disconnect
+                </Button>
+              </div>
+
+              {walletKind === "internal" && !walletCanTransact ? (
+                <div className="text-xs text-muted-foreground">
+                  Marketplace signing stays disabled until this wallet is activated on-chain and has usable HBAR.
+                </div>
+              ) : null}
+            </div>
           </div>
-        </div>
-        {/* Actions */}
-        <div className="space-y-2">
-          {showFaucet && (
-            <Button
-              onClick={handleFaucet}
-              disabled={faucetLoading}
-              className="w-full justify-start text-sm bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-            >
-              {faucetLoading ? (
-                <HandCoins className="w-4 h-4 mr-2 animate-spin" />
-              ) : network === "testnet" ? (
-                <ExternalLink className="w-4 h-4 mr-2" />
-              ) : (
-                <HandCoins className="w-4 h-4 mr-2" />
-              )}
-              {network === "testnet" ? "Open Faucet" : "Request 1 APT from Faucet"}
-            </Button>
-          )}
-          <Button
-            onClick={disconnect}
-            className="w-full justify-start text-sm bg-red-500 hover:bg-red-600 text-white cursor-pointer"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Disconnect
-          </Button>
-          <div className="text-muted-foreground text-xs text-right">[{network}]</div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+
+      <InternalWalletBackupModal
+        open={backupOpen}
+        busy={backupBusy}
+        error={backupError}
+        items={backupItems}
+        onClose={() => setBackupOpen(false)}
+        onReveal={handleRevealBackup}
+      />
+      <InternalWalletProtectModal
+        open={protectOpen}
+        busy={protectBusy}
+        error={protectError}
+        requiresUpgrade={walletRequiresPassphraseUpgrade}
+        onClose={() => setProtectOpen(false)}
+        onSubmit={handleProtectWallet}
+      />
+      <InternalWalletBootstrapModal
+        open={bootstrapOpen}
+        network={network}
+        faucetUrl={networkConfig.hedera.faucetUrl}
+        title={walletBootstrapTitle}
+        message={walletBootstrapMessage}
+        identity={walletIdentity}
+        onClose={() => setBootstrapOpen(false)}
+      />
+      <ConfirmModal
+        open={confirmRemoveOpen}
+        title="Remove local wallet"
+        message={(
+          <div className="space-y-3">
+            <p>
+              This removes local browser access only. It does not delete the Hedera account or affect funds recoverable from your backup.
+            </p>
+            <div className="rounded-lg border px-3 py-2 font-mono text-xs break-all">
+              {walletIdentity?.accountId ?? walletIdentity?.evmAddress ?? walletAddress}
+            </div>
+          </div>
+        )}
+        confirmLabel="Remove wallet"
+        confirmVariant="destructive"
+        onConfirm={handleRemoveWallet}
+        onCancel={() => setConfirmRemoveOpen(false)}
+      />
+    </>
   );
 };
 

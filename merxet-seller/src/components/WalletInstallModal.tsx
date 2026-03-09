@@ -1,88 +1,71 @@
-import React, { useEffect } from 'react'
-import petraLogo from '@/assets/petra-logo.svg'
-import pontemLogo from '@/assets/pontem-logo.svg'
-import { X, ArrowUpRight } from 'lucide-react'
+import React, {useEffect} from 'react'
+import {ArrowUpRight, X} from 'lucide-react'
 
 interface WalletInstallModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
-// Aptos-focused wallet install modal (Petra recommended, Pontem as an alternative)
-const WalletInstallModal: React.FC<WalletInstallModalProps> = ({ isOpen, onClose }) => {
-   // Lock body scroll while modal is open
+const WalletInstallModal: React.FC<WalletInstallModalProps> = ({isOpen, onClose}) => {
   useEffect(() => {
-    if (!isOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    if (!isOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [isOpen]);
-  // Official product pages (official sites)
-  const petraUrl = 'https://petra.app'
-  const pontemUrl = 'https://pontem.network/pontem-wallet'
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
+
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="relative w-full max-w-lg mx-4 bg-card border rounded-2xl shadow-lg max-h-[85vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="relative mx-4 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-card shadow-lg"
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Header: Aptos banner */}
-        <div className="relative">
-          <img src="/aptos-banner.jpg" alt="Aptos banner" className="w-full h-36 object-cover" />
+        <div className="relative bg-linear-to-r from-emerald-700 via-teal-700 to-cyan-700 px-6 py-10 text-white">
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-white/90 hover:text-white transition"
+            className="absolute right-3 top-3 text-white/90 hover:text-white transition"
             aria-label="Close"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6"/>
           </button>
+          <div className="space-y-2 text-center">
+            <img src="/hedera-logo.svg" alt="Hedera logo" className="mx-auto h-12 w-12"/>
+            <h3 className="text-2xl font-semibold">Install a Hedera wallet</h3>
+            <p className="text-sm text-emerald-50/90">
+              Use HashPack to connect an external wallet, or create an encrypted internal wallet directly in the app.
+            </p>
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-6 text-center flex-1 overflow-y-auto">
+        <div className="flex-1 space-y-6 overflow-y-auto p-6 text-center">
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold">Petra Wallet</h3>
-            <p className="text-sm text-muted-foreground">Official Aptos wallet by Aptos Labs. Available on Chrome and Mobile.</p>
+            <h4 className="text-lg font-semibold">HashPack</h4>
+            <p className="text-sm text-muted-foreground">
+              Popular Hedera wallet for browser and mobile. Use it if you want an external wallet provider instead of a built-in local wallet.
+            </p>
             <div className="flex justify-center">
               <a
-                href={petraUrl}
+                href="https://www.hashpack.app/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-6 py-3.5 shadow-md transition w-56"
+                className="inline-flex w-56 items-center justify-center gap-3 rounded-xl bg-slate-800 px-6 py-3.5 text-white shadow-md transition hover:bg-slate-900"
               >
-                <img src={petraLogo} alt="Petra logo" className="h-5 w-5 rounded-sm" />
-                <span className="font-medium">Get Petra</span>
-                <ArrowUpRight className="w-5 h-5" />
+                <img src="/hedera-logo.svg" alt="HashPack" className="h-5 w-5"/>
+                <span className="font-medium">Get HashPack</span>
+                <ArrowUpRight className="h-5 w-5"/>
               </a>
             </div>
           </div>
 
-          <div className="relative">
-            <div className="mx-auto h-px w-20 bg-border" />
-          </div>
-
-          {/* Pontem (Alternative) */}
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold">Pontem Wallet</h3>
-            <p className="text-sm text-muted-foreground">Popular alternative Aptos wallet. Browser extensions available.</p>
-            <div className="flex justify-center">
-              <a
-                href={pontemUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-6 py-3.5 shadow-md transition w-56"
-              >
-                <img src={pontemLogo} alt="Pontem logo" className="h-5 w-5 rounded-sm" />
-                <span className="font-medium">Get Pontem</span>
-                <ArrowUpRight className="w-5 h-5" />
-              </a>
-            </div>
+          <div className="rounded-xl border p-4 text-left">
+            <div className="font-medium mb-2">No external wallet installed?</div>
+            <p className="text-sm text-muted-foreground">
+              You can still use the app by creating an internal wallet from the wallet selector. The private key stays in your browser and is encrypted with your passphrase.
+            </p>
           </div>
         </div>
       </div>

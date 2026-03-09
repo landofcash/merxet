@@ -1,7 +1,7 @@
 {
   "name": "Merxet Seller",
   "short_name": "Merxet Seller",
-  "description": "Manage product listings and sales on Aptos blockchain",
+  "description": "Manage product listings and sales on blockchain",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

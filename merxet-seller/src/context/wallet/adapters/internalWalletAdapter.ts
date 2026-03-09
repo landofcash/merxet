@@ -1,73 +1,36 @@
-import type {WalletAdapter, NetworkId} from "../types";
-import {getActiveInternalWallet, createInternalWallet, clearActiveInternalWallet} from "@/lib/crypto/internalWallet";
-import {signMessageInternal} from "@/lib/crypto/cryptoUtils";
 import {getCurrentConfig} from "@/config";
-import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
-import {PrivateKey, Transaction} from "@hiero-ledger/sdk";
-import {getHederaAccountIdFromEvmAddress} from "@/lib/hedera/hederaUtils.ts";
-
+import type {WalletAdapter} from "../types";
+import {hederaInternalWalletProvider} from "@/lib/internalWallet/providers/hederaInternalWalletProvider.ts";
 
 export const internalWalletAdapter: WalletAdapter = {
-  chain: 'hedera',
-  name: 'Built-in (Internal)',
-  id: 'internal',
-
+  chain: "hedera",
+  id: "internal",
+  name: "Built-in (Internal)",
   isInstalled() {
     return true;
   },
-
   async getAddress() {
-    const acc = await getActiveInternalWallet();
-    return acc?.addr ?? null;
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).getAddress();
   },
-
-  async getNetwork(): Promise<NetworkId | null> {
-    return (getCurrentConfig().name as NetworkId) ?? null;
+  async getNetwork() {
+    return getCurrentConfig().name;
   },
-
-  async connect(opts?: { silent?: boolean }) {
-    let acc = await getActiveInternalWallet();
-    if (!acc && !opts?.silent) {
-      acc = await createInternalWallet();
-    }
-    return acc?.addr ?? null;
+  async connect(opts) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).connect(opts);
   },
-
   async disconnect() {
-    await clearActiveInternalWallet();
+    await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).disconnect();
   },
-
   onAccountChange() {
-    return () => {
-    };
+    return () => undefined;
   },
   onNetworkChange() {
-    return () => {
-    };
+    return () => undefined;
   },
-
-  async signMessage(dataToSign: string /*, message?: string */) {
-    const acc = await getActiveInternalWallet();
-    if (!acc) throw new Error('No active internal wallet');
-    return await signMessageInternal(acc, dataToSign);
+  async signMessage(dataToSign: string, message?: string) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).signMessage(dataToSign, message);
   },
-
-  async signAndSubmit(transaction:Transaction): Promise<{ hash: string, status: string }> {
-    const acc = await getActiveInternalWallet();
-    if (!acc) throw new Error('No active internal wallet');
-
-    const {sdkClient} = getHederaClient();
-
-    const OPERATOR_ID = await getHederaAccountIdFromEvmAddress(acc.addr);
-    const OPERATOR_KEY = PrivateKey.fromBytesECDSA(acc.sk);
-    sdkClient.setOperator(OPERATOR_ID, OPERATOR_KEY);
-    
-    const txResponse = await transaction.execute(sdkClient);
-    const receipt = await txResponse.getReceipt(sdkClient);
-    const transactionStatus = receipt.status;
-    console.log("The transaction consensus status is " +transactionStatus);
-
-    if (!txResponse?.transactionHash) throw new Error('Internal submit returned no transaction hash');
-    return {hash: Buffer.from(txResponse.transactionHash).toString('hex'), status: transactionStatus.toString()};
-  }
+  async signAndSubmit(transaction: object) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).signAndSubmit(transaction);
+  },
 };

@@ -37,7 +37,7 @@ const SystemDescription: React.FC<SystemDescriptionProps> = ({ walletAddress, se
           {open && (
             <CardContent className="space-y-4">
               <p className="text-slate-700 dark:text-slate-300">
-                {APP_NAME} is a decentralized e-commerce platform built on the Aptos blockchain.
+                {APP_NAME} is a decentralized e-commerce platform built on Hedera.
                 It enables secure, transparent, and efficient online commerce without intermediaries.
               </p>
 
@@ -97,7 +97,7 @@ const SystemDescription: React.FC<SystemDescriptionProps> = ({ walletAddress, se
           {open && (
             <CardContent className="space-y-4">
               <p className="text-slate-700 dark:text-slate-300">
-                Wallet serves as your secure login and identity on the Aptos network.
+                Your wallet serves as your secure login and identity on the Hedera network.
                 No passwords, no accounts to manage - just your wallet.
               </p>
 

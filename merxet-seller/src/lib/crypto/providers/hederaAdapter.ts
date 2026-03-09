@@ -31,8 +31,8 @@ export const hederaAdapter: ChainAdapter = {
     return hederaUtils.formatCoinAmount(amount, decimals, maximumFractionDigits);
   },
 
-  async requestDevnetFaucet(accountAddress: string, amountOctas: number): Promise<void> {
-    throw new Error(`Faucet not implemented for Hedera accountAddress:${accountAddress} amountOctas:${amountOctas}`);
+  async requestDevnetFaucet(accountAddress: string, amount: number): Promise<void> {
+    throw new Error(`Faucet not implemented for Hedera accountAddress:${accountAddress} amount:${amount}`);
   },
 
   async uploadCatalogUrlToBlockchain(

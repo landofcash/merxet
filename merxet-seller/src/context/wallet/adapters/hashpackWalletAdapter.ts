@@ -233,16 +233,18 @@ function ledgerIdForNetwork(network: NetworkId): LedgerId {
   return LedgerId.TESTNET
 }
 
-const cfg = getCurrentConfig()
+export function createHashpackWalletAdapter(network: NetworkId = getCurrentConfig().name as NetworkId) {
+  return new HederaWalletConnectAdapter({
+    id: 'hashpack',
+    name: 'HashPack',
+    chain: 'hedera',
+    projectId: '705402d29011540cddc4d19b6aab8448',
+    metadata: defaultMetadata,
+    network,
+    ledgerId: ledgerIdForNetwork(network),
+    connectMode: 'modal',
+    logLevel: 'error',
+  })
+}
 
-export const hashpackWalletAdapter = new HederaWalletConnectAdapter({
-  id: 'hashpack',
-  name: 'HashPack',
-  chain: 'hedera',
-  projectId: '705402d29011540cddc4d19b6aab8448',
-  metadata: defaultMetadata,
-  network: cfg.name as NetworkId,
-  ledgerId: ledgerIdForNetwork(cfg.name as NetworkId),
-  connectMode: 'modal',
-  logLevel: 'error',
-})
+export const hashpackWalletAdapter = createHashpackWalletAdapter()

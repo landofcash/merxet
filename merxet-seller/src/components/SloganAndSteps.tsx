@@ -58,7 +58,7 @@ const SloganAndSteps: React.FC<SloganAndStepsProps> = ({setShowInstallModal, set
                   <a onClick={() => setShowTestnetModal(true)}
                      className="text-emerald-800 dark:text-emerald-300 underline cursor-pointer hover:text-emerald-900">
                     Connect
-                  </a> your Aptos wallet to login, no email or password needed.
+                  </a> a Hedera wallet to login, no email or password needed.
                   <br/>
                   New to blockchain? <a onClick={() => setShowInstallModal(true)}
                                         className="text-emerald-800 dark:text-emerald-300 underline cursor-pointer hover:text-emerald-900">

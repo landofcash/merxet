@@ -28,7 +28,7 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
                                                          onDeliveryRefused,
                                                          onCancel
                                                        }) => {
-  const {walletAdapter, walletAddress, signMessage} = useWallet()
+  const {walletAdapter, walletAddress, signMessage, walletCanTransact, walletBootstrapMessage, walletKind} = useWallet()
   const [customInfo, setCustomInfo] = useState('')
 
   // Two-step process state
@@ -70,6 +70,10 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
   const handleSignAndEncrypt = async () => {
     if (!walletAddress) {
       setSigningError('Wallet not connected')
+      return
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      setSigningError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
 
@@ -132,6 +136,10 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
   const handleRefuseDelivery = async () => {
     if (!order || !walletAddress || !walletAdapter) {
       setTransactionError('Order data or wallet not available')
+      return
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      setTransactionError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
 

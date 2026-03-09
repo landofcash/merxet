@@ -9,14 +9,18 @@ import CopyableField from './CopyableField'
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 
 const ProductCatalogueList: React.FC = () => {
-  const {walletAddress, walletAdapter} = useWallet()
+  const {walletAddress, walletAdapter, walletCanTransact, walletKind, walletBootstrapMessage} = useWallet()
   const [catalogues, setCatalogues] = useState<CatalogData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingSeed, setDeletingSeed] = useState<string | null>(null)
 
   const loadCatalogues = useCallback(async () => {
-    if (!walletAddress) return
+    if (!walletAddress || (walletKind === 'internal' && !walletCanTransact)) {
+      setCatalogues([])
+      setIsLoading(false)
+      return
+    }
 
     setIsLoading(true)
     setError(null)
@@ -29,7 +33,7 @@ const ProductCatalogueList: React.FC = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [walletAddress])
+  }, [walletAddress, walletCanTransact, walletKind])
 
   useEffect(() => {
     loadCatalogues()
@@ -38,6 +42,10 @@ const ProductCatalogueList: React.FC = () => {
   const handleDelete = async (seed: string) => {
     if (!walletAddress || !walletAdapter) {
       setError('Wallet not connected')
+      return
+    }
+    if (walletKind === 'internal' && !walletCanTransact) {
+      setError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
 
@@ -108,9 +116,13 @@ const ProductCatalogueList: React.FC = () => {
         <CardContent>
           <div className="text-center py-8">
             <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4"/>
-            <div className="text-muted-foreground mb-2">No product catalogues found</div>
+            <div className="text-muted-foreground mb-2">
+              {walletKind === 'internal' && !walletCanTransact ? 'Wallet not ready for catalogue lookups yet' : 'No product catalogues found'}
+            </div>
             <div className="text-sm text-muted-foreground">
-              Create your first catalogue to get started
+              {walletKind === 'internal' && !walletCanTransact
+                ? (walletBootstrapMessage ?? 'Activate and fund this internal wallet first.')
+                : 'Create your first catalogue to get started'}
             </div>
           </div>
         </CardContent>
@@ -165,7 +177,7 @@ const ProductCatalogueList: React.FC = () => {
                           <span className="truncate max-w-xs">
                             <CopyableField value={catalogue.catalogUrl} length={8} mdLength={42} small={true}/>
                           </span>
-                          <ExternalLink className="h-3 w-3 flex-shrink-0"/>
+                          <ExternalLink className="h-3 w-3 shrink-0"/>
                         </a>
                       </div>
                     )}

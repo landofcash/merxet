@@ -44,6 +44,6 @@ export function formatCoinAmount(amount: bigint | number, decimals: number, maxi
   return adapter.formatCoinAmount(amount, decimals, maximumFractionDigits);
 }
 
-export async function requestDevnetFaucet(accountAddress: string, amountOctas: number): Promise<void> {
-  return await adapter.requestDevnetFaucet(accountAddress, amountOctas);
+export async function requestDevnetFaucet(accountAddress: string, amount: number): Promise<void> {
+  return await adapter.requestDevnetFaucet(accountAddress, amount);
 }

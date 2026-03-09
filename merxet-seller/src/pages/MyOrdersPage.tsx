@@ -24,14 +24,18 @@ function parseTimestamp(timestamp: string): number {
 }
 
 function MyOrdersPage() {
-  const { walletAddress } = useWallet()
+  const { walletAddress, walletCanTransact, walletKind, walletBootstrapMessage } = useWallet()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const loadOrders = async () => {
-    if (!walletAddress) return
+    if (!walletAddress || (walletKind === 'internal' && !walletCanTransact)) {
+      setOrders([])
+      setIsLoading(false)
+      return
+    }
 
     setIsLoading(true)
     setError(null)
@@ -48,7 +52,7 @@ function MyOrdersPage() {
 
   useEffect(() => {
     loadOrders()
-  }, [walletAddress])
+  }, [walletAddress, walletCanTransact, walletKind])
 
   const handleViewDetails = (order: Order) => {
     navigate('/order-details', { state: { order } })
@@ -67,6 +71,26 @@ function MyOrdersPage() {
           <CardContent>
             <p className="text-muted-foreground">
               Please connect your wallet to view your orders.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (walletKind === 'internal' && !walletCanTransact) {
+    return (
+      <div className="px-4 py-8 sm:py-16">
+        <Card className="w-full max-w-4xl mx-auto">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <ShoppingCart className="h-6 w-6" />
+              My Orders
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              {walletBootstrapMessage ?? 'Activate and fund this internal wallet before loading on-chain order data.'}
             </p>
           </CardContent>
         </Card>
