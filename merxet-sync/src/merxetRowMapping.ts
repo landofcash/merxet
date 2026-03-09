@@ -1,6 +1,6 @@
-import { bytes32ToSeedString } from './seed.js';
-import { bytes32ToHex, bytesToBase64, isZeroAddress } from './encoding.js';
-import type { CatalogCacheEntry, OrderCacheEntry } from './types/types.js';
+import {CatalogCacheEntry, OrderCacheEntry} from "./types/types";
+import {bytes32ToHex, bytesToBase64, isZeroAddress} from "./encoding";
+import {bytes32ToSeedString} from "./seed";
 
 export function mapCatalogRowToCacheEntry(seedBytes32: string, row: any): CatalogCacheEntry | null {
   const seller = String(row?.seller ?? '');

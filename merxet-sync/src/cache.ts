@@ -141,6 +141,11 @@ class AppDatabase {
     return this.orders.find({"networkName": networkName});
   }
 
+  async getAllChainCursors(): Promise<ChainCursor[]> {
+    await this.ensureInitialized();
+    return this.chainCursors.find({});
+  }
+
   async clear(): Promise<void> {
     await this.ensureInitialized();
     this.catalogs.clear();

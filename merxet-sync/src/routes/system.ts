@@ -19,6 +19,7 @@ router.get('/', asyncHandler(async (req, res) => {
     uptime: uptimeString,
     uptimeMs,
     lastRunTime: lastRunTime ? lastRunTime.toISOString() : null,
+    networks: Array.from(config.getAllConfigs().keys()),
   };
 
   if (req.query.verbose !== 'true') {
@@ -27,7 +28,8 @@ router.get('/', asyncHandler(async (req, res) => {
 
   // Verbose stats per network (heavier)
   const networks = config.getAllConfigs();
-  const networkStats: Record<string, { stores: number; catalogs: number; orders: number }> = {};
+  const allCursors = await appDb.getAllChainCursors();
+  const networkStats: Record<string, { stores: number; catalogs: number; orders: number; cursor?: { blockNumber: number; logIndex: number } }> = {};
   let totalStores = 0, totalCatalogs = 0, totalOrders = 0;
 
   for (const value of networks.values()) {
@@ -43,7 +45,14 @@ router.get('/', asyncHandler(async (req, res) => {
     totalCatalogs += catalogCount;
     totalOrders += orderCount;
 
-    networkStats[network] = { stores: storeCount, catalogs: catalogCount, orders: orderCount };
+    const cursorKey = `${network}:${value.contractAddress?.toLowerCase()}`;
+    const cursor = allCursors.find(c => c.key === cursorKey);
+    networkStats[network] = {
+      stores: storeCount,
+      catalogs: catalogCount,
+      orders: orderCount,
+      cursor: cursor ? { blockNumber: cursor.blockNumber, logIndex: cursor.logIndex } : undefined
+    };
   }
 
   const data = { ...basic, totalStores, totalCatalogs, totalOrders, networkStats };
