@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import {
   ExternalLink,
   HandCoins,
@@ -54,15 +54,17 @@ const WalletConnected: React.FC = () => {
   const [protectError, setProtectError] = useState<string | null>(null);
   const [bootstrapOpen, setBootstrapOpen] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const wasOpenRef = useRef(false);
 
   const activeInternalWallet = useMemo(() => {
     return internalWallets.find(wallet => wallet.id === activeInternalWalletId) ?? null;
   }, [activeInternalWalletId, internalWallets]);
 
   useEffect(() => {
-    if (open && walletKind === "internal") {
+    if (open && !wasOpenRef.current && walletKind === "internal") {
       void refreshActiveInternalWallet();
     }
+    wasOpenRef.current = open;
   }, [open, refreshActiveInternalWallet, walletKind]);
 
   useEffect(() => {
@@ -343,3 +345,4 @@ const WalletConnected: React.FC = () => {
 };
 
 export default WalletConnected;
+

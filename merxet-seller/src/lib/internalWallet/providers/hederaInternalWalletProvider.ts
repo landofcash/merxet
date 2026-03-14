@@ -46,7 +46,13 @@ type MirrorAccountResponse = {
 
 
 const HEDERA_PROVIDER_ID = "hedera-internal";
-
+function normalizeEvmAddress(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return trimmed;
+  }
+  return trimmed.startsWith("0x") ? trimmed : "0x" + trimmed;
+}
 function nowIso() {
   return new Date().toISOString();
 }
@@ -62,7 +68,7 @@ function buildBaseIdentity(privateKeyHex: string): InternalWalletBaseIdentity {
 
   return {
     publicKey: publicKey.toStringRaw(),
-    evmAddress: publicKey.toEvmAddress().toLowerCase(),
+    evmAddress: normalizeEvmAddress(publicKey.toEvmAddress()),
     alias: null,
   };
 }
@@ -70,11 +76,12 @@ function buildBaseIdentity(privateKeyHex: string): InternalWalletBaseIdentity {
 function buildIdentity(record: InternalWalletRecord, network: NetworkId) {
   const networkState = record.networkStates[network];
   const accountId = networkState?.accountId ?? null;
-
+  const evmAddress = normalizeEvmAddress(record.baseIdentity.evmAddress);
   return {
     ...record.baseIdentity,
+    evmAddress,
     accountId,
-    address: accountId ?? record.baseIdentity.evmAddress,
+    address: accountId ?? evmAddress,
   };
 }
 
@@ -100,17 +107,15 @@ function buildSummary(record: InternalWalletRecord, network: NetworkId, activeWa
 }
 
 async function fetchMirrorAccount(network: NetworkId, identifier: string): Promise<MirrorAccountResponse | null> {
-  const url = `${getConfig(network).hedera.mirrorNodeUrl}/api/v1/accounts/${identifier}`;
+  const normalizedIdentifier = identifier.includes(".") ? identifier.trim() : normalizeEvmAddress(identifier);
+  const url = getConfig(network).hedera.mirrorNodeUrl + "/api/v1/accounts/" + normalizedIdentifier;
   const response = await fetch(url);
-
   if (response.status === 404) {
     return null;
   }
-
   if (!response.ok) {
-    throw new Error(`Mirror node error ${response.status}`);
+    throw new Error("Mirror node error " + response.status);
   }
-
   return await response.json() as MirrorAccountResponse;
 }
 
@@ -190,12 +195,17 @@ async function getProviderRecord(walletId: string): Promise<InternalWalletRecord
 }
 
 async function saveRefreshedStatus(record: InternalWalletRecord, network: NetworkId): Promise<InternalWalletStatus> {
-  const account = await fetchMirrorAccount(network, record.baseIdentity.evmAddress);
+  const evmAddress = normalizeEvmAddress(record.baseIdentity.evmAddress);
+  const account = await fetchMirrorAccount(network, evmAddress);
   const lifecycleState = computeLifecycleState(account);
   const accountId = account?.account ?? null;
   const updatedRecord: InternalWalletRecord = {
     ...record,
     updatedAt: nowIso(),
+    baseIdentity: {
+      ...record.baseIdentity,
+      evmAddress,
+    },
     networkStates: {
       ...record.networkStates,
       [network]: {
@@ -204,12 +214,10 @@ async function saveRefreshedStatus(record: InternalWalletRecord, network: Networ
       },
     },
   };
-
   await upsertWalletRecord(updatedRecord);
   const activeWalletId = await getActiveWalletId("hedera", network);
   const summary = buildSummary(updatedRecord, network, activeWalletId);
   const bootstrap = buildBootstrapCopy(network, lifecycleState);
-
   return {
     ...summary,
     balances: buildBalances(network, account),
@@ -249,7 +257,7 @@ async function requireUnlockedSecret(
 
 async function buildInternalAccount(secret: {privateKeyHex: string}, evmAddress: string): Promise<InternalAccount> {
   return {
-    addr: evmAddress,
+    addr: normalizeEvmAddress(evmAddress),
     sk: Uint8Array.from(Buffer.from(secret.privateKeyHex, "hex")),
   };
 }
@@ -330,7 +338,9 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
 
     const baseIdentity = buildBaseIdentity(privateKeyHex);
     const existingRecords = await getProviderRecords();
-    const duplicate = existingRecords.find(record => record.baseIdentity.evmAddress === baseIdentity.evmAddress);
+    const duplicate = existingRecords.find(record =>
+      normalizeEvmAddress(record.baseIdentity.evmAddress) === baseIdentity.evmAddress,
+    );
     if (duplicate) {
       await setActiveWalletId(this.chain, network, duplicate.id);
       return await saveRefreshedStatus(duplicate, network);
@@ -530,3 +540,8 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
 }
 
 export const hederaInternalWalletProvider = new HederaInternalWalletProvider();
+
+
+
+
+
