@@ -1,6 +1,7 @@
 
 export async function sha256(data: Uint8Array): Promise<Uint8Array> {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const digestInput = new Uint8Array(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', digestInput);
     return new Uint8Array(hashBuffer);
 }
 

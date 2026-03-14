@@ -95,7 +95,7 @@ export async function decryptWithECIES(privateKeyBase64: string, encryptedBase64
     // Import as AES-GCM CryptoKey
     return await crypto.subtle.importKey(
         "raw",
-        decryptedAESBytes,
+        new Uint8Array(decryptedAESBytes),
         { name: "AES-GCM" },
         true,
         ["encrypt", "decrypt"]

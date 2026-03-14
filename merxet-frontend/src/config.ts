@@ -11,8 +11,6 @@ export const signPrefix = "merxet-";
 export const APP_KEY_PREFIX = 'Merxet';
 const HEDERA_EXPLORER_BASE = 'https://hashscan.io';
 
-export const CIRCLE_APP_ID: string = 'a8986a00-6cbf-51f9-82ca-9945055526f6';
-
 // Maximum size for order payload in bytes (2KB)
 // while keeping transaction costs reasonable
 export const MAX_ORDER_PAYLOAD_BYTES = 2048;
@@ -39,7 +37,6 @@ export interface NetworkConfig {
   hcsTopicId: string;
   apiUrl: string;
   fileApiUrl:string;
-  circleApiUrl?: string | null;
   hedera: HederaEndpoints;
   explorerBaseUrl: string;
   approvedShopWallets: string[];
@@ -54,7 +51,6 @@ const configs: Record<NetworkId, NetworkConfig> = {
     hcsTopicId: '0.0.1234567', // TODO: Update
     apiUrl: 'https://sync.merxet.com/api/t',
     fileApiUrl: 'https://sync.merxet.com/api/cdn',
-    circleApiUrl: 'https://sync.merxet.com/api/circle',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
       mirrorNodeUrl: 'https://testnet.mirrornode.hedera.com',
@@ -75,7 +71,6 @@ const configs: Record<NetworkId, NetworkConfig> = {
     hcsTopicId: '0.0.1234567', // TODO: Update
     apiUrl: 'https://sync.merxet.com/api/d',
     fileApiUrl: 'https://sync.merxet.com/api/cdn',
-    circleApiUrl: 'http://localhost:3000/api/circle',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
       mirrorNodeUrl: 'https://previewnet.mirrornode.hedera.com',
@@ -101,15 +96,6 @@ export const getCurrentConfig = (): NetworkConfig => {
   const available = getAvailableNetworkIds();
   const network: NetworkId = available.includes(raw) ? raw : (available[0] ?? 'testnet');
   return getConfig(network);
-};
-
-export const getCircleApiBaseUrl = (): string | null => {
-  try {
-    const cfg = getCurrentConfig();
-    return cfg.circleApiUrl ?? null;
-  } catch {
-    return null;
-  }
 };
 
 export const getNetworkIdFromQRCode = (value:string):NetworkId => {

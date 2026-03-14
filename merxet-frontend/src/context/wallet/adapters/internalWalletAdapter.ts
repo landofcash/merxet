@@ -1,9 +1,9 @@
-import type {WalletAdapter, NetworkId, ContractFunctionPayload, TransactionPayload} from "../types";
+import type {WalletAdapter, ContractFunctionPayload, TransactionPayload} from "../types";
 import {getActiveInternalWallet, createInternalWallet, clearActiveInternalWallet} from "@/lib/crypto/internalWallet";
 import {signMessageInternal} from "@/lib/crypto/cryptoUtils";
 import {getCurrentConfig} from "@/config";
 // @ts-ignore
-import { Client, ContractExecuteTransaction, TopicMessageSubmitTransaction, PrivateKey, Hbar } from "@hashgraph/sdk";
+import { Client, ContractExecuteTransaction, TopicMessageSubmitTransaction, PrivateKey, Hbar } from "@hiero-ledger/sdk";
 
 
 export const internalWalletAdapter: WalletAdapter = {
@@ -20,8 +20,8 @@ export const internalWalletAdapter: WalletAdapter = {
     return acc?.addr ?? null;
   },
 
-  async getNetwork(): Promise<NetworkId | null> {
-    return (getCurrentConfig().name as NetworkId) ?? null;
+  async getNetwork() {
+    return getCurrentConfig().name ?? null;
   },
 
   async connect(opts?: { silent?: boolean }) {
@@ -70,11 +70,11 @@ export const internalWalletAdapter: WalletAdapter = {
         .setFunction(payload.function, payload.arguments as any);
 
     if (payload.amount) {
-        tx.setPayableAmount(Hbar.fromTinybars(payload.amount));
+        tx.setPayableAmount(Hbar.fromTinybars(payload.amount.toString()));
     }
 
     const response = await tx.execute(client);
-    const receipt = await response.getReceipt(client);
+    await response.getReceipt(client);
 
     return {hash: response.transactionId.toString()};
   },
@@ -101,7 +101,7 @@ export const internalWalletAdapter: WalletAdapter = {
                 .setFunction(payload.data.function, payload.data.arguments as any);
 
             if (payload.data.amount) {
-                tx.setPayableAmount(Hbar.fromTinybars(payload.data.amount));
+                tx.setPayableAmount(Hbar.fromTinybars(payload.data.amount.toString()));
             }
             const response = await tx.execute(client);
             await response.getReceipt(client);

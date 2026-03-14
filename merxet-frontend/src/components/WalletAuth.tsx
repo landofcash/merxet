@@ -15,9 +15,6 @@ import {
   importInternalWallet,
 } from "@/lib/crypto/internalWallet";
 import {truncateString} from "@/lib/cryptoFormat.ts";
-import petraLogo from "@/assets/petra-logo.svg";
-import pontemLogo from "@/assets/pontem-logo.svg";
-import genericWalletLogo from "@/assets/wallet.svg";
 
 // Simple network switcher for Hedera
 import { getAvailableNetworkIds } from "@/config";
@@ -52,8 +49,6 @@ const WalletAuth: React.FC = () => {
     disconnect,
     switchNetwork,
     network,
-    availableExternalProviders,
-    setExternalProviderId,
     internalAddresses,
     refreshInternalAddresses,
     activateInternalAddress,
@@ -158,27 +153,6 @@ const WalletAuth: React.FC = () => {
     setOpenConnect(false);
   }), [refreshInternalAddresses, activateInternalAddress, withBusy]);
 
-  const handleConnectProvider = useCallback((id: string) => withBusy(async () => {
-    try {
-      setExternalProviderId(id);
-      await connect({ kind: "external", chain: "hedera", providerId: id });
-    } catch (e: any) {
-      console.error('Failed to connect provider:', e);
-      alert(`Wallet connect failed: ${e?.message ?? e}`);
-      throw e;
-    } finally {
-      setOpenConnect(false);
-    }
-  }), [setExternalProviderId, connect, withBusy]);
-
-  const providers = availableExternalProviders.filter((p) => p.installed);
-
-  // Map provider ids to logo assets
-  const providerLogos: Record<string, string> = {
-    petra: petraLogo,
-    pontem: pontemLogo
-  };
-
   if (!walletAddress) {
     return (
       <div ref={containerRef} className="inline-block w-full max-w-full">
@@ -199,42 +173,22 @@ const WalletAuth: React.FC = () => {
             role="region"
             aria-label="Connect Wallet Panel"
           >
-            <div className="mb-4">
-              <div className="text-xs text-muted-foreground mb-2">External wallets</div>
-              <ul className="space-y-2">
-                {providers.map((p) => (
-                  <li key={p.id}>
-                    <Button
-                      onClick={() => handleConnectProvider(p.id)}
-                      className="w-full justify-start text-sm"
-                      disabled={busy}
-                    >
-                      <img src={providerLogos[p.id] ?? genericWalletLogo} alt="" className="w-4 h-4 mr-2" aria-hidden="true" />
-                      {p.name}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-t pt-3">
-              <InternalWalletList
-                addresses={internalAddresses}
-                activeAddress={walletKind === 'internal' ? walletAddress : null}
-                isInternalActive={walletKind === 'internal'}
-                onActivate={async (addr) => {
-                  await handleActivate(addr);
-                  setOpenConnect(false);
-                }}
-                onCreate={async () => {
-                  await handleCreate();
-                  setOpenConnect(false);
-                }}
-                onImport={() => setImportOpen(true)}
-                onExport={handleExport}
-                onDelete={handleDelete}
-              />
-            </div>
+            <InternalWalletList
+              addresses={internalAddresses}
+              activeAddress={walletKind === 'internal' ? walletAddress : null}
+              isInternalActive={walletKind === 'internal'}
+              onActivate={async (addr) => {
+                await handleActivate(addr);
+                setOpenConnect(false);
+              }}
+              onCreate={async () => {
+                await handleCreate();
+                setOpenConnect(false);
+              }}
+              onImport={() => setImportOpen(true)}
+              onExport={handleExport}
+              onDelete={handleDelete}
+            />
 
             {/* Modals for internal wallets */}
             <ConfirmModal

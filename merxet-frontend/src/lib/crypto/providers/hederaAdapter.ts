@@ -7,7 +7,7 @@ import type {CartItem} from "@/lib/cartStorage.ts";
 import {hexToBytes, sha256, b64FromBytes, b64ToBytes} from "@/utils/encoding.ts";
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
 // @ts-ignore
-import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar} from "@hashgraph/sdk";
+import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar} from "@hiero-ledger/sdk";
 import {ethers} from "ethers";
 // @ts-ignore
 import MerxetAbi from "@/contracts/Merxet.json";
@@ -37,12 +37,12 @@ export const hederaAdapter: ChainAdapter = {
     };
   },
 
-  async accountFromMnemonic(mnemonic: string) {
+  async accountFromMnemonic(_mnemonic: string) {
     // This would require Mnemonic.fromString(mnemonic)
     throw new Error("Mnemonic recovery not implemented for Hedera yet");
   },
 
-  accountToMnemonic(internal: InternalAccount) {
+  accountToMnemonic(_internal: InternalAccount) {
     return undefined;
   },
 
@@ -238,9 +238,9 @@ export const hederaAdapter: ChainAdapter = {
     seed: string,
     payloadHashSeller: string,
     encryptedDeliveryCommentData: string,
-    senderAddress: string,
-    tokenTypes: string[],
-    payerAddress: string
+    _senderAddress: string,
+    _tokenTypes: string[],
+    _payerAddress: string
   ): Promise<string> {
     const config = getCurrentConfig();
     const batch: TransactionPayload[] = [
@@ -273,7 +273,7 @@ export const hederaAdapter: ChainAdapter = {
     seed: string,
     payloadHashSeller: string,
     encryptedDeliveryCommentData: string,
-    senderAddress: string
+    _senderAddress: string
   ): Promise<string> {
     const config = getCurrentConfig();
     const batch: TransactionPayload[] = [
