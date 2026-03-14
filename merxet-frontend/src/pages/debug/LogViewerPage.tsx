@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function LogViewerPage() {
   const { category: paramCategory } = useParams<{ category: string }>();
-  const category = paramCategory || 'petra';
+  const category = paramCategory || 'hedera';
   const [version, setVersion] = useState(0);
   const logs = useMemo<LogEntry[]>(() => getLogs(category), [category, version]);
 

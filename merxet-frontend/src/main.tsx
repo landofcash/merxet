@@ -39,7 +39,7 @@ createRoot(document.getElementById('root')!).render(
                             <Route path="/debug/encrypt" element={<TestEncryptionPage/>}/>
                             <Route path="/debug/decrypt" element={<TestDecryptionPage/>}/>
                             <Route path="/debug/logs/:category" element={<LogViewerPage/>}/>
-                            <Route path="/debug/petra" element={<LogViewerPage/>}/>
+                            <Route path="/debug/hedera" element={<LogViewerPage/>}/>
                         </Routes>
                     </Layout>
                 </BrowserRouter>

@@ -23,7 +23,7 @@ export interface WalletContextType {
   chain: ChainId
   walletKind: WalletKind | null
 
-  // Which external provider is selected (e.g., 'petra')
+  // Which external provider is selected, if external wallets are enabled
   externalProviderId: string | null
   availableExternalProviders: { id: string; name: string; installed: boolean }[]
 
