@@ -50,23 +50,16 @@ async function syncNetwork(net: HederaNetworkConfig): Promise<void> {
   const latest = await provider.getBlockNumber();
   if (cur.blockNumber > latest) return;
 
-  let fromBlock = cur.blockNumber;
-  while (fromBlock <= latest) {
-    const toBlock = Math.min(fromBlock + net.blockBatchSize - 1, latest);
-    const logs = await fetchLogs(net, fromBlock, toBlock);
+  const logs = await fetchLogs(net, cur.blockNumber, latest);
+  for (const log of logs) {
+    const logIndex = Number((log as any).index ?? (log as any).logIndex ?? 0);
+    if (log.blockNumber === cur.blockNumber && logIndex <= cur.logIndex) continue;
 
-    for (const log of logs) {
-      const logIndex = Number((log as any).index ?? (log as any).logIndex ?? 0);
-      if (log.blockNumber === cur.blockNumber && logIndex <= cur.logIndex) continue;
+    await handleLog(net, log);
 
-      await handleLog(net, log);
-
-      cur.blockNumber = log.blockNumber;
-      cur.logIndex = logIndex;
-      await appDb.setChainCursor(cursorKey, { blockNumber: cur.blockNumber, logIndex: cur.logIndex });
-    }
-
-    fromBlock = toBlock + 1;
+    cur.blockNumber = log.blockNumber;
+    cur.logIndex = logIndex;
+    await appDb.setChainCursor(cursorKey, { blockNumber: cur.blockNumber, logIndex: cur.logIndex });
   }
 }
 
@@ -75,14 +68,24 @@ async function handleLog(net: HederaNetworkConfig, log: any): Promise<void> {
   let parsed: any;
   try {
     parsed = iface.parseLog(log);
-  } catch {
+  } catch (err) {
+    console.warn(`[handleLog] Failed to parse log on ${net.network}:`, {
+      blockNumber: log.blockNumber,
+      transactionHash: log.transactionHash,
+      data: log.data,
+      topics: log.topics,
+      error: err instanceof Error ? err.message : String(err)
+    });
     return; // ignore unknown logs
   }
 
   const eventName: string = parsed?.name;
   const args: any = parsed?.args || {};
   const seedBytes32: string | undefined = args.seed;
-  if (!eventName || !seedBytes32) return;
+  if (!eventName || !seedBytes32) {
+    console.log(`[handleLog] Skipping log ${eventName || 'unknown'} on ${net.network} (seed missing: ${!seedBytes32})`, log);
+    return;
+  }
 
   if (eventName.startsWith('Catalog')) {
     const seed = bytes32ToSeedString(seedBytes32);
@@ -92,7 +95,10 @@ async function handleLog(net: HederaNetworkConfig, log: any): Promise<void> {
     }
 
     const catalog = await loadCatalogBySeed(net, seedBytes32);
-    if (!catalog) return;
+    if (!catalog) {
+      console.warn(`[handleLog] Catalog not found on contract for seed ${seed} on ${net.network}`);
+      return;
+    }
     await appDb.upsertCatalogs(catalog.sellerWallet, net.network, [catalog]);
     return;
   }
@@ -105,10 +111,15 @@ async function handleLog(net: HederaNetworkConfig, log: any): Promise<void> {
     }
 
     const order = await loadOrderBySeed(net, seedBytes32);
-    if (!order) return;
+    if (!order) {
+      console.warn(`[handleLog] Order not found on contract for seed ${seed} on ${net.network}`);
+      return;
+    }
     await appDb.upsertOrders(order.buyerWallet, net.network, [order]);
     return;
   }
+  
+  console.log(`[handleLog] Unhandled event type: ${eventName} on ${net.network}`);
 }
 
 async function loadCatalogBySeed(net: HederaNetworkConfig, seedBytes32: string): Promise<CatalogCacheEntry | null> {

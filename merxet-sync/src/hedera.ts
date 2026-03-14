@@ -39,7 +39,83 @@ export function getMerxetContract(net: HederaNetworkConfig): Contract {
 }
 
 export async function fetchLogs(net: HederaNetworkConfig, fromBlock: number, toBlock: number): Promise<Log[]> {
+  if (fromBlock > toBlock) {
+    return [];
+  }
+
+  const fromTimestamp = await getBlockTimestamp(net, fromBlock);
+  const baseUrl = net.mirrorNodeUrl.replace(/\/$/, '');
+  let nextUrl = `${baseUrl}/api/v1/contracts/${net.contractAddress}/results/logs?timestamp=gte:${fromTimestamp}&order=asc&limit=100`;
+  const logs: Log[] = [];
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl);
+    if (!response.ok) {
+      throw new Error(`Mirror node logs request failed with status ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorLogsResponse;
+    let reachedUpperBlock = false;
+
+    for (const log of data.logs ?? []) {
+      const blockNumber = Number(log.block_number);
+      const logIndex = Number(log.index ?? 0);
+      if (blockNumber < fromBlock) {
+        continue;
+      }
+      if (blockNumber > toBlock) {
+        reachedUpperBlock = true;
+        break;
+      }
+
+      logs.push({
+        address: log.address,
+        blockHash: log.block_hash,
+        blockNumber,
+        data: log.data,
+        index: logIndex,
+        logIndex,
+        removed: false,
+        topics: log.topics,
+        transactionHash: log.transaction_hash,
+        transactionIndex: Number(log.transaction_index ?? 0),
+      } as unknown as Log);
+    }
+
+    if (reachedUpperBlock || !data.links?.next) {
+      break;
+    }
+
+    nextUrl = new URL(data.links.next, baseUrl).toString();
+  }
+
+  return logs;
+}
+
+type MirrorLogEntry = {
+  address: string;
+  block_hash: string;
+  block_number: number;
+  data: string;
+  index?: number;
+  topics: string[];
+  transaction_hash: string;
+  transaction_index?: number;
+};
+
+type MirrorLogsResponse = {
+  logs?: MirrorLogEntry[];
+  links?: {
+    next?: string | null;
+  };
+};
+
+async function getBlockTimestamp(net: HederaNetworkConfig, blockNumber: number): Promise<string> {
   const provider = getProvider(net);
-  const address = net.contractAddress;
-  return provider.getLogs({ address, fromBlock, toBlock });
+  const block = await provider.getBlock(blockNumber);
+  if (!block) {
+    throw new Error(`Unable to load block ${blockNumber} from ${net.network} RPC`);
+  }
+
+  return `${block.timestamp}.000000000`;
 }

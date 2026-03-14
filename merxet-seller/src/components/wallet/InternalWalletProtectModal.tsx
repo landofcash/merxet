@@ -7,7 +7,6 @@ interface InternalWalletProtectModalProps {
   open: boolean;
   busy?: boolean;
   error?: string | null;
-  requiresUpgrade: boolean;
   onClose: () => void;
   onSubmit: (input: { currentPassphrase?: string; nextPassphrase: string }) => Promise<void> | void;
 }
@@ -16,7 +15,6 @@ const InternalWalletProtectModal: React.FC<InternalWalletProtectModalProps> = ({
   open,
   busy = false,
   error,
-  requiresUpgrade,
   onClose,
   onSubmit,
 }) => {
@@ -40,29 +38,25 @@ const InternalWalletProtectModal: React.FC<InternalWalletProtectModalProps> = ({
     <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-xl border bg-background p-6 shadow-xl space-y-5">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold">{requiresUpgrade ? "Protect wallet" : "Change passphrase"}</h2>
+          <h2 className="text-xl font-semibold">Change passphrase</h2>
           <p className="text-sm text-muted-foreground">
-            {requiresUpgrade
-              ? "This wallet was recovered from an older local format. Set a new passphrase before using it."
-              : "Update the passphrase used to decrypt this wallet locally."}
+            Update the passphrase used to decrypt this wallet locally.
           </p>
         </div>
 
         <div className="space-y-4">
-          {!requiresUpgrade ? (
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="wallet-current-passphrase">
-                Current passphrase
-              </label>
-              <Input
-                id="wallet-current-passphrase"
-                type="password"
-                value={currentPassphrase}
-                onChange={(event) => setCurrentPassphrase(event.target.value)}
-                disabled={busy}
-              />
-            </div>
-          ) : null}
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="wallet-current-passphrase">
+              Current passphrase
+            </label>
+            <Input
+              id="wallet-current-passphrase"
+              type="password"
+              value={currentPassphrase}
+              onChange={(event) => setCurrentPassphrase(event.target.value)}
+              disabled={busy}
+            />
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="wallet-next-passphrase">
@@ -103,12 +97,12 @@ const InternalWalletProtectModal: React.FC<InternalWalletProtectModalProps> = ({
           </Button>
           <Button
             onClick={() => onSubmit({
-              currentPassphrase: requiresUpgrade ? undefined : currentPassphrase,
+              currentPassphrase,
               nextPassphrase,
             })}
             disabled={busy || nextPassphrase.length === 0 || nextPassphrase !== confirmPassphrase}
           >
-            {busy ? "Saving..." : requiresUpgrade ? "Protect wallet" : "Update passphrase"}
+            {busy ? "Saving..." : "Update passphrase"}
           </Button>
         </div>
       </div>

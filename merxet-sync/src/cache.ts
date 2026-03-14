@@ -1,5 +1,6 @@
 import Loki from 'lokijs';
 import {CatalogStore, CatalogCacheEntry, OrderStore, OrderCacheEntry} from './types/types';
+import { normalizeWalletId } from './walletIdentity';
 
 interface ChainCursor {
   key: string;
@@ -43,13 +44,13 @@ class AppDatabase {
 
   async getCatalogsByWallet(sellerWallet: string, networkName: string): Promise<CatalogStore | null> {
     await this.ensureInitialized();
-    const key = `${sellerWallet}-${networkName}`;
+    const key = `${normalizeWalletId(sellerWallet)}-${networkName}`;
     return this.catalogs.findOne({id: key}) || null;
   }
 
   async getOrdersByWallet(buyerWallet: string, networkName: string): Promise<OrderStore | null> {
     await this.ensureInitialized();
-    const key = `${buyerWallet}-${networkName}`;
+    const key = `${normalizeWalletId(buyerWallet)}-${networkName}`;
     return this.orders.findOne({id: key}) || null;
   }
 
@@ -61,7 +62,7 @@ class AppDatabase {
   ): Promise<void> {
     await this.ensureInitialized();
 
-    const key = `${sellerWallet}-${networkName}`;
+    const key = `${normalizeWalletId(sellerWallet)}-${networkName}`;
     const existing = this.catalogs.findOne({id: key});
     if (existing) {
       if (replace) {
@@ -100,7 +101,7 @@ class AppDatabase {
   ): Promise<void> {
     await this.ensureInitialized();
 
-    const key = `${buyerWallet}-${networkName}`;
+    const key = `${normalizeWalletId(buyerWallet)}-${networkName}`;
     const existing = this.orders.findOne({id: key});
     if (existing) {
       if (replace) {

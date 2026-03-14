@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {X, HandCoins, ShieldAlert, Trash2} from "lucide-react";
+import {X, HandCoins, Trash2} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {useWallet} from "@/context/WalletContext";
 import petraLogo from "@/assets/petra-logo.svg";
@@ -134,7 +134,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
             <div className="space-y-2">
               <h3 className="text-2xl font-semibold">Try Merxet on Hedera Testnet</h3>
               <p className="max-w-2xl text-sm text-emerald-50/90">
-                Create an encrypted internal wallet in-browser or connect an external wallet. Fund it on Hedera testnet, then start testing marketplace transactions.
+                Create or import an encrypted internal wallet in-browser, fund it on Hedera testnet, then start testing marketplace transactions.
               </p>
             </div>
           </div>
@@ -225,7 +225,6 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {wallet.requiresPassphraseUpgrade ? <ShieldAlert className="h-3.5 w-3.5 text-amber-600"/> : null}
                           {wallet.lifecycleState === "ready" ? "Ready" : wallet.lifecycleState === "funded_or_alias_created" ? "Needs HBAR" : "Local only"}
                         </div>
                       </div>

@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {Wallet as WalletIcon, ShieldAlert, PlusCircle, FileUp, Trash2} from "lucide-react";
+import {Wallet as WalletIcon, PlusCircle, FileUp, Trash2} from "lucide-react";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 import {Button} from "@/components/ui/button";
 import {useWallet} from "@/context/WalletContext";
@@ -117,31 +117,33 @@ const WalletDisconnected: React.FC = () => {
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" side="bottom" className="w-104 p-4 text-sm shadow-lg space-y-5">
-          <div className="space-y-2">
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">External wallets</div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {availableExternalProviders.map((provider) => (
-                <Button
-                  key={provider.id}
-                  variant="outline"
-                  className="justify-start"
-                  onClick={async () => {
-                    setExternalProviderId(provider.id);
-                    await connect({kind: "external", chain: "hedera", providerId: provider.id});
-                    setOpen(false);
-                  }}
-                >
-                  <img
-                    src={providerLogos[provider.id] ?? genericWalletLogo}
-                    alt=""
-                    className="mr-2 h-4 w-4"
-                    aria-hidden="true"
-                  />
-                  {provider.name}
-                </Button>
-              ))}
+          {availableExternalProviders.length > 0 ? (
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">External wallets</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {availableExternalProviders.map((provider) => (
+                  <Button
+                    key={provider.id}
+                    variant="outline"
+                    className="justify-start"
+                    onClick={async () => {
+                      setExternalProviderId(provider.id);
+                      await connect({kind: "external", chain: "hedera", providerId: provider.id});
+                      setOpen(false);
+                    }}
+                  >
+                    <img
+                      src={providerLogos[provider.id] ?? genericWalletLogo}
+                      alt=""
+                      className="mr-2 h-4 w-4"
+                      aria-hidden="true"
+                    />
+                    {provider.name}
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -190,13 +192,7 @@ const WalletDisconnected: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {wallet.requiresPassphraseUpgrade ? (
-                          <>
-                            <ShieldAlert className="h-3.5 w-3.5 text-amber-600"/>
-                            Protect wallet before using it
-                          </>
-                        ) : wallet.locked ? "Locked" : "Unlocked in session"}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">{wallet.locked ? "Locked" : "Unlocked in session"}
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => void handleConnectInternal(wallet.id)} disabled={busy}>

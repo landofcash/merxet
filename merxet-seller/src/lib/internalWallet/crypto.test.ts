@@ -20,6 +20,7 @@ describe("internal wallet crypto", () => {
     });
   });
 
+
   it("rejects an incorrect passphrase", async () => {
     const encrypted = await encryptSecretMaterial("secret", {
       privateKeyHex: "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd",

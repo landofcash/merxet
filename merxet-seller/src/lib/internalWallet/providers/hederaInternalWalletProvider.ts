@@ -1,4 +1,3 @@
-import {get, set} from "idb-keyval";
 import {AccountId, PrivateKey, Transaction} from "@hiero-ledger/sdk";
 import {getConfig} from "@/config.ts";
 import type {NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
@@ -21,8 +20,6 @@ import type {
 } from "@/lib/internalWallet/types.ts";
 import type {InternalWalletProvider} from "@/lib/internalWallet/provider.ts";
 import {
-  LEGACY_ACTIVE_KEY,
-  LEGACY_RECORDS_KEY,
   cacheUnlockedSecret,
   getActiveWalletId,
   getCachedUnlockedSecret,
@@ -31,7 +28,6 @@ import {
   loadWalletRecords,
   lockWalletSession,
   removeWalletRecord,
-  saveWalletRecords,
   setActiveWalletId,
   unlockWalletRecord,
   upsertWalletRecord,
@@ -48,14 +44,8 @@ type MirrorAccountResponse = {
   };
 };
 
-type LegacyStoredWallet = {
-  addr: string;
-  sk: number[];
-  mnemonic?: string;
-};
 
 const HEDERA_PROVIDER_ID = "hedera-internal";
-const LEGACY_MIGRATED_KEY = `${LEGACY_RECORDS_KEY}_migrated`;
 
 function nowIso() {
   return new Date().toISOString();
@@ -105,7 +95,6 @@ function buildSummary(record: InternalWalletRecord, network: NetworkId, activeWa
     backupKinds: record.backupKinds,
     active: activeWalletId === record.id,
     locked: isWalletLocked(record.id),
-    requiresPassphraseUpgrade: record.requiresPassphraseUpgrade,
     lastUsedAt: record.lastUsedAt,
   };
 }
@@ -186,74 +175,13 @@ function buildBootstrapCopy(network: NetworkId, lifecycleState: InternalWalletLi
   };
 }
 
-async function migrateLegacyWalletsIfNeeded() {
-  const alreadyMigrated = await get(LEGACY_MIGRATED_KEY);
-  if (alreadyMigrated) {
-    return;
-  }
-
-  const legacyWallets: LegacyStoredWallet[] = (await get(LEGACY_RECORDS_KEY)) || [];
-  if (legacyWallets.length === 0) {
-    await set(LEGACY_MIGRATED_KEY, true);
-    return;
-  }
-
-  const records = await loadWalletRecords();
-  const now = nowIso();
-
-  for (let index = 0; index < legacyWallets.length; index += 1) {
-    const legacyWallet = legacyWallets[index];
-    const privateKeyHex = privateKeyBytesToHex(Uint8Array.from(legacyWallet.sk));
-    const baseIdentity = buildBaseIdentity(privateKeyHex);
-    const duplicate = records.find(record => record.baseIdentity.evmAddress === baseIdentity.evmAddress);
-    if (duplicate) {
-      continue;
-    }
-
-    records.push({
-      id: crypto.randomUUID(),
-      providerId: HEDERA_PROVIDER_ID,
-      chain: "hedera",
-      label: `Recovered Wallet ${index + 1}`,
-      createdAt: now,
-      updatedAt: now,
-      lastUsedAt: null,
-      requiresPassphraseUpgrade: true,
-      baseIdentity,
-      networkStates: {},
-      backupKinds: legacyWallet.mnemonic ? ["mnemonic", "privateKey"] : ["privateKey"],
-      encryptedSecret: await encryptSecretMaterial("", {
-        privateKeyHex,
-        mnemonic: legacyWallet.mnemonic,
-        importedAs: legacyWallet.mnemonic ? "mnemonic" : "privateKey",
-      }),
-    });
-  }
-
-  await saveWalletRecords(records);
-
-  const legacyActiveAddress = await get(LEGACY_ACTIVE_KEY);
-  if (legacyActiveAddress) {
-    const migratedRecord = records.find(record => record.baseIdentity.evmAddress === String(legacyActiveAddress).toLowerCase());
-    if (migratedRecord) {
-      await setActiveWalletId("hedera", "testnet", migratedRecord.id);
-      await setActiveWalletId("hedera", "mainnet", migratedRecord.id);
-    }
-  }
-
-  await set(LEGACY_RECORDS_KEY, []);
-  await set(LEGACY_ACTIVE_KEY, null);
-  await set(LEGACY_MIGRATED_KEY, true);
-}
 
 async function getProviderRecords() {
-  await migrateLegacyWalletsIfNeeded();
   const records = await loadWalletRecords();
   return records.filter(record => record.providerId === HEDERA_PROVIDER_ID);
 }
 
 async function getProviderRecord(walletId: string): Promise<InternalWalletRecord> {
-  await migrateLegacyWalletsIfNeeded();
   const record = await getWalletRecord(walletId);
   if (!record || record.providerId !== HEDERA_PROVIDER_ID) {
     throw new Error("Internal wallet not found.");
@@ -303,9 +231,6 @@ async function requireUnlockedSecret(
   reason: "sign-message" | "sign-transaction" | "backup-reveal",
   reasonLabel: string,
 ) {
-  if (record.requiresPassphraseUpgrade) {
-    throw new Error("This wallet was recovered from an older local format. Protect it with a new passphrase before using it.");
-  }
 
   const cached = getCachedUnlockedSecret(record.id);
   if (cached) {
@@ -363,7 +288,6 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
       createdAt: now,
       updatedAt: now,
       lastUsedAt: now,
-      requiresPassphraseUpgrade: false,
       baseIdentity: buildBaseIdentity(privateKeyHex),
       networkStates: {},
       backupKinds: account.mnemonic ? ["mnemonic", "privateKey"] : ["privateKey"],
@@ -421,7 +345,6 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
       createdAt: now,
       updatedAt: now,
       lastUsedAt: now,
-      requiresPassphraseUpgrade: false,
       baseIdentity,
       networkStates: {},
       backupKinds,
@@ -473,9 +396,6 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
 
   async unlockWallet(network: NetworkId, walletId: string, passphrase: string): Promise<InternalWalletStatus> {
     const record = await getProviderRecord(walletId);
-    if (record.requiresPassphraseUpgrade) {
-      throw new Error("This wallet must be protected with a new passphrase before it can be unlocked.");
-    }
 
     await unlockWalletRecord(record, passphrase);
     return await this.refreshWallet(network, walletId);
@@ -483,12 +403,10 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
 
   async changePassphrase(network: NetworkId, walletId: string, input: InternalWalletPassphraseChangeInput): Promise<InternalWalletStatus> {
     const record = await getProviderRecord(walletId);
-    const currentPassphrase = record.requiresPassphraseUpgrade ? "" : (input.currentPassphrase ?? "");
-    const secret = await unlockWalletRecord(record, currentPassphrase);
+    const secret = await unlockWalletRecord(record, input.currentPassphrase ?? "");
     const updatedRecord: InternalWalletRecord = {
       ...record,
       updatedAt: nowIso(),
-      requiresPassphraseUpgrade: false,
       encryptedSecret: await encryptSecretMaterial(input.nextPassphrase, secret),
     };
 
@@ -499,9 +417,6 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
 
   async revealBackup(walletId: string, passphrase?: string): Promise<InternalWalletBackupItem[]> {
     const record = await getProviderRecord(walletId);
-    if (record.requiresPassphraseUpgrade) {
-      throw new Error("Protect this wallet with a new passphrase before revealing backup material.");
-    }
 
     const secret = passphrase
       ? await unlockWalletRecord(record, passphrase)

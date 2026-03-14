@@ -14,7 +14,6 @@ import {setChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 import {hederaAdapter} from "@/lib/crypto/providers/hederaAdapter.ts";
 import type {ChainId, NetworkId, WalletAdapter, WalletKind} from "./wallet/types";
 import {wrapWalletAdapterWithWalletAction} from "@/context/wallet/wrapWalletAdapterWithWalletAction";
-import {createHashpackWalletAdapter} from "@/context/wallet/adapters/hashpackWalletAdapter.ts";
 import type {
   InternalWalletBackupItem,
   InternalWalletBalance,
@@ -27,12 +26,12 @@ import {getInternalWalletProvider} from "@/lib/internalWallet/registry.ts";
 import {setInternalWalletUnlockHandler} from "@/lib/internalWallet/unlockGate.ts";
 import InternalWalletUnlockDialog from "@/components/wallet/InternalWalletUnlockDialog";
 
-function createAdaptersForChain(chain: ChainId, network: NetworkId): WalletAdapter[] {
+function createAdaptersForChain(chain: ChainId, _network: NetworkId): WalletAdapter[] {
   if (chain !== "hedera") {
     return [];
   }
 
-  return [createHashpackWalletAdapter(network)];
+  return [];
 }
 
 export interface WalletContextType {
@@ -47,8 +46,7 @@ export interface WalletContextType {
   walletCanTransact: boolean;
   walletBootstrapTitle: string | null;
   walletBootstrapMessage: string | null;
-  walletBalances: InternalWalletBalance[];
-  walletRequiresPassphraseUpgrade: boolean;
+  walletBalances: InternalWalletBalance[];
 
   walletActionPending: boolean;
   walletActionLabel: string | null;
@@ -139,6 +137,18 @@ export function WalletProvider({children}: { children: ReactNode }) {
       localStorage.setItem(`${APP_KEY_PREFIX}-externalProviderId`, externalProviderId);
     }
   }, [externalProviderId]);
+
+  useEffect(() => {
+    if (adapters.length > 0 || walletKind !== "external") {
+      return;
+    }
+
+    setExternalWalletAddress(null);
+    setExternalProviderIdState(null);
+    setWalletKind(null);
+    localStorage.removeItem(`${APP_KEY_PREFIX}-walletKind`);
+    localStorage.removeItem(`${APP_KEY_PREFIX}-externalProviderId`);
+  }, [adapters.length, walletKind]);
 
   const syncInternalWalletState = useCallback(async () => {
     if (!internalProvider) {
@@ -458,8 +468,9 @@ export function WalletProvider({children}: { children: ReactNode }) {
     providerId?: string;
     silent?: boolean;
   }) => {
-    const targetKind = opts?.kind ?? walletKind ?? "external";
     const targetChain = opts?.chain ?? chain;
+    const targetAdapters = createAdaptersForChain(targetChain, network);
+    const targetKind = opts?.kind ?? walletKind ?? (targetAdapters.length > 0 ? "external" : "internal");
 
     if (targetKind === "internal") {
       const provider = getInternalWalletProvider(targetChain);
@@ -486,7 +497,6 @@ export function WalletProvider({children}: { children: ReactNode }) {
       return;
     }
 
-    const targetAdapters = createAdaptersForChain(targetChain, network);
     let adapter = opts?.providerId ? targetAdapters.find(candidate => candidate.id === opts.providerId) : undefined;
     if (!adapter) {
       adapter = targetAdapters.find(candidate => candidate.isInstalled?.()) ?? targetAdapters[0];
@@ -581,8 +591,7 @@ export function WalletProvider({children}: { children: ReactNode }) {
     walletCanTransact: walletKind === "internal" ? (internalActiveWallet?.canTransact ?? false) : walletAddress != null,
     walletBootstrapTitle: walletKind === "internal" ? (internalActiveWallet?.bootstrapTitle ?? null) : null,
     walletBootstrapMessage: walletKind === "internal" ? (internalActiveWallet?.bootstrapMessage ?? null) : null,
-    walletBalances: walletKind === "internal" ? (internalActiveWallet?.balances ?? []) : [],
-    walletRequiresPassphraseUpgrade: walletKind === "internal" ? (internalActiveWallet?.requiresPassphraseUpgrade ?? false) : false,
+    walletBalances: walletKind === "internal" ? (internalActiveWallet?.balances ?? []) : [],
     walletActionPending,
     walletActionLabel,
     externalProviderId,

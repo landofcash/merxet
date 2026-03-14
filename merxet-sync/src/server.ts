@@ -39,7 +39,10 @@ export function createApp() {
   app.param('network', networkParam);
 
   app.use('/api/v1/:network', apiRouter);
-  app.use('/api/:network', apiRouter);
+  app.use('/api/:network', (req, res, next) => {
+    if (req.params.network === 'v1') return next();
+    apiRouter(req, res, next);
+  });
   app.use((err: unknown, _req: Request, res: Response, _next: Function) => {
     const message = err instanceof Error ? err.message : 'Unknown error';
     sendJson(res, { success: false, error: message }, 500);

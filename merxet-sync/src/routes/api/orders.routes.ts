@@ -1,9 +1,12 @@
 import express from 'express';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { requireWalletParam } from '../../middleware/validators';
-import { getBuyerOrders, getSellerOrders } from '../../controllers/orders.controller';
+import { getBuyerOrders, getSellerOrders, listAllOrders } from '../../controllers/orders.controller';
 
 const router = express.Router({ mergeParams: true });
+
+// GET /api/v1/:network/orders
+router.get('/', asyncHandler(listAllOrders));
 
 // GET /api/v1/:network/orders/buyer/:wallet
 router.get('/buyer/:wallet', requireWalletParam, asyncHandler(getBuyerOrders));

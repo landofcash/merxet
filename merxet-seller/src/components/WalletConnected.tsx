@@ -32,7 +32,6 @@ const WalletConnected: React.FC = () => {
     walletBootstrapTitle,
     walletBootstrapMessage,
     walletBalances,
-    walletRequiresPassphraseUpgrade,
     network,
     internalWallets,
     activeInternalWalletId,
@@ -268,7 +267,7 @@ const WalletConnected: React.FC = () => {
                     </Button>
                     <Button variant="outline" className="w-full justify-start" onClick={() => setProtectOpen(true)}>
                       <LockKeyhole className="mr-2 h-4 w-4"/>
-                      {walletRequiresPassphraseUpgrade ? "Protect wallet" : "Change passphrase"}
+                      Change passphrase
                     </Button>
                     <Button variant="outline" className="w-full justify-start" onClick={() => void lockInternalWallet()} disabled={walletLocked}>
                       <LockKeyhole className="mr-2 h-4 w-4"/>
@@ -309,7 +308,6 @@ const WalletConnected: React.FC = () => {
         open={protectOpen}
         busy={protectBusy}
         error={protectError}
-        requiresUpgrade={walletRequiresPassphraseUpgrade}
         onClose={() => setProtectOpen(false)}
         onSubmit={handleProtectWallet}
       />

@@ -9,8 +9,6 @@ type ActiveWalletMap = Record<string, string | null>;
 const RECORDS_KEY = `${APP_KEY_PREFIX}_internal_wallet_records_v2`;
 const ACTIVE_KEY = `${APP_KEY_PREFIX}_active_internal_wallet_v2`;
 
-export const LEGACY_RECORDS_KEY = `${APP_KEY_PREFIX}_internal_wallets`;
-export const LEGACY_ACTIVE_KEY = `${APP_KEY_PREFIX}_active_internal_wallet`;
 
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000;
 

@@ -47,7 +47,6 @@ export interface InternalWalletRecord {
   createdAt: string;
   updatedAt: string;
   lastUsedAt: string | null;
-  requiresPassphraseUpgrade: boolean;
   baseIdentity: InternalWalletBaseIdentity;
   networkStates: Record<string, InternalWalletNetworkState>;
   backupKinds: InternalWalletBackupKind[];
@@ -65,7 +64,6 @@ export interface InternalWalletSummary {
   backupKinds: InternalWalletBackupKind[];
   active: boolean;
   locked: boolean;
-  requiresPassphraseUpgrade: boolean;
   lastUsedAt: string | null;
 }
 
