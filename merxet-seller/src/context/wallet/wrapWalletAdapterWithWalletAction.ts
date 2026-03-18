@@ -1,6 +1,4 @@
-import type {WalletAdapter} from '@/context/wallet/types'
-
-export type WalletActionKind = 'signMessage' | 'signAndSubmit'
+import type {WalletActionKind, WalletAdapter} from '@/context/wallet/types'
 
 type WrapOpts = {
   onStart: (kind: WalletActionKind, label: string) => () => void
@@ -8,8 +6,10 @@ type WrapOpts = {
 }
 
 const defaultLabel = (kind: WalletActionKind): string => {
-  if (kind === 'signAndSubmit') return 'Waiting for transaction signature in your wallet…'
-  return 'Waiting for signature in your wallet…'
+  if (kind === 'executeBatch' || kind === 'executeContract' || kind === 'signAndSubmit') {
+    return 'Waiting for transaction signature in your wallet...'
+  }
+  return 'Waiting for signature in your wallet...'
 }
 
 export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: WrapOpts): WalletAdapter {
@@ -19,16 +19,13 @@ export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: 
     chain: adapter.chain,
     name: adapter.name,
     id: adapter.id,
-
     isInstalled: adapter.isInstalled ? () => adapter.isInstalled!() : undefined,
     getAddress: () => adapter.getAddress(),
     getNetwork: adapter.getNetwork ? () => adapter.getNetwork!() : undefined,
     connect: (o) => adapter.connect(o),
     disconnect: () => adapter.disconnect(),
-
     onAccountChange: adapter.onAccountChange ? (cb) => adapter.onAccountChange!(cb) : undefined,
     onNetworkChange: adapter.onNetworkChange ? (cb) => adapter.onNetworkChange!(cb) : undefined,
-
     signMessage: async (dataToSign: string, message?: string): Promise<Uint8Array> => {
       const end = opts.onStart('signMessage', labelFor('signMessage'))
       try {
@@ -37,14 +34,29 @@ export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: 
         end()
       }
     },
-
-    signAndSubmit: async (transaction: object): Promise<{ hash: string }> => {
-      const end = opts.onStart('signAndSubmit', labelFor('signAndSubmit'))
+    executeContract: async (payload) => {
+      const end = opts.onStart('executeContract', labelFor('executeContract'))
       try {
-        return await adapter.signAndSubmit(transaction)
+        return await adapter.executeContract(payload)
       } finally {
         end()
       }
     },
+    executeBatch: async (payloads) => {
+      const end = opts.onStart('executeBatch', labelFor('executeBatch'))
+      try {
+        return await adapter.executeBatch(payloads)
+      } finally {
+        end()
+      }
+    },
+    signAndSubmit: adapter.signAndSubmit ? async (transaction: object): Promise<{ hash: string }> => {
+      const end = opts.onStart('signAndSubmit', labelFor('signAndSubmit'))
+      try {
+        return await adapter.signAndSubmit!(transaction)
+      } finally {
+        end()
+      }
+    } : undefined,
   }
 }

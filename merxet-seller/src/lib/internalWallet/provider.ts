@@ -25,5 +25,8 @@ export interface InternalWalletProvider {
   unlockWallet(network: NetworkId, walletId: string, passphrase: string): Promise<InternalWalletStatus>;
   changePassphrase(network: NetworkId, walletId: string, input: InternalWalletPassphraseChangeInput): Promise<InternalWalletStatus>;
   revealBackup(walletId: string, passphrase?: string): Promise<InternalWalletBackupItem[]>;
+  associateToken(network: NetworkId, walletId: string, tokenId: string): Promise<InternalWalletStatus>;
   getWalletAdapter(network: NetworkId): WalletAdapter;
 }
+
+

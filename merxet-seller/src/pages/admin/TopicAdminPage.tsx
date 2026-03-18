@@ -71,7 +71,7 @@ const TopicAdminPage: React.FC = () => {
         .setFunction("setHcsTopicId", new ContractFunctionParameters().addString(manualTopicId))
         .setGas(300_000);
 
-      const result = await walletAdapter.signAndSubmit(tx);
+      const result = await walletAdapter.signAndSubmit!(tx);
       const nextTopicId = await getHcsTopicId(network)
       setEffectiveTopicId(nextTopicId)
       setManualTopicId(nextTopicId)
@@ -99,7 +99,7 @@ const TopicAdminPage: React.FC = () => {
     try {
       const tx = new TopicCreateTransaction()
         .setTopicMemo(`Merxet Seller topic (${network})`)
-      const res = await walletAdapter.signAndSubmit(tx)
+      const res = await walletAdapter.signAndSubmit!(tx)
       setLastTxId(res.hash)
       if (res.txId == null) {
         throw new Error('No txId returned');

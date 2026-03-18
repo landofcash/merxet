@@ -23,6 +23,8 @@ function makeAdapter(overrides?: Partial<WalletAdapter>): WalletAdapter {
     disconnect: async () => {},
 
     signMessage: async () => new Uint8Array([1, 2, 3]),
+    executeContract: async () => ({hash: '0xdef'}),
+    executeBatch: async () => ({hash: '0xghi'}),
     signAndSubmit: async () => ({hash: '0xabc'}),
 
     ...overrides,
@@ -41,7 +43,7 @@ describe('wrapWalletAdapterWithWalletAction', () => {
 
     const wrapped = wrapWalletAdapterWithWalletAction(adapter, {onStart})
 
-    const p = wrapped.signAndSubmit({})
+    const p = wrapped.signAndSubmit!({})
     expect(onStart).toHaveBeenCalledWith('signAndSubmit', expect.any(String))
     expect(end).not.toHaveBeenCalled()
 

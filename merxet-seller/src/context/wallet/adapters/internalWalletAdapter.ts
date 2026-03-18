@@ -30,7 +30,13 @@ export const internalWalletAdapter: WalletAdapter = {
   async signMessage(dataToSign: string, message?: string) {
     return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).signMessage(dataToSign, message);
   },
+  async executeContract(payload) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).executeContract(payload);
+  },
+  async executeBatch(payloads) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).executeBatch(payloads);
+  },
   async signAndSubmit(transaction: object) {
-    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).signAndSubmit(transaction);
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).signAndSubmit!(transaction);
   },
 };

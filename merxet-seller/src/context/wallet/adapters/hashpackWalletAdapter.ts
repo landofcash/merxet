@@ -1,4 +1,4 @@
-import type {ChainId, NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
+import type {ChainId, ContractFunctionPayload, NetworkId, TransactionPayload, WalletAdapter} from "@/context/wallet/types.ts";
 import {APP_NAME, BASE_URL, getCurrentConfig} from "@/config";
 import {
   base64StringToSignatureMap,
@@ -173,6 +173,14 @@ export class HederaWalletConnectAdapter implements WalletAdapter {
     const hash =result.transactionHash;
     const txId = result.transactionId;
     return { hash, txId }
+  }
+
+  async executeContract(_payload: ContractFunctionPayload): Promise<{ hash: string }> {
+    throw new Error('External Hedera contract execution is not configured in seller yet.')
+  }
+
+  async executeBatch(_payloads: TransactionPayload[]): Promise<{ hash: string }> {
+    throw new Error('External Hedera batch execution is not configured in seller yet.')
   }
 
   // -------------------------

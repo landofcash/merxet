@@ -1,6 +1,25 @@
-import {AccountId, PrivateKey, Transaction} from "@hiero-ledger/sdk";
+import {
+  AccountId,
+  BatchTransaction,
+  ContractFunctionParameters,
+  ContractId,
+  ContractExecuteTransaction,
+  Hbar,
+  PrivateKey,
+  TokenAssociateTransaction,
+  TokenId,
+  TopicMessageSubmitTransaction,
+  Transaction,
+} from "@hiero-ledger/sdk";
+import BigNumber from "bignumber.js";
 import {getConfig} from "@/config.ts";
-import type {NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
+import type {
+  ContractArgument,
+  ContractFunctionPayload,
+  NetworkId,
+  TransactionPayload,
+  WalletAdapter,
+} from "@/context/wallet/types.ts";
 import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
 import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
 import {accountFromMnemonic} from "@/lib/crypto/cryptoUtils.ts";
@@ -44,15 +63,16 @@ type MirrorAccountResponse = {
   };
 };
 
-
 const HEDERA_PROVIDER_ID = "hedera-internal";
+
 function normalizeEvmAddress(value: string): string {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) {
     return trimmed;
   }
-  return trimmed.startsWith("0x") ? trimmed : "0x" + trimmed;
+  return trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
 }
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -108,13 +128,13 @@ function buildSummary(record: InternalWalletRecord, network: NetworkId, activeWa
 
 async function fetchMirrorAccount(network: NetworkId, identifier: string): Promise<MirrorAccountResponse | null> {
   const normalizedIdentifier = identifier.includes(".") ? identifier.trim() : normalizeEvmAddress(identifier);
-  const url = getConfig(network).hedera.mirrorNodeUrl + "/api/v1/accounts/" + normalizedIdentifier;
+  const url = `${getConfig(network).hedera.mirrorNodeUrl}/api/v1/accounts/${normalizedIdentifier}`;
   const response = await fetch(url);
   if (response.status === 404) {
     return null;
   }
   if (!response.ok) {
-    throw new Error("Mirror node error " + response.status);
+    throw new Error(`Mirror node error ${response.status}`);
   }
   return await response.json() as MirrorAccountResponse;
 }
@@ -125,11 +145,9 @@ function computeLifecycleState(account: MirrorAccountResponse | null): InternalW
   if (!account?.account) {
     return "local_only";
   }
-
   if (hbarBalance <= 0n) {
     return "funded_or_alias_created";
   }
-
   return "ready";
 }
 
@@ -179,7 +197,6 @@ function buildBootstrapCopy(network: NetworkId, lifecycleState: InternalWalletLi
     bootstrapMessage: null,
   };
 }
-
 
 async function getProviderRecords() {
   const records = await loadWalletRecords();
@@ -239,7 +256,6 @@ async function requireUnlockedSecret(
   reason: "sign-message" | "sign-transaction" | "backup-reveal",
   reasonLabel: string,
 ) {
-
   const cached = getCachedUnlockedSecret(record.id);
   if (cached) {
     return cached;
@@ -259,6 +275,146 @@ async function buildInternalAccount(secret: {privateKeyHex: string}, evmAddress:
   return {
     addr: normalizeEvmAddress(evmAddress),
     sk: Uint8Array.from(Buffer.from(secret.privateKeyHex, "hex")),
+  };
+}
+
+async function markWalletUsed(record: InternalWalletRecord) {
+  const refreshedRecord: InternalWalletRecord = {
+    ...record,
+    lastUsedAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  await upsertWalletRecord(refreshedRecord);
+}
+
+function buildContractFunctionParameters(argumentsList: ContractArgument[]): ContractFunctionParameters {
+  const parameters = new ContractFunctionParameters();
+
+  for (const argument of argumentsList) {
+    switch (argument.type) {
+      case "address":
+        parameters.addAddress(argument.value);
+        break;
+      case "bytes":
+        parameters.addBytes(argument.value);
+        break;
+      case "bytes32":
+        parameters.addBytes32(argument.value);
+        break;
+      case "string":
+        parameters.addString(argument.value);
+        break;
+      case "uint256":
+        parameters.addUint256(new BigNumber(argument.value.toString()));
+        break;
+      default: {
+        const unreachable: never = argument;
+        throw new Error(`Unsupported contract argument: ${String(unreachable)}`);
+      }
+    }
+  }
+
+  return parameters;
+}
+
+function toSdkContractId(contractId: string): ContractId | string {
+  if (contractId.trim().startsWith("0x")) {
+    return ContractId.fromEvmAddress(0, 0, contractId);
+  }
+
+  return contractId;
+}
+
+function buildSdkTransaction(payload: TransactionPayload) {
+  if (payload.type === "contract") {
+    const transaction = new ContractExecuteTransaction()
+      .setContractId(toSdkContractId(payload.data.contractId))
+      .setGas(1_000_000)
+      .setFunction(payload.data.function, buildContractFunctionParameters(payload.data.arguments));
+
+    if (payload.data.amount) {
+      transaction.setPayableAmount(Hbar.fromTinybars(payload.data.amount.toString()));
+    }
+
+    return transaction;
+  }
+
+  return new TopicMessageSubmitTransaction()
+    .setTopicId(payload.data.topicId)
+    .setMessage(payload.data.message);
+}
+
+async function executeContractWithSecret(
+  status: InternalWalletStatus,
+  privateKeyHex: string,
+  payload: ContractFunctionPayload,
+): Promise<{hash: string}> {
+  const {sdkClient} = getHederaClient();
+  const accountId = AccountId.fromString(status.identity.accountId!);
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  sdkClient.setOperator(accountId, privateKey);
+
+  const transaction = new ContractExecuteTransaction()
+    .setContractId(toSdkContractId(payload.contractId))
+    .setGas(1_000_000)
+    .setFunction(payload.function, buildContractFunctionParameters(payload.arguments));
+
+  if (payload.amount) {
+    transaction.setPayableAmount(Hbar.fromTinybars(payload.amount.toString()));
+  }
+
+  const response = await transaction.execute(sdkClient);
+  await response.getReceipt(sdkClient);
+
+  return {hash: response.transactionId.toString()};
+}
+
+async function executeBatchWithSecret(
+  status: InternalWalletStatus,
+  privateKeyHex: string,
+  payloads: TransactionPayload[],
+): Promise<{hash: string}> {
+  const {sdkClient} = getHederaClient();
+  const accountId = AccountId.fromString(status.identity.accountId!);
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  sdkClient.setOperator(accountId, privateKey);
+  const batchKey = privateKey.publicKey;
+  const innerTransactions = [];
+
+  for (const payload of payloads) {
+    const transaction = buildSdkTransaction(payload);
+    await transaction.batchify(sdkClient, batchKey);
+    innerTransactions.push(transaction);
+  }
+
+  const batchTransaction = new BatchTransaction()
+    .setInnerTransactions(innerTransactions)
+    .freezeWith(sdkClient);
+
+  await batchTransaction.sign(privateKey);
+  const response = await batchTransaction.execute(sdkClient);
+  await response.getReceipt(sdkClient);
+
+  return {hash: response.transactionId.toString()};
+}
+
+async function signAndSubmitWithSecret(
+  status: InternalWalletStatus,
+  privateKeyHex: string,
+  transaction: Transaction,
+): Promise<{ hash: string; txId?: string; status: string }> {
+  const {sdkClient} = getHederaClient();
+  const accountId = AccountId.fromString(status.identity.accountId!);
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  sdkClient.setOperator(accountId, privateKey);
+
+  const transactionResponse = await transaction.execute(sdkClient);
+  const receipt = await transactionResponse.getReceipt(sdkClient);
+
+  return {
+    hash: transactionResponse.transactionHash ? Buffer.from(transactionResponse.transactionHash).toString("hex") : "",
+    txId: transactionResponse.transactionId?.toString(),
+    status: receipt.status.toString(),
   };
 }
 
@@ -451,6 +607,32 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
     return items;
   }
 
+  async associateToken(network: NetworkId, walletId: string, tokenId: string): Promise<InternalWalletStatus> {
+    const record = await getProviderRecord(walletId);
+    const status = await saveRefreshedStatus(record, network);
+
+    if (!status.identity.accountId || !status.canTransact) {
+      throw new Error(status.bootstrapMessage ?? "This wallet is not ready for token association yet.");
+    }
+
+    const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
+    const {sdkClient} = getHederaClient();
+    const accountId = AccountId.fromString(status.identity.accountId);
+    const privateKey = PrivateKey.fromStringECDSA(secret.privateKeyHex);
+    sdkClient.setOperator(accountId, privateKey);
+
+    const transaction = new TokenAssociateTransaction()
+      .setAccountId(accountId)
+      .setTokenIds([TokenId.fromString(tokenId)])
+      .freezeWith(sdkClient);
+
+    const response = await transaction.sign(privateKey).then(signed => signed.execute(sdkClient));
+    await response.getReceipt(sdkClient);
+    await markWalletUsed(record);
+
+    return await this.refreshWallet(network, walletId);
+  }
+
   getWalletAdapter(network: NetworkId): WalletAdapter {
     return {
       chain: this.chain,
@@ -503,6 +685,38 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
         const internalAccount = await buildInternalAccount(secret, record.baseIdentity.evmAddress);
         return await hederaUtils.signMessage(internalAccount, dataToSign);
       },
+      async executeContract(payload: ContractFunctionPayload) {
+        const record = await getActiveWalletRecord(network);
+        if (!record) {
+          throw new Error("No active internal wallet.");
+        }
+
+        const status = await saveRefreshedStatus(record, network);
+        if (!status.canTransact || !status.identity.accountId) {
+          throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
+        }
+
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
+        const result = await executeContractWithSecret(status, secret.privateKeyHex, payload);
+        await markWalletUsed(record);
+        return result;
+      },
+      async executeBatch(payloads: TransactionPayload[]) {
+        const record = await getActiveWalletRecord(network);
+        if (!record) {
+          throw new Error("No active internal wallet.");
+        }
+
+        const status = await saveRefreshedStatus(record, network);
+        if (!status.canTransact || !status.identity.accountId) {
+          throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
+        }
+
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
+        const result = await executeBatchWithSecret(status, secret.privateKeyHex, payloads);
+        await markWalletUsed(record);
+        return result;
+      },
       async signAndSubmit(transaction: object) {
         const record = await getActiveWalletRecord(network);
         if (!record) {
@@ -515,33 +729,14 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
         }
 
         const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
-        const privateKey = PrivateKey.fromStringECDSA(secret.privateKeyHex);
-        const {sdkClient} = getHederaClient();
-        sdkClient.setOperator(AccountId.fromString(status.identity.accountId), privateKey);
-
-        const transactionResponse = await (transaction as Transaction).execute(sdkClient);
-        const receipt = await transactionResponse.getReceipt(sdkClient);
-
-        const refreshedRecord: InternalWalletRecord = {
-          ...record,
-          lastUsedAt: nowIso(),
-          updatedAt: nowIso(),
-        };
-        await upsertWalletRecord(refreshedRecord);
-
-        return {
-          hash: transactionResponse.transactionHash ? Buffer.from(transactionResponse.transactionHash).toString("hex") : "",
-          txId: transactionResponse.transactionId?.toString(),
-          status: receipt.status.toString(),
-        };
+        const result = await signAndSubmitWithSecret(status, secret.privateKeyHex, transaction as Transaction);
+        await markWalletUsed(record);
+        return result;
       },
     };
   }
 }
 
 export const hederaInternalWalletProvider = new HederaInternalWalletProvider();
-
-
-
 
 

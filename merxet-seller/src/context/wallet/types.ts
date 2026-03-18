@@ -1,17 +1,41 @@
 export type ChainId = 'hedera' | string;
-export type NetworkId = 'mainnet' | 'testnet' | string;
+export type NetworkId = 'mainnet' | 'testnet' | 'previewnet' | 'local' | string;
 export type WalletKind = 'external' | 'internal';
+export type WalletProviderId = 'hashpack' | 'blade' | string;
+
+export type ContractArgument =
+  | { type: 'address'; value: string }
+  | { type: 'bytes'; value: Uint8Array }
+  | { type: 'bytes32'; value: Uint8Array }
+  | { type: 'string'; value: string }
+  | { type: 'uint256'; value: bigint };
+
+export type ContractFunctionPayload = {
+  contractId: string;
+  function: string;
+  arguments: ContractArgument[];
+  amount?: bigint;
+};
 
 export type EntryFunctionPayload = {
   function: string;
   type_arguments?: string[];
-  arguments: (string | number)[];
+  arguments: unknown[];
 };
+
+export type HCSMessagePayload = {
+  topicId: string;
+  message: string | Uint8Array;
+};
+
+export type TransactionPayload =
+  | { type: 'contract', data: ContractFunctionPayload }
+  | { type: 'hcs', data: HCSMessagePayload };
 
 export interface WalletAdapter {
   readonly chain: ChainId;
   readonly name: string;
-  readonly id: string;
+  readonly id: WalletProviderId;
 
   isInstalled?(): boolean;
 
@@ -25,5 +49,11 @@ export interface WalletAdapter {
   onNetworkChange?(cb: (network: NetworkId | null) => void): () => void;
 
   signMessage(dataToSign: string, message?: string): Promise<Uint8Array>;
-  signAndSubmit(transaction: object): Promise<{ hash: string, txId?: string }>;
+  executeContract(payload: ContractFunctionPayload): Promise<{ hash: string }>;
+  executeBatch(payloads: TransactionPayload[]): Promise<{ hash: string }>;
+  signAndSubmit?(transaction: object): Promise<{ hash: string, txId?: string }>;
 }
+
+export type WalletActionKind = "signMessage" | "executeContract" | "executeBatch" | "signAndSubmit";
+
+

@@ -70,6 +70,7 @@ export interface WalletContextType {
   unlockInternalWallet: (passphrase: string) => Promise<void>;
   changeInternalWalletPassphrase: (input: { currentPassphrase?: string; nextPassphrase: string }) => Promise<void>;
   revealInternalWalletBackup: (passphrase?: string) => Promise<InternalWalletBackupItem[]>;
+  associateInternalToken: (tokenId: string) => Promise<void>;
 
   connect: (opts?: { kind?: WalletKind; chain?: ChainId; providerId?: string; silent?: boolean }) => Promise<void>;
   disconnect: () => Promise<void>;
@@ -187,7 +188,7 @@ export function WalletProvider({children}: { children: ReactNode }) {
     };
   }, []);
 
-  const startWalletAction = useCallback((_kind: "signMessage" | "signAndSubmit", label: string) => {
+  const startWalletAction = useCallback((_kind: "signMessage" | "executeContract" | "executeBatch" | "signAndSubmit", label: string) => {
     walletActionCountRef.current += 1;
     setWalletActionPending(true);
     setWalletActionLabel(label);
@@ -361,6 +362,16 @@ export function WalletProvider({children}: { children: ReactNode }) {
 
     return await internalProvider.revealBackup(internalActiveWallet.id, passphrase);
   }, [internalActiveWallet, internalProvider]);
+
+  const associateInternalToken = useCallback(async (tokenId: string) => {
+    if (!internalProvider || !internalActiveWallet) {
+      throw new Error("No active internal wallet.");
+    }
+
+    const updated = await internalProvider.associateToken(network, internalActiveWallet.id, tokenId);
+    setInternalActiveWallet(updated);
+    await syncInternalWalletState();
+  }, [internalActiveWallet, internalProvider, network, syncInternalWalletState]);
 
   useEffect(() => {
     const attemptReconnect = async () => {
@@ -611,6 +622,7 @@ export function WalletProvider({children}: { children: ReactNode }) {
     unlockInternalWallet,
     changeInternalWalletPassphrase,
     revealInternalWalletBackup,
+    associateInternalToken,
     connect,
     disconnect,
     switchNetwork,
@@ -637,6 +649,7 @@ export function WalletProvider({children}: { children: ReactNode }) {
     refreshInternalWallets,
     removeInternalWallet,
     revealInternalWalletBackup,
+    associateInternalToken,
     setExternalProviderId,
     signMessage,
     switchNetwork,
@@ -675,3 +688,4 @@ export function useWallet() {
   }
   return context;
 }
+

@@ -3,6 +3,8 @@ const textDecoder = new TextDecoder();
 
 export const HCS_ENVELOPE_VERSION = 1;
 export const HCS_ENVELOPE_SEED_LENGTH = 22;
+export const HCS_ENVELOPE_OVERHEAD_BYTES = 1 + HCS_ENVELOPE_SEED_LENGTH + 1 + 1;
+export const MAX_HCS_MESSAGE_BYTES = 1024;
 
 export const HCS_MESSAGE_ROLE = {
   buyer: 1,
@@ -35,7 +37,14 @@ function requireSeedBytes(seed: string): Uint8Array {
 export function encodeHcsEnvelope(seed: string, role: number, type: number, encryptedPayload: string): Uint8Array {
   const seedBytes = requireSeedBytes(seed);
   const payloadBytes = textEncoder.encode(encryptedPayload);
-  const envelope = new Uint8Array(1 + HCS_ENVELOPE_SEED_LENGTH + 1 + 1 + payloadBytes.length);
+  const totalSizeBytes = HCS_ENVELOPE_OVERHEAD_BYTES + payloadBytes.length;
+  if (totalSizeBytes > MAX_HCS_MESSAGE_BYTES) {
+    throw new Error(
+      `HCS message is too large (${totalSizeBytes} bytes). Maximum allowed size is ${MAX_HCS_MESSAGE_BYTES} bytes.`,
+    );
+  }
+
+  const envelope = new Uint8Array(totalSizeBytes);
 
   envelope[0] = HCS_ENVELOPE_VERSION;
   envelope.set(seedBytes, 1);

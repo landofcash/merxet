@@ -4,15 +4,15 @@ import type {CatalogData, OrderMessageRef} from "@/lib/syncService.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
 import {b64ToBytes, hexToBytes} from "@/utils/encoding.ts";
 import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
-import type {NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
+import type {
+  ContractArgument,
+  NetworkId,
+  TransactionPayload,
+  WalletAdapter,
+} from "@/context/wallet/types.ts";
 import {toHex} from "viem";
 import MerxetAbi from "@/contracts/Merxet.sol/Merxet.json";
 import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
-import {
-  ContractExecuteTransaction,
-  ContractFunctionParameters,
-  TopicId, TopicMessageSubmitTransaction,
-} from "@hiero-ledger/sdk";
 import {decodeHcsEnvelope, encodeHcsEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
 
 function seedToBytes32(seed: string): Uint8Array {
@@ -25,6 +25,22 @@ function hashToBytes32(hash: string): Uint8Array {
     throw new Error("Hash must decode to exactly 32 bytes.");
   }
   return bytes;
+}
+
+function bytesArg(value: Uint8Array): ContractArgument {
+  return {type: "bytes", value};
+}
+
+function bytes32Arg(value: Uint8Array): ContractArgument {
+  return {type: "bytes32", value};
+}
+
+function stringArg(value: string): ContractArgument {
+  return {type: "string", value};
+}
+
+function uint256Arg(value: bigint): ContractArgument {
+  return {type: "uint256", value};
 }
 
 type MirrorTopicMessage = {
@@ -152,19 +168,15 @@ export const hederaAdapter: ChainAdapter = {
 
     const config = getCurrentConfig();
 
-    const sellerPubKeyBytes = new TextEncoder().encode(sellerPubKey);
-
-    const params = new ContractFunctionParameters()
-      .addBytes32(seedToBytes32(seed))
-      .addBytes(sellerPubKeyBytes)
-      .addString(catalogueUrl);
-
-    const tx = new ContractExecuteTransaction()
-      .setContractId(config.account)
-      .setFunction("createCatalog", params)
-      .setGas(300_000);
-
-    const result = await walletAdapter.signAndSubmit(tx);
+    const result = await walletAdapter.executeContract({
+      contractId: config.account,
+      function: "createCatalog",
+      arguments: [
+        bytes32Arg(seedToBytes32(seed)),
+        bytesArg(new TextEncoder().encode(sellerPubKey)),
+        stringArg(catalogueUrl),
+      ],
+    });
     return result.hash;
   },
 
@@ -174,12 +186,11 @@ export const hederaAdapter: ChainAdapter = {
       throw new Error("Seed must be a 22-character string");
     }
     const config = getCurrentConfig();
-    const tx = new ContractExecuteTransaction()
-      .setContractId(config.account)
-      .setFunction("deleteCatalog", new ContractFunctionParameters().addBytes32(seedToBytes32(seed)))
-      .setGas(300_000);
-
-    const result = await walletAdapter.signAndSubmit(tx);
+    const result = await walletAdapter.executeContract({
+      contractId: config.account,
+      function: "deleteCatalog",
+      arguments: [bytes32Arg(seedToBytes32(seed))],
+    });
     return result.hash;
   },
 
@@ -197,20 +208,29 @@ export const hederaAdapter: ChainAdapter = {
 
     const config = getCurrentConfig();
     const topicId = await hederaUtils.requireHcsTopicId();
-    const hcsTx = new TopicMessageSubmitTransaction()
-      .setTopicId(TopicId.fromString(topicId))
-      .setMessage(encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerRefusal, payloadEncrypted));
+    const batch: TransactionPayload[] = [
+      {
+        type: "hcs",
+        data: {
+          topicId,
+          message: encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerRefusal, payloadEncrypted),
+        },
+      },
+      {
+        type: "contract",
+        data: {
+          contractId: config.account,
+          function: "refuseOrder",
+          arguments: [
+            bytes32Arg(seedToBytes32(seed)),
+            bytes32Arg(hashToBytes32(payloadHashSeller)),
+          ],
+        },
+      },
+    ];
 
-    const contractTx = new ContractExecuteTransaction()
-      .setContractId(config.account)
-      .setFunction("refuseOrder", new ContractFunctionParameters()
-        .addBytes32(seedToBytes32(seed))
-        .addBytes32(hashToBytes32(payloadHashSeller)))
-      .setGas(300_000);
-
-    await walletAdapter.signAndSubmit(hcsTx);
-    const result = await walletAdapter.signAndSubmit(contractTx);
-    return result.hash || result.txId || "";
+    const result = await walletAdapter.executeBatch(batch);
+    return result.hash;
   },
 
   async startDeliveringOrderOnBlockchain(
@@ -226,20 +246,29 @@ export const hederaAdapter: ChainAdapter = {
 
     const config = getCurrentConfig();
     const topicId = await hederaUtils.requireHcsTopicId();
-    const hcsTx = new TopicMessageSubmitTransaction()
-      .setTopicId(TopicId.fromString(topicId))
-      .setMessage(encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerDelivery, payloadEncrypted));
+    const batch: TransactionPayload[] = [
+      {
+        type: "hcs",
+        data: {
+          topicId,
+          message: encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerDelivery, payloadEncrypted),
+        },
+      },
+      {
+        type: "contract",
+        data: {
+          contractId: config.account,
+          function: "startDelivering",
+          arguments: [
+            bytes32Arg(seedToBytes32(seed)),
+            bytes32Arg(hashToBytes32(payloadHashSeller)),
+          ],
+        },
+      },
+    ];
 
-    const contractTx = new ContractExecuteTransaction()
-      .setContractId(config.account)
-      .setFunction("startDelivering", new ContractFunctionParameters()
-        .addBytes32(seedToBytes32(seed))
-        .addBytes32(hashToBytes32(payloadHashSeller)))
-      .setGas(300_000);
-
-    await walletAdapter.signAndSubmit(hcsTx);
-    const result = await walletAdapter.signAndSubmit(contractTx);
-    return result.hash || result.txId || "";
+    const result = await walletAdapter.executeBatch(batch);
+    return result.hash;
   },
 
   async setOrderTimeout(walletAdapter: WalletAdapter, timeoutSeconds: number): Promise<string> {
@@ -248,13 +277,11 @@ export const hederaAdapter: ChainAdapter = {
       throw new Error("Merxet: Timeout too short");
     }
     const config = getCurrentConfig();
-    const params = new ContractFunctionParameters().addUint256(timeoutSeconds);
-    const tx = new ContractExecuteTransaction()
-      .setContractId(config.account)
-      .setFunction("setOrderTimeout", params)
-      .setGas(300_000);
-
-    const result = await walletAdapter.signAndSubmit(tx);
+    const result = await walletAdapter.executeContract({
+      contractId: config.account,
+      function: "setOrderTimeout",
+      arguments: [uint256Arg(BigInt(timeoutSeconds))],
+    });
     return result.hash;
   },
 
@@ -342,3 +369,4 @@ export const hederaAdapter: ChainAdapter = {
     return name as NetworkId;
   },
 };
+

@@ -9,7 +9,6 @@ import {
   Shield,
   Trash2,
 } from "lucide-react";
-import {AccountId, TokenAssociateTransaction, TokenId, TransactionId} from "@hiero-ledger/sdk";
 import {toast} from "sonner";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 import {Button} from "@/components/ui/button";
@@ -24,12 +23,10 @@ import InternalWalletProtectModal from "@/components/wallet/InternalWalletProtec
 import InternalWalletBootstrapModal from "@/components/wallet/InternalWalletBootstrapModal";
 import type {InternalWalletBackupItem} from "@/lib/internalWallet/types.ts";
 import {truncateString} from "@/lib/cryptoFormat.ts";
-import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
 
 const WalletConnected: React.FC = () => {
   const {
     walletAddress,
-    walletAdapter,
     walletKind,
     walletIdentity,
     walletLifecycleState,
@@ -47,6 +44,7 @@ const WalletConnected: React.FC = () => {
     lockInternalWallet,
     revealInternalWalletBackup,
     removeInternalWallet,
+    associateInternalToken,
     switchNetwork,
   } = useWallet();
 
@@ -132,28 +130,9 @@ const WalletConnected: React.FC = () => {
   };
 
   const handleAssociateToken = async (tokenId: string) => {
-    if (!walletAdapter) {
-      toast.error("Connect your wallet first.");
-      return;
-    }
-
-    const accountIdString = walletIdentity?.accountId ?? walletAddress;
-    if (!accountIdString) {
-      toast.error("Wallet account ID is not available yet.");
-      return;
-    }
-
     try {
       setAssociatingTokenId(tokenId);
-      const {sdkClient} = getHederaClient();
-      const accountId = AccountId.fromString(accountIdString);
-      const tx = new TokenAssociateTransaction()
-        .setTransactionId(TransactionId.generate(accountId))
-        .setAccountId(accountId)
-        .setTokenIds([TokenId.fromString(tokenId)])
-        .freezeWith(sdkClient);
-
-      await walletAdapter.signAndSubmit(tx);
+      await associateInternalToken(tokenId);
       await refreshActiveInternalWallet();
       toast.success(`Token ${tokenId} associated.`);
     } catch (error) {
@@ -407,3 +386,4 @@ const WalletConnected: React.FC = () => {
 };
 
 export default WalletConnected;
+
