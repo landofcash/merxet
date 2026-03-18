@@ -7,10 +7,10 @@ import {ProductCatalogueSchema, type Product} from '@/lib/productSchemas'
 import {addItemToCart} from '@/lib/cartStorage'
 import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
-import type {ProductData} from "@/lib/syncService.ts";
-import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
+import {fetchProductBySeed, type ProductData} from "@/lib/syncService.ts";
 import type {NetworkId} from "@/context/wallet/types.ts";
 import {getCurrentConfig} from "@/config.ts";
+import {normalizePublicKeyBase64} from "@/utils/encryption.ts";
 
 interface ProductRaw {
   ProductId: string
@@ -50,16 +50,26 @@ function ProductDetailPage() {
           setError(errorText)
           return;
         }
-        // Read the product storage content
-        const chainAdapter = getChainAdapter();
-        const productData = await chainAdapter.viewProductOnBlockchain(state.productSeed)
-        setProductData(productData)
+        const productData = await fetchProductBySeed(state.productSeed)
         if (productData == null) {
           const errorText = `Product Catalogue with seed:${state.productSeed} not found.`
           console.error(errorText)
           setError(errorText)
           return;
         }
+        let normalizedSellerPubKey: string
+        try {
+          normalizedSellerPubKey = normalizePublicKeyBase64(productData.sellerPubKey)
+        } catch (keyError) {
+          const errorText = keyError instanceof Error ? keyError.message : 'Seller public key is invalid.'
+          console.error(errorText)
+          setError(errorText)
+          return
+        }
+        setProductData({
+          ...productData,
+          sellerPubKey: normalizedSellerPubKey,
+        })
         const catalogueResponse = await fetch(productData.productsUrl)
         if (!catalogueResponse.ok) {
           const errorText = `Failed to fetch catalogue: ${catalogueResponse.status} ${catalogueResponse.statusText}`
@@ -122,6 +132,7 @@ function ProductDetailPage() {
 
   const supportedCoinTypes = new Set(getSupportedTokens().map(t => t.tokenId))
   const isSupportedToken = product ? supportedCoinTypes.has(product.PriceToken) : true
+  const hasValidSellerPubKey = productData ? productData.sellerPubKey.trim().length > 0 : false
 
   const toggleTechnicalDetails = () => {
     setShowTechnicalDetails(prev => !prev)
@@ -188,8 +199,14 @@ function ProductDetailPage() {
                 </div>
               )}
 
+              {productData && !hasValidSellerPubKey && (
+                <div className="p-3 rounded-md border border-destructive bg-destructive/10 text-destructive text-sm">
+                  This product is missing a valid seller encryption key and cannot be purchased.
+                </div>
+              )}
+
               {/* Add to Cart Button */}
-              <Button className="w-full" size="lg" onClick={handleAddToCart} disabled={!isSupportedToken}>
+              <Button className="w-full" size="lg" onClick={handleAddToCart} disabled={!isSupportedToken || !hasValidSellerPubKey}>
                 <ShoppingCart className="mr-2 h-5 w-5"/>
                 Add to Cart
               </Button>

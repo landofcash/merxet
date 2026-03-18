@@ -36,8 +36,32 @@ export interface ProductsResponse {
   data: ProductsResponseData
 }
 
+export interface CatalogStoreData {
+  id: string
+  sellerWallet: string
+  catalogs: Array<{
+    seed: string
+    version: number
+    sellerWallet: string
+    catalogUrl?: string
+    sellerPubKey?: string
+  }>
+  networkName: string
+}
+
+export interface CatalogListResponse {
+  success: boolean
+  data: CatalogStoreData[]
+}
+
+export interface CatalogByWalletResponse {
+  success: boolean
+  data: CatalogStoreData
+}
+
 // Order-related interfaces
 export interface Order {
+  messages?: OrderMessageRef[]
   version: string
   productSeed: string
   status: string
@@ -59,6 +83,15 @@ export interface Order {
   buyerWallet: string
   sellerWallet: string
   amount: string
+}
+
+export interface OrderMessageRef {
+  topicId: string
+  sequenceNumber: number
+  consensusTimestamp: string
+  sender: string
+  role: number
+  type: number
 }
 
 export interface BuyerOrderGroup {
@@ -86,7 +119,7 @@ export interface SellerOrdersResponse {
 export async function fetchProductsForWallet(walletAddress: string): Promise<ProductData[]> {
   try {
     const {apiUrl} = getCurrentConfig()
-    const response = await fetch(`${apiUrl}/products/${walletAddress}`)
+    const response = await fetch(`${apiUrl}/catalogs/${walletAddress}`)
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -96,16 +129,58 @@ export async function fetchProductsForWallet(walletAddress: string): Promise<Pro
       throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`)
     }
 
-    const data: ProductsResponse = await response.json()
+    const data: CatalogByWalletResponse = await response.json()
 
     if (!data.success) {
       throw new Error('API returned unsuccessful response')
     }
 
-    return data.data.products
+    return data.data.catalogs
+      .filter((catalog) => Boolean(catalog.catalogUrl))
+      .map((catalog) => ({
+        version: catalog.version,
+        seed: catalog.seed,
+        shopWallet: catalog.sellerWallet,
+        productsUrl: catalog.catalogUrl ?? '',
+        sellerPubKey: catalog.sellerPubKey ?? '',
+      }))
   } catch (error) {
     console.error(`Error fetching products for wallet ${walletAddress}:`, error)
     throw new Error(`Failed to fetch products: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+export async function fetchProductBySeed(seed: string): Promise<ProductData | null> {
+  try {
+    const {apiUrl} = getCurrentConfig()
+    const response = await fetch(`${apiUrl}/catalogs`)
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch catalogs: ${response.status} ${response.statusText}`)
+    }
+
+    const data: CatalogListResponse = await response.json()
+    if (!data.success) {
+      throw new Error('API returned unsuccessful response')
+    }
+
+    for (const store of data.data) {
+      const match = store.catalogs.find((catalog) => catalog.seed === seed && catalog.catalogUrl)
+      if (match) {
+        return {
+          version: match.version,
+          seed: match.seed,
+          shopWallet: match.sellerWallet,
+          productsUrl: match.catalogUrl ?? '',
+          sellerPubKey: match.sellerPubKey ?? '',
+        }
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching catalog for seed ${seed}:`, error)
+    throw new Error(`Failed to fetch catalog: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 

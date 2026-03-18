@@ -1,7 +1,7 @@
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
 import type {NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
-import type {CatalogData} from "@/lib/syncService.ts";
+import type {CatalogData, OrderMessageRef} from "@/lib/syncService.ts";
 
 export interface ChainAdapter {
   readonly name: string; // e.g., 'hedera'
@@ -88,9 +88,9 @@ export interface ChainAdapter {
 
   viewCatalogOnBlockchain(seed: string): Promise<CatalogData>
 
-  viewBuyerData(seed: string): Promise<GetStorageResult>
+  viewBuyerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult>
 
-  viewSellerData(seed: string): Promise<GetStorageResult>
+  viewSellerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult>
 
   /**
    * Resolves an address to name (ENS on Ethereum or NFD on Algorand.)

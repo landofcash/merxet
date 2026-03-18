@@ -40,42 +40,48 @@ const InternalWalletBackupModal: React.FC<InternalWalletBackupModalProps> = ({
         <div className="space-y-2">
           <h2 className="text-xl font-semibold">Back up wallet</h2>
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            Anyone with this recovery material can control your wallet. Reveal it only if you understand the risk.
+            Anyone with this recovery phrase can control your wallet. Reveal it only if you understand the risk.
           </div>
         </div>
 
         {items ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Recovery material</span>
+              <span className="text-sm text-muted-foreground">Recovery phrase</span>
               <Button variant="outline" size="sm" onClick={() => setRevealed(value => !value)}>
                 {revealed ? <EyeOff className="mr-2 h-4 w-4"/> : <Eye className="mr-2 h-4 w-4"/>}
                 {revealed ? "Hide" : "Reveal"}
               </Button>
             </div>
 
-            {items.map((item) => (
-              <div key={item.kind} className="space-y-2 rounded-lg border p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium">{item.label}</div>
-                  <Button variant="outline" size="sm" onClick={() => handleCopy(item.kind, item.value)}>
-                    <Copy className="mr-2 h-4 w-4"/>
-                    {copiedKey === item.kind ? "Copied" : "Copy"}
-                  </Button>
+            {items.length > 0 ? (
+              items.map((item) => (
+                <div key={item.kind} className="space-y-2 rounded-lg border p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium">{item.label}</div>
+                    <Button variant="outline" size="sm" onClick={() => handleCopy(item.kind, item.value)}>
+                      <Copy className="mr-2 h-4 w-4"/>
+                      {copiedKey === item.kind ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                  <div className={`rounded-md bg-muted px-3 py-2 font-mono text-sm break-all ${revealed ? "" : "select-none blur-sm"}`}>
+                    {item.value}
+                  </div>
                 </div>
-                <div className={`rounded-md bg-muted px-3 py-2 font-mono text-sm break-all ${revealed ? "" : "select-none blur-sm"}`}>
-                  {item.value}
-                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">
+                This wallet does not have a mnemonic recovery phrase available.
               </div>
-            ))}
+            )}
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Reveal the recovery phrase or private key after completing the unlock step.
+              Reveal the mnemonic recovery phrase after completing the unlock step.
             </p>
             <Button onClick={onReveal} disabled={busy}>
-              {busy ? "Revealing..." : "Reveal backup material"}
+              {busy ? "Revealing..." : "Reveal recovery phrase"}
             </Button>
           </div>
         )}

@@ -110,6 +110,22 @@ type MirrorLogsResponse = {
   };
 };
 
+export type MirrorTopicMessageEntry = {
+  consensus_timestamp: string;
+  message: string;
+  payer_account_id?: string | null;
+  running_hash?: string;
+  sequence_number: number | string;
+  topic_id: string;
+};
+
+type MirrorTopicMessagesResponse = {
+  messages?: MirrorTopicMessageEntry[];
+  links?: {
+    next?: string | null;
+  };
+};
+
 async function getBlockTimestamp(net: HederaNetworkConfig, blockNumber: number): Promise<string> {
   const provider = getProvider(net);
   const block = await provider.getBlock(blockNumber);
@@ -118,4 +134,28 @@ async function getBlockTimestamp(net: HederaNetworkConfig, blockNumber: number):
   }
 
   return `${block.timestamp}.000000000`;
+}
+
+export async function fetchTopicMessages(
+  net: HederaNetworkConfig,
+  topicId: string,
+  afterSequenceNumber: number,
+): Promise<MirrorTopicMessageEntry[]> {
+  const baseUrl = net.mirrorNodeUrl.replace(/\/$/, '');
+  const messages: MirrorTopicMessageEntry[] = [];
+
+  for (let sequenceNumber = afterSequenceNumber + 1; ; sequenceNumber += 1) {
+    const response = await fetch(`${baseUrl}/api/v1/topics/${topicId}/messages/${sequenceNumber}`);
+    if (response.status === 404) {
+      break;
+    }
+    if (!response.ok) {
+      throw new Error(`Mirror node topic messages request failed with status ${response.status}`);
+    }
+
+    const message = await response.json() as MirrorTopicMessageEntry;
+    messages.push(message);
+  }
+
+  return messages;
 }

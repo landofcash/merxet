@@ -1,15 +1,52 @@
 import {ArrowLeft, Bug, ChartNetwork} from 'lucide-react'
+import {useEffect, useState} from 'react'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link} from 'react-router-dom'
 import {useWallet} from '@/context/WalletContext'
 import {getAvailableNetworkIds} from '@/config'
+import {getHcsTopicId} from '@/lib/hedera/hederaUtils'
 
 function SettingsPage() {
   const {network, switchNetwork} = useWallet()
   const availableNetworks = getAvailableNetworkIds()
+  const [topicId, setTopicId] = useState<string | null>(null)
+  const [topicError, setTopicError] = useState<string | null>(null)
+  const [topicLoading, setTopicLoading] = useState(true)
 
   const labelFor = (id: string) => id.charAt(0).toUpperCase() + id.slice(1)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadTopicId = async () => {
+      setTopicLoading(true)
+      setTopicError(null)
+
+      try {
+        const resolvedTopicId = await getHcsTopicId(network)
+        if (cancelled) {
+          return
+        }
+        setTopicId(resolvedTopicId)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+        setTopicId(null)
+        setTopicError(error instanceof Error ? error.message : 'Failed to load topic ID')
+      } finally {
+        if (!cancelled) {
+          setTopicLoading(false)
+        }
+      }
+    }
+
+    void loadTopicId()
+    return () => {
+      cancelled = true
+    }
+  }, [network])
 
   return (
     <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
@@ -37,6 +74,12 @@ function SettingsPage() {
                   {labelFor(id)}
                 </Button>
               ))}
+            </div>
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <div className="text-muted-foreground">On-chain HCS Topic ID</div>
+              <div className="break-all font-mono text-foreground">
+                {topicLoading ? 'Loading…' : topicId?.trim() ? topicId : (topicError ?? 'Not set on-chain')}
+              </div>
             </div>
           </div>
 

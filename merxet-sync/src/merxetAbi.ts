@@ -18,4 +18,6 @@ export const MERXET_ABI = [
   // Public mapping getters
   'function catalogs(bytes32) view returns (uint8 version, address seller, bytes sellerPubKey, string catalogUrl)',
   'function orders(bytes32) view returns (uint8 version, bytes32 catalogSeed, uint8 status, uint256 priceAmount, address priceToken, address seller, address buyer, address payer, bytes buyerPubKey, bytes sellerPubKey, bytes encSymKeyBuyer, bytes encSymKeySeller, bytes32 symKeyHash, bytes32 payloadHashBuyer, bytes32 payloadHashSeller, uint64 createdTs, uint64 updatedTs)',
+  'function hcsTopicId() view returns (string)',
+  'function orderTimeout() view returns (uint256)',
 ] as const;

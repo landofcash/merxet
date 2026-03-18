@@ -38,6 +38,7 @@ export interface CatalogsResponse {
 
 // Order-related interfaces
 export interface Order {
+  messages?: OrderMessageRef[]
   version: string
   catalogSeed: string
   status: string
@@ -59,6 +60,15 @@ export interface Order {
   buyerWallet: string
   sellerWallet: string
   amount: string
+}
+
+export interface OrderMessageRef {
+  topicId: string
+  sequenceNumber: number
+  consensusTimestamp: string
+  sender: string
+  role: number
+  type: number
 }
 
 export interface BuyerOrderGroup {

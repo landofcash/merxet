@@ -30,7 +30,6 @@ export interface NetworkConfig {
   cdnBasePath: string;
   name: NetworkId;
   account: string;
-  topicId:string,
 
   adminWalletAddress: string;
   apiUrl: string;
@@ -47,14 +46,13 @@ const configs: Record<NetworkId, NetworkConfig> = {
   mainnet: {
     name: 'mainnet',
     account: '0.0.7565091',
-    topicId:"0.0.123",
     adminWalletAddress: '0.0.7558265',
     apiUrl: 'https://sync.merxet.com/api/v1/m',
     fileApiUrl: 'https://sync.merxet.com/api/cdn',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
-      mirrorNodeUrl: 'https://testnet.mirrornode.hedera.com',
-      rpcUrl: 'https://testnet.hashio.io/api',
+      mirrorNodeUrl: 'https://mainnet.mirrornode.hedera.com',
+      rpcUrl: 'https://mainnet.hashio.io/api',
       faucetUrl: '',
     },
     explorerBaseUrl: 'https://hashscan.io',
@@ -71,7 +69,6 @@ const configs: Record<NetworkId, NetworkConfig> = {
   testnet: {
     name: 'testnet',
     account: '0.0.7565091',
-    topicId:"0.0.123",
     adminWalletAddress: '0.0.7558265',
     apiUrl: 'http://localhost:3000/api/v1/t',
     fileApiUrl: 'http://localhost:3000/api/cdn',
@@ -86,7 +83,8 @@ const configs: Record<NetworkId, NetworkConfig> = {
       '0x0000000000000000000000000000000000000000000000000000000000000001',
     ],
     supportedTokens: [
-      { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: '0.0.0' }
+      { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: '0.0.0' },
+      { id: 1, name: 'USDC', decimals: 6, img:null, tokenId: '0.0.429274' }
     ],
     defaultGasUnitPrice: 100,
     maxGasAmount: 200_000,

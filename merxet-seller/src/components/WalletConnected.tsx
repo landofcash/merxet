@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {
+  CircleAlert,
   ExternalLink,
   HandCoins,
   LockKeyhole,
@@ -8,6 +9,8 @@ import {
   Shield,
   Trash2,
 } from "lucide-react";
+import {AccountId, TokenAssociateTransaction, TokenId, TransactionId} from "@hiero-ledger/sdk";
+import {toast} from "sonner";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
 import {Button} from "@/components/ui/button";
 import {useWallet} from "@/context/WalletContext";
@@ -20,10 +23,13 @@ import InternalWalletBackupModal from "@/components/wallet/InternalWalletBackupM
 import InternalWalletProtectModal from "@/components/wallet/InternalWalletProtectModal";
 import InternalWalletBootstrapModal from "@/components/wallet/InternalWalletBootstrapModal";
 import type {InternalWalletBackupItem} from "@/lib/internalWallet/types.ts";
+import {truncateString} from "@/lib/cryptoFormat.ts";
+import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
 
 const WalletConnected: React.FC = () => {
   const {
     walletAddress,
+    walletAdapter,
     walletKind,
     walletIdentity,
     walletLifecycleState,
@@ -54,6 +60,7 @@ const WalletConnected: React.FC = () => {
   const [protectError, setProtectError] = useState<string | null>(null);
   const [bootstrapOpen, setBootstrapOpen] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [associatingTokenId, setAssociatingTokenId] = useState<string | null>(null);
   const wasOpenRef = useRef(false);
 
   const activeInternalWallet = useMemo(() => {
@@ -80,12 +87,20 @@ const WalletConnected: React.FC = () => {
 
   const hbarBalance = walletBalances[0];
   const networkConfig = getConfig(network);
+  const walletButtonLabel = /^\d+\.\d+\.\d+$/.test(walletAddress.trim())
+    ? walletAddress
+    : truncateString(walletAddress, 18);
+  const walletStatusLabel = walletLifecycleState === "funded_or_alias_created"
+    ? "Needs HBAR"
+    : walletLifecycleState === "ready"
+      ? "Ready"
+      : null;
 
   const handleRevealBackup = async () => {
     try {
       setBackupBusy(true);
       setBackupError(null);
-      const items = await revealInternalWalletBackup();
+      const items = (await revealInternalWalletBackup()).filter(item => item.kind === "mnemonic");
       setBackupItems(items);
     } catch (error) {
       setBackupError(error instanceof Error ? error.message : "Failed to reveal wallet backup.");
@@ -116,6 +131,39 @@ const WalletConnected: React.FC = () => {
     setConfirmRemoveOpen(false);
   };
 
+  const handleAssociateToken = async (tokenId: string) => {
+    if (!walletAdapter) {
+      toast.error("Connect your wallet first.");
+      return;
+    }
+
+    const accountIdString = walletIdentity?.accountId ?? walletAddress;
+    if (!accountIdString) {
+      toast.error("Wallet account ID is not available yet.");
+      return;
+    }
+
+    try {
+      setAssociatingTokenId(tokenId);
+      const {sdkClient} = getHederaClient();
+      const accountId = AccountId.fromString(accountIdString);
+      const tx = new TokenAssociateTransaction()
+        .setTransactionId(TransactionId.generate(accountId))
+        .setAccountId(accountId)
+        .setTokenIds([TokenId.fromString(tokenId)])
+        .freezeWith(sdkClient);
+
+      await walletAdapter.signAndSubmit(tx);
+      await refreshActiveInternalWallet();
+      toast.success(`Token ${tokenId} associated.`);
+    } catch (error) {
+      console.error("Failed to associate token:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to associate token.");
+    } finally {
+      setAssociatingTokenId(null);
+    }
+  };
+
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
@@ -129,7 +177,7 @@ const WalletConnected: React.FC = () => {
               <img src={walletSvg} alt="Wallet" className="h-4 w-4"/>
             </span>
             <span className="hidden sm:block font-mono">
-              {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              {walletButtonLabel}
             </span>
             {walletKind === "internal" && hbarBalance ? (
               <span className="hidden md:block text-xs text-muted-foreground">
@@ -176,13 +224,12 @@ const WalletConnected: React.FC = () => {
                       <CopyableField value={walletIdentity?.evmAddress ?? ""} length={32} mdLength={32}/>
                     </div>
 
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Status</div>
-                      <div className="text-sm font-medium">
-                        {walletLifecycleState === "local_only" ? "Local only" : walletLifecycleState === "funded_or_alias_created" ? "Needs HBAR" : "Ready"}
-                        {walletLocked ? " · Locked" : " · Unlocked"}
+                    {walletStatusLabel ? (
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Status</div>
+                        <div className="text-sm font-medium">{walletStatusLabel}</div>
                       </div>
-                    </div>
+                    ) : null}
                   </>
                 ) : null}
 
@@ -245,11 +292,26 @@ const WalletConnected: React.FC = () => {
                           <div>
                             <div className="text-sm font-medium">{balance.symbol}</div>
                             {!balance.associated ? (
-                              <div className="text-[11px] text-muted-foreground">No token balance relation yet</div>
+                              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <CircleAlert className="h-3 w-3"/>
+                                Token not associated
+                              </div>
                             ) : null}
                           </div>
                         </div>
-                        <div className="text-sm font-semibold">{balance.formatted}</div>
+                        <div className="flex items-center gap-2">
+                          {!balance.associated && balance.tokenId !== "0.0.0" && walletIdentity?.accountId ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleAssociateToken(balance.tokenId)}
+                              disabled={associatingTokenId === balance.tokenId || !walletCanTransact}
+                            >
+                              {associatingTokenId === balance.tokenId ? "Associating..." : "Associate"}
+                            </Button>
+                          ) : null}
+                          <div className="text-sm font-semibold">{balance.formatted}</div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -345,4 +407,3 @@ const WalletConnected: React.FC = () => {
 };
 
 export default WalletConnected;
-

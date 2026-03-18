@@ -1,6 +1,47 @@
 import {decrypt, encrypt} from "eciesjs";
 import {b64ToBytes} from "@/utils/encoding.ts";
 
+function isValidSecp256k1PublicKey(bytes: Uint8Array): boolean {
+    if (bytes.length === 33) {
+        return bytes[0] === 0x02 || bytes[0] === 0x03;
+    }
+    if (bytes.length === 65) {
+        return bytes[0] === 0x04;
+    }
+    return false;
+}
+
+function tryDecodeBase64(value: string): Uint8Array | null {
+    try {
+        const bytes = b64ToBytes(value);
+        return bytes.length > 0 ? bytes : null;
+    } catch {
+        return null;
+    }
+}
+
+export function normalizePublicKeyBase64(publicKeyBase64: string): string {
+    const trimmed = publicKeyBase64.trim();
+    if (!trimmed) {
+        throw new Error("Seller public key is missing.");
+    }
+
+    const decodedBytes = tryDecodeBase64(trimmed);
+    if (decodedBytes && isValidSecp256k1PublicKey(decodedBytes)) {
+        return trimmed;
+    }
+
+    if (decodedBytes) {
+        const nested = new TextDecoder().decode(decodedBytes).trim();
+        const nestedBytes = tryDecodeBase64(nested);
+        if (nestedBytes && isValidSecp256k1PublicKey(nestedBytes)) {
+            return nested;
+        }
+    }
+
+    throw new Error("Seller public key is invalid.");
+}
+
 /**
  * Generates a random AES-GCM key (256-bit).
  * @returns {Promise<CryptoKey>} AES CryptoKey
@@ -69,8 +110,8 @@ export async function encryptWithECIES(publicKeyHex: string, aesKey: CryptoKey):
     const exportedKey = await crypto.subtle.exportKey("raw", aesKey);
     const aesKeyBytes = new Uint8Array(exportedKey);
 
-    // Convert public key hex to Buffer
-    const publicKeyBuffer = b64ToBytes(publicKeyHex);
+    const normalizedPublicKey = normalizePublicKeyBase64(publicKeyHex);
+    const publicKeyBuffer = b64ToBytes(normalizedPublicKey);
 
     // Encrypt AES key with ECIES (secp256k1)
     const encryptedAESKey = encrypt(publicKeyBuffer, aesKeyBytes);

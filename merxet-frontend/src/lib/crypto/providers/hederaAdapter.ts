@@ -1,21 +1,38 @@
 import type {ChainAdapter} from "@/lib/crypto/types/ChainAdapter";
-import type {ContractFunctionPayload, NetworkId, WalletAdapter, TransactionPayload} from "@/context/wallet/types.ts";
+import type {ContractArgument, ContractFunctionPayload, NetworkId, WalletAdapter, TransactionPayload} from "@/context/wallet/types.ts";
 import {getCurrentConfig} from "@/config";
-import type {ProductData} from "@/lib/syncService.ts";
+import type {OrderMessageRef, ProductData} from "@/lib/syncService.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
 import type {CartItem} from "@/lib/cartStorage.ts";
-import {hexToBytes, sha256, b64FromBytes, b64ToBytes} from "@/utils/encoding.ts";
+import {hexToBytes, b64FromBytes, b64ToBytes} from "@/utils/encoding.ts";
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
+import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
+import {decodeHcsEnvelope, encodeHcsEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
 // @ts-ignore
-import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar} from "@hiero-ledger/sdk";
+import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar, TokenId, ContractId} from "@hiero-ledger/sdk";
 import {ethers} from "ethers";
 // @ts-ignore
 import MerxetAbi from "@/contracts/Merxet.json";
 
-// Helper to convert string seed to bytes32 (Uint8Array of 32 bytes)
-async function seedToBytes32(seed: string): Promise<Uint8Array> {
-  const encoder = new TextEncoder();
-  return await sha256(encoder.encode(seed));
+// Contract catalog/order seeds are stored as raw UTF-8 bytes padded to bytes32.
+function seedToBytes32(seed: string): Uint8Array {
+  const encoded = new TextEncoder().encode(seed);
+  if (encoded.length > 32) {
+    throw new Error("Seed is too long to fit into bytes32.");
+  }
+
+  const bytes = new Uint8Array(32);
+  bytes.set(encoded);
+  return bytes;
+}
+
+// Hash fields are already SHA-256 outputs encoded as base64 or hex.
+function hashToBytes32(hash: string): Uint8Array {
+  const bytes = hash.startsWith("0x") ? hexToBytes(hash) : b64ToBytes(hash);
+  if (bytes.length !== 32) {
+    throw new Error("Hash must decode to exactly 32 bytes.");
+  }
+  return bytes;
 }
 
 // Helper to convert string to bytes (Uint8Array)
@@ -23,32 +40,163 @@ function stringToBytes(str: string): Uint8Array {
   return new TextEncoder().encode(str);
 }
 
+function base64ToBytes(value: string): Uint8Array {
+  return b64ToBytes(value.trim());
+}
+
+function addressArg(value: string): ContractArgument {
+  return {type: "address", value};
+}
+
+function bytesArg(value: Uint8Array): ContractArgument {
+  return {type: "bytes", value};
+}
+
+function bytes32Arg(value: Uint8Array): ContractArgument {
+  return {type: "bytes32", value};
+}
+
+function stringArg(value: string): ContractArgument {
+  return {type: "string", value};
+}
+
+function uint256Arg(value: bigint): ContractArgument {
+  return {type: "uint256", value};
+}
+
+function isHbarTokenId(tokenId: string): boolean {
+  return tokenId === "HBAR" || tokenId === "0.0.0";
+}
+
+function tokenIdToContractAddress(tokenId: string): string {
+  if (isHbarTokenId(tokenId)) {
+    return ethers.ZeroAddress;
+  }
+
+  if (ethers.isAddress(tokenId)) {
+    return tokenId;
+  }
+
+  return "0x" + TokenId.fromString(tokenId).toSolidityAddress();
+}
+
+function contractIdToEvmAddress(contractId: string): string {
+  if (ethers.isAddress(contractId)) {
+    return contractId;
+  }
+
+  return "0x" + ContractId.fromString(contractId).toSolidityAddress();
+}
+
+type MirrorTopicMessage = {
+  message: string;
+};
+
+type MirrorTopicResponse = {
+  messages?: MirrorTopicMessage[];
+  links?: {
+    next?: string | null;
+  };
+};
+
+function buildHcsUrl(pathOrUrl: string, mirrorNodeUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+  return `${mirrorNodeUrl}${pathOrUrl}`;
+}
+
+async function findHcsPayloadByEnvelope(
+  topicId: string,
+  seed: string,
+  role: number,
+  allowedTypes: number[],
+): Promise<string | null> {
+  const config = getCurrentConfig();
+  let nextUrl = `${config.hedera.mirrorNodeUrl}/api/v1/topics/${topicId}/messages?order=desc&limit=100`;
+  let pageCount = 0;
+
+  while (nextUrl && pageCount < 20) {
+    const response = await fetch(nextUrl);
+    if (!response.ok) {
+      throw new Error(`Mirror node error ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorTopicResponse;
+    for (const message of data.messages ?? []) {
+      const envelope = decodeHcsEnvelope(b64ToBytes(message.message));
+      if (!envelope) {
+        continue;
+      }
+      if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
+        continue;
+      }
+      return envelope.encryptedPayload;
+    }
+
+    pageCount += 1;
+    nextUrl = data.links?.next ? buildHcsUrl(data.links.next, config.hedera.mirrorNodeUrl) : "";
+  }
+
+  return null;
+}
+
+async function fetchHcsPayloadByMessageRefs(
+  seed: string,
+  messageRefs: OrderMessageRef[],
+  role: number,
+  allowedTypes: number[],
+): Promise<string | null> {
+  const config = getCurrentConfig();
+  const refs = [...messageRefs]
+    .filter(ref => ref.role === role && allowedTypes.includes(ref.type))
+    .sort((a, b) => b.sequenceNumber - a.sequenceNumber);
+
+  for (const ref of refs) {
+    const response = await fetch(
+      `${config.hedera.mirrorNodeUrl}/api/v1/topics/${ref.topicId}/messages?sequencenumber=eq:${ref.sequenceNumber}&limit=1`,
+    );
+    if (!response.ok) {
+      throw new Error(`Mirror node error ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorTopicResponse;
+    const message = data.messages?.[0];
+    if (!message) {
+      continue;
+    }
+
+    const envelope = decodeHcsEnvelope(b64ToBytes(message.message));
+    if (!envelope) {
+      continue;
+    }
+    if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
+      continue;
+    }
+
+    return envelope.encryptedPayload;
+  }
+
+  return null;
+}
+
 export const hederaAdapter: ChainAdapter = {
   name: "hedera",
 
   async generateAccount() {
-    const privateKey = PrivateKey.generateECDSA();
-    const publicKey = privateKey.publicKey;
-    return {
-      addr: "", // Address is unknown until the account is created on Hedera
-      pubKey: b64FromBytes(publicKey.toBytes()),
-      sk: privateKey.toBytes(),
-      mnemonic: "" // Hedera SDK doesn't return mnemonic directly for generated keys
-    };
+    return await hederaUtils.generateAccount();
   },
 
-  async accountFromMnemonic(_mnemonic: string) {
-    // This would require Mnemonic.fromString(mnemonic)
-    throw new Error("Mnemonic recovery not implemented for Hedera yet");
+  async accountFromMnemonic(mnemonic: string) {
+    return await hederaUtils.accountFromMnemonic(mnemonic);
   },
 
-  accountToMnemonic(_internal: InternalAccount) {
-    return undefined;
+  accountToMnemonic(internal: InternalAccount) {
+    return hederaUtils.accountToMnemonic(internal);
   },
 
   async signMessageInternal(internal: InternalAccount, message: string) {
-    const privateKey = PrivateKey.fromBytes(internal.sk);
-    return privateKey.sign(new TextEncoder().encode(message));
+    return await hederaUtils.signMessage(internal, message);
   },
 
   async getAccountCoinAmount(address: string, coinType: string): Promise<bigint> {
@@ -56,7 +204,7 @@ export const hederaAdapter: ChainAdapter = {
     try {
       const response = await fetch(`${config.hedera.mirrorNodeUrl}/api/v1/accounts/${address}`);
       const data = await response.json();
-      if (coinType === "HBAR") {
+      if (isHbarTokenId(coinType)) {
         return BigInt(data.balance.balance);
       } else {
         // Fetch token balance
@@ -86,22 +234,22 @@ export const hederaAdapter: ChainAdapter = {
     // On Hedera, you usually use the Hedera Portal for testnet HBAR
   },
 
-  async uploadCatalogueUrlToBlockchain(
+  async uploadCatalogUrlToBlockchain(
     walletAdapter: WalletAdapter,
     seed: string,
     sellerPubKey: string,
-    catalogueUrl: string
+    catalogUrl: string
   ): Promise<string> {
     const config = getCurrentConfig();
-    const seedBytes = await seedToBytes32(seed);
+  const seedBytes = seedToBytes32(seed);
 
     const payload: ContractFunctionPayload = {
       contractId: config.contractAddress,
-      function: "createCatalogue",
+      function: "createCatalog",
       arguments: [
-        seedBytes,
-        stringToBytes(sellerPubKey),
-        catalogueUrl
+        bytes32Arg(seedBytes),
+        bytesArg(stringToBytes(sellerPubKey)),
+        stringArg(catalogUrl)
       ]
     };
 
@@ -109,17 +257,17 @@ export const hederaAdapter: ChainAdapter = {
     return result.hash;
   },
 
-  async deleteProductBoxOnBlockchain(
+  async deleteCatalogOnBlockchain(
     walletAdapter: WalletAdapter,
     seed: string
   ): Promise<string> {
     const config = getCurrentConfig();
-    const seedBytes = await seedToBytes32(seed);
+    const seedBytes = seedToBytes32(seed);
 
     const payload: ContractFunctionPayload = {
       contractId: config.contractAddress,
-      function: "deleteCatalogue",
-      arguments: [seedBytes]
+      function: "deleteCatalog",
+      arguments: [bytes32Arg(seedBytes)]
     };
 
     const result = await walletAdapter.executeContract(payload);
@@ -139,20 +287,21 @@ export const hederaAdapter: ChainAdapter = {
     encryptedData: string
   ): Promise<string> {
     const config = getCurrentConfig();
+    const topicId = await hederaUtils.requireHcsTopicId();
     if (!cartItems?.length) throw new Error("Cart is empty");
     const first = cartItems[0];
 
     const tokenIds = Object.keys(tokenTotals || {});
-    const tokenId = tokenIds[0] || "HBAR";
+    const tokenId = tokenIds[0] || "0.0.0";
     const amount = tokenTotals[tokenId] ?? 0n;
-    const tokenAddress = tokenId === "HBAR" ? "0x0000000000000000000000000000000000000000" : tokenId; // Should be EVM address of token
+    const tokenAddress = tokenIdToContractAddress(tokenId);
 
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
-          topicId: config.hcsTopicId,
-          message: encryptedData
+          topicId,
+          message: encodeHcsEnvelope(orderSeed, HCS_MESSAGE_ROLE.buyer, HCS_MESSAGE_TYPE.buyerInitialOrder, encryptedData)
         }
       },
       {
@@ -161,15 +310,15 @@ export const hederaAdapter: ChainAdapter = {
           contractId: config.contractAddress,
           function: "createOrderInitial",
           arguments: [
-            await seedToBytes32(orderSeed),
-            await seedToBytes32(first.seed),
-            amount,
-            tokenAddress,
-            stringToBytes(buyerPubKey),
-            stringToBytes(encryptedSymKeyBuyer),
-            stringToBytes(encryptedSymKeySeller),
-            await seedToBytes32(symKeyHash),
-            await seedToBytes32(payloadHash)
+            bytes32Arg(seedToBytes32(orderSeed)),
+            bytes32Arg(seedToBytes32(first.seed)),
+            uint256Arg(amount),
+            addressArg(tokenAddress),
+            bytesArg(stringToBytes(buyerPubKey)),
+            bytesArg(base64ToBytes(encryptedSymKeyBuyer)),
+            bytesArg(base64ToBytes(encryptedSymKeySeller)),
+            bytes32Arg(hashToBytes32(symKeyHash)),
+            bytes32Arg(hashToBytes32(payloadHash))
           ]
         }
       }
@@ -192,42 +341,58 @@ export const hederaAdapter: ChainAdapter = {
     encryptedData: string
   ): Promise<string> {
     const config = getCurrentConfig();
+    const topicId = await hederaUtils.requireHcsTopicId();
     if (!cartItems?.length) throw new Error("Cart is empty");
     const first = cartItems[0];
 
     const tokenIds = Object.keys(tokenTotals || {});
-    const tokenId = tokenIds[0] || "HBAR";
+    const tokenId = tokenIds[0] || "0.0.0";
     const amount = tokenTotals[tokenId] ?? 0n;
-    const tokenAddress = tokenId === "HBAR" ? "0x0000000000000000000000000000000000000000" : tokenId;
+    const tokenAddress = tokenIdToContractAddress(tokenId);
 
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
-          topicId: config.hcsTopicId,
-          message: encryptedData
-        }
-      },
-      {
-        type: 'contract',
-        data: {
-          contractId: config.contractAddress,
-          function: "createOrderPaid",
-          arguments: [
-            await seedToBytes32(orderSeed),
-            await seedToBytes32(first.seed),
-            amount,
-            tokenAddress,
-            stringToBytes(buyerPubKey),
-            stringToBytes(encryptedSymKeyBuyer),
-            stringToBytes(encryptedSymKeySeller),
-            await seedToBytes32(symKeyHash),
-            await seedToBytes32(payloadHash)
-          ],
-          amount: tokenId === "HBAR" ? amount : 0n
+          topicId,
+          message: encodeHcsEnvelope(orderSeed, HCS_MESSAGE_ROLE.buyer, HCS_MESSAGE_TYPE.buyerInitialOrder, encryptedData)
         }
       }
     ];
+
+    if (!isHbarTokenId(tokenId)) {
+      batch.push({
+        type: 'contract',
+        data: {
+          contractId: tokenAddress,
+          function: "approve",
+          arguments: [
+            addressArg(contractIdToEvmAddress(config.contractAddress)),
+            uint256Arg(amount)
+          ]
+        }
+      });
+    }
+
+    batch.push({
+      type: 'contract',
+      data: {
+        contractId: config.contractAddress,
+        function: "createOrderPaid",
+        arguments: [
+          bytes32Arg(seedToBytes32(orderSeed)),
+          bytes32Arg(seedToBytes32(first.seed)),
+          uint256Arg(amount),
+          addressArg(tokenAddress),
+          bytesArg(stringToBytes(buyerPubKey)),
+          bytesArg(base64ToBytes(encryptedSymKeyBuyer)),
+          bytesArg(base64ToBytes(encryptedSymKeySeller)),
+          bytes32Arg(hashToBytes32(symKeyHash)),
+          bytes32Arg(hashToBytes32(payloadHash))
+        ],
+        amount: isHbarTokenId(tokenId) ? amount : 0n
+      }
+    });
 
     const result = await walletAdapter.executeBatch(batch);
     return result.hash;
@@ -243,12 +408,13 @@ export const hederaAdapter: ChainAdapter = {
     _payerAddress: string
   ): Promise<string> {
     const config = getCurrentConfig();
+    const topicId = await hederaUtils.requireHcsTopicId();
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
-          topicId: config.hcsTopicId,
-          message: encryptedDeliveryCommentData
+          topicId,
+          message: encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerRefusal, encryptedDeliveryCommentData)
         }
       },
       {
@@ -257,8 +423,8 @@ export const hederaAdapter: ChainAdapter = {
           contractId: config.contractAddress,
           function: "refuseOrder",
           arguments: [
-            await seedToBytes32(seed),
-            await seedToBytes32(payloadHashSeller)
+            bytes32Arg(seedToBytes32(seed)),
+            bytes32Arg(hashToBytes32(payloadHashSeller))
           ]
         }
       }
@@ -276,12 +442,13 @@ export const hederaAdapter: ChainAdapter = {
     _senderAddress: string
   ): Promise<string> {
     const config = getCurrentConfig();
+    const topicId = await hederaUtils.requireHcsTopicId();
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
-          topicId: config.hcsTopicId,
-          message: encryptedDeliveryCommentData
+          topicId,
+          message: encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerDelivery, encryptedDeliveryCommentData)
         }
       },
       {
@@ -290,8 +457,8 @@ export const hederaAdapter: ChainAdapter = {
           contractId: config.contractAddress,
           function: "startDelivering",
           arguments: [
-            await seedToBytes32(seed),
-            await seedToBytes32(payloadHashSeller)
+            bytes32Arg(seedToBytes32(seed)),
+            bytes32Arg(hashToBytes32(payloadHashSeller))
           ]
         }
       }
@@ -301,38 +468,38 @@ export const hederaAdapter: ChainAdapter = {
     return result.hash;
   },
 
-  async viewProductOnBlockchain(seed: string): Promise<ProductData> {
+  async viewCatalogOnBlockchain(seed: string): Promise<ProductData> {
     const config = getCurrentConfig();
-    const seedBytes = await seedToBytes32(seed);
+    const seedBytes = seedToBytes32(seed);
 
     try {
       const provider = new ethers.JsonRpcProvider(config.hedera.rpcUrl);
-      const contract = new ethers.Contract(config.contractAddress, MerxetAbi.abi, provider);
-      const catalogue = await contract.catalogues(seedBytes);
+      const contract = new ethers.Contract(contractIdToEvmAddress(config.contractAddress), MerxetAbi.abi, provider);
+      const catalog = await contract.catalogs(seedBytes);
 
-      if (catalogue.shop === ethers.ZeroAddress) {
-        throw new Error("Catalogue not found");
+      if (catalog.seller === ethers.ZeroAddress) {
+        throw new Error("Catalog not found");
       }
 
       return {
-        version: Number(catalogue.version),
+        version: Number(catalog.version),
         seed: seed,
-        shopWallet: catalogue.shop,
-        sellerPubKey: b64FromBytes(hexToBytes(catalogue.sellerPubKey)),
-        productsUrl: catalogue.catalogueUrl
+        shopWallet: catalog.seller,
+        sellerPubKey: b64FromBytes(hexToBytes(catalog.sellerPubKey)),
+        productsUrl: catalog.catalogUrl
       };
     } catch (error) {
-      console.error("Error viewing product:", error);
+      console.error("Error viewing catalog:", error);
       throw error;
     }
   },
 
-  async viewBuyerData(seed: string): Promise<GetStorageResult> {
-    return viewDataFromHCS(seed, true);
+  async viewBuyerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult> {
+    return viewDataFromHCS(seed, true, messageRefs);
   },
 
-  async viewSellerData(seed: string): Promise<GetStorageResult> {
-    return viewDataFromHCS(seed, false);
+  async viewSellerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult> {
+    return viewDataFromHCS(seed, false, messageRefs);
   },
 
   async resolveAddressToName(address: string): Promise<string | null> {
@@ -357,15 +524,15 @@ export const hederaAdapter: ChainAdapter = {
 
 async function viewOrder(seed: string): Promise<any> {
   const config = getCurrentConfig();
-  const seedBytes = await seedToBytes32(seed);
+    const seedBytes = seedToBytes32(seed);
   const provider = new ethers.JsonRpcProvider(config.hedera.rpcUrl);
-  const contract = new ethers.Contract(config.contractAddress, MerxetAbi.abi, provider);
+  const contract = new ethers.Contract(contractIdToEvmAddress(config.contractAddress), MerxetAbi.abi, provider);
   return await contract.orders(seedBytes);
 }
 
-async function viewDataFromHCS(seed: string, isBuyer: boolean): Promise<GetStorageResult> {
-  const config = getCurrentConfig();
+async function viewDataFromHCS(seed: string, isBuyer: boolean, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult> {
   try {
+    const topicId = await hederaUtils.requireHcsTopicId();
     const orderData = await viewOrder(seed);
     const hashHex = isBuyer ? orderData.payloadHashBuyer : orderData.payloadHashSeller;
 
@@ -373,20 +540,17 @@ async function viewDataFromHCS(seed: string, isBuyer: boolean): Promise<GetStora
       return {isFound: false, data: ""};
     }
 
-    const startTime = orderData.createdTs.toString();
-    const response = await fetch(`${config.hedera.mirrorNodeUrl}/api/v1/topics/${config.hcsTopicId}/messages?timestamp=gte:${startTime}`);
-    const data = await response.json();
+    const role = isBuyer ? HCS_MESSAGE_ROLE.buyer : HCS_MESSAGE_ROLE.seller;
+    const allowedTypes = isBuyer
+      ? [HCS_MESSAGE_TYPE.buyerInitialOrder]
+      : [HCS_MESSAGE_TYPE.sellerDelivery, HCS_MESSAGE_TYPE.sellerRefusal];
 
-    if (!data.messages) return {isFound: false, data: ""};
+    const encryptedPayload = messageRefs?.length
+      ? await fetchHcsPayloadByMessageRefs(seed, messageRefs, role, allowedTypes)
+      : await findHcsPayloadByEnvelope(topicId, seed, role, allowedTypes);
 
-    for (const msg of data.messages) {
-      const messageBytes = b64ToBytes(msg.message);
-      const messageHash = await sha256(messageBytes);
-      const messageHashHex = "0x" + Buffer.from(messageHash).toString('hex');
-
-      if (messageHashHex === hashHex) {
-        return {isFound: true, data: msg.message}; // return base64
-      }
+    if (encryptedPayload) {
+      return {isFound: true, data: encryptedPayload};
     }
   } catch (e) {
     console.error("Error viewing data from HCS:", e);

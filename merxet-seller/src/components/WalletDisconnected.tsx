@@ -11,12 +11,23 @@ import InternalWalletCreateModal from "@/components/wallet/InternalWalletCreateM
 import InternalWalletImportModal from "@/components/wallet/InternalWalletImportModal";
 import InternalWalletSuccessModal from "@/components/wallet/InternalWalletSuccessModal";
 import type {InternalWalletStatus, InternalWalletSummary} from "@/lib/internalWallet/types.ts";
+import {truncateString} from "@/lib/cryptoFormat.ts";
 
-const lifecycleCopy: Record<InternalWalletSummary["lifecycleState"], string> = {
-  local_only: "Local only",
-  funded_or_alias_created: "Needs HBAR",
-  ready: "Ready",
-};
+function getLifecycleBadgeLabel(lifecycleState: InternalWalletSummary["lifecycleState"]): string | null {
+  if (lifecycleState === "funded_or_alias_created") {
+    return "Needs HBAR";
+  }
+
+  if (lifecycleState === "ready") {
+    return "Ready";
+  }
+
+  return null;
+}
+
+function formatWalletAddressLabel(address: string): string {
+  return /^\d+\.\d+\.\d+$/.test(address.trim()) ? address : truncateString(address, 18);
+}
 
 const WalletDisconnected: React.FC = () => {
   const {
@@ -178,23 +189,20 @@ const WalletDisconnected: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {internalWallets.map((wallet) => (
-                  <div key={wallet.id} className="rounded-xl border p-3 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                  <div key={wallet.id} className="rounded-xl border p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <div className="font-medium">{wallet.label}</div>
                         <div className="font-mono text-xs text-muted-foreground break-all">
-                          {wallet.identity.accountId ?? wallet.identity.evmAddress}
+                          {formatWalletAddressLabel(wallet.identity.accountId ?? wallet.identity.evmAddress)}
                         </div>
                       </div>
-                      <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
-                        {lifecycleCopy[wallet.lifecycleState]}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">{wallet.locked ? "Locked" : "Unlocked in session"}
-                      </div>
-                      <div className="flex gap-2">
+                      <div className="flex shrink-0 items-center gap-2">
+                        {getLifecycleBadgeLabel(wallet.lifecycleState) ? (
+                          <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+                            {getLifecycleBadgeLabel(wallet.lifecycleState)}
+                          </span>
+                        ) : null}
                         <Button size="sm" onClick={() => void handleConnectInternal(wallet.id)} disabled={busy}>
                           Connect
                         </Button>
@@ -240,10 +248,10 @@ const WalletDisconnected: React.FC = () => {
               This only removes the wallet from this browser. It does not delete the Hedera account or make funds unrecoverable if you still have the backup.
             </p>
             {deletingWallet ? (
-              <div className="rounded-lg border px-3 py-2 font-mono text-xs break-all">
+                <div className="rounded-lg border px-3 py-2 font-mono text-xs break-all">
                 {deletingWallet.label}
                 <br/>
-                {deletingWallet.identity.accountId ?? deletingWallet.identity.evmAddress}
+                {formatWalletAddressLabel(deletingWallet.identity.accountId ?? deletingWallet.identity.evmAddress)}
               </div>
             ) : null}
           </div>

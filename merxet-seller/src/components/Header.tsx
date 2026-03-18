@@ -21,7 +21,7 @@ const Header: React.FC = () => {
         {/* Logo and Title */}
         <div className="flex items-center space-x-3">
           <Link to="/" className="cursor-pointer inline-flex items-center gap-2">
-            <img src="/logo-32x32.png" alt="Merxet Seller Logo" className="w-9 h-9"/>
+            <img src="/logo.svg" alt="Merxet Seller Logo" className="w-9 h-9"/>
             <h1 className="text-xl font-bold">Merxet Seller</h1>
           </Link>
         </div>

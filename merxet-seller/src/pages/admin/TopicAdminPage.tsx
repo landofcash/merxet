@@ -1,11 +1,9 @@
-import React, {useMemo, useState} from 'react'
+import React, {useEffect, useMemo, useState} from 'react'
 import {
   AccountId,
-  BatchTransaction,
   ContractExecuteTransaction,
-  ContractFunctionParameters, PrivateKey,
-  TopicCreateTransaction, TopicId,
-  TopicMessageSubmitTransaction,
+  ContractFunctionParameters,
+  TopicCreateTransaction,
   TransactionId,
 } from '@hiero-ledger/sdk'
 import {toast} from 'sonner'
@@ -13,8 +11,7 @@ import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {useWallet} from '@/context/WalletContext'
 import { getConfig,  isAdminWalletAddress,} from '@/config'
-import {getTopicIdFromTx} from "@/lib/hedera/hederaUtils.ts";
-import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
+import {getHcsTopicId, getTopicIdFromTx} from "@/lib/hedera/hederaUtils.ts";
 
 
 const TopicAdminPage: React.FC = () => {
@@ -22,12 +19,39 @@ const TopicAdminPage: React.FC = () => {
 
   const cfg = useMemo(() => getConfig(network), [network])
 
-  const [manualTopicId, setManualTopicId] = useState(cfg.topicId)
+  const [manualTopicId, setManualTopicId] = useState('')
+  const [effectiveTopicId, setEffectiveTopicId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [lastTxId, setLastTxId] = useState<string | null>(null)
   const [lastTopicId, setLastTopicId] = useState<string | null>(null)
 
   const isAdmin = isAdminWalletAddress(walletAddress || '', network)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadTopicId = async () => {
+      try {
+        const topicId = await getHcsTopicId(network)
+        if (cancelled) {
+          return
+        }
+        setEffectiveTopicId(topicId)
+        setManualTopicId(topicId)
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) {
+          setEffectiveTopicId(null)
+          setManualTopicId('')
+        }
+      }
+    }
+
+    void loadTopicId()
+    return () => {
+      cancelled = true
+    }
+  }, [network])
 
   const handleSet = async () => {
     if (!walletAdapter || !walletAddress) {
@@ -38,34 +62,26 @@ const TopicAdminPage: React.FC = () => {
       toast.error(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
       return
     }
+    setBusy(true)
+    try {
+      const payer = AccountId.fromString(walletAddress);
+      const tx = new ContractExecuteTransaction()
+        .setTransactionId(TransactionId.generate(payer))
+        .setContractId(cfg.account)
+        .setFunction("setHcsTopicId", new ContractFunctionParameters().addString(manualTopicId))
+        .setGas(300_000);
 
-    const batchKey = PrivateKey.generateECDSA();
-    const sdkClient = getHederaClient().sdkClient;
-    const payer = AccountId.fromString(walletAddress);
-    const contractTx = new ContractExecuteTransaction()
-      .setTransactionId(TransactionId.generate(payer))
-      .setContractId(cfg.account)
-      .setFunction("setHcsTopicId", new ContractFunctionParameters().addString(manualTopicId))
-      .setGas(300_000)
-      .setBatchKey(batchKey.publicKey)
-      .freezeWith(sdkClient);
-
-    const hcsTx = new TopicMessageSubmitTransaction()
-      .setTransactionId(TransactionId.generate(payer))
-      .setTopicId(TopicId.fromString(cfg.topicId))
-      .setMessage(`HCS Topic ID updated to ${manualTopicId}`)
-      .setBatchKey(batchKey.publicKey)
-      .freezeWith(sdkClient);
-
-    const batch = new BatchTransaction()
-      .setTransactionId(TransactionId.generate(payer))
-      .addInnerTransaction(contractTx)
-      .addInnerTransaction(hcsTx)
-      .freezeWith(sdkClient);
-
-    const signedBatch = await batch.sign(batchKey);
-    const result = await walletAdapter.signAndSubmit(signedBatch);
-    toast.success(`TopicId updated to ${manualTopicId} TX:${result.hash}`);
+      const result = await walletAdapter.signAndSubmit(tx);
+      const nextTopicId = await getHcsTopicId(network)
+      setEffectiveTopicId(nextTopicId)
+      setManualTopicId(nextTopicId)
+      toast.success(`TopicId updated to ${nextTopicId} TX:${result.hash}`);
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to update topicId')
+    } finally {
+      setBusy(false)
+    }
   };
 
   const handleCreateTopic = async () => {
@@ -115,7 +131,7 @@ const TopicAdminPage: React.FC = () => {
       <h1 className="text-xl font-bold">🛠️ Topic Admin</h1>
       <div className="p-3 rounded border text-sm space-y-1">
         <div><strong>Network:</strong> {network}</div>
-        <div><strong>Effective topicId:</strong> {cfg.topicId}</div>
+        <div><strong>Effective topicId:</strong> {effectiveTopicId?.trim() ? effectiveTopicId : 'Not set on-chain'}</div>
       </div>
       <div className="space-y-2">
         <div className="text-sm font-medium">Set topicId</div>

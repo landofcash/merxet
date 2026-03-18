@@ -143,7 +143,7 @@ function OrderDetailsPage() {
   const {walletAddress, signMessage} = useWallet()
   const order = location.state?.order as Order | undefined
 
-  // Encrypted delivery payload (loaded automatically)
+  // Encrypted buyer payload loaded from HCS.
   const [encryptedPayloadFromBox, setEncryptedPayloadFromBox] = useState<string | null>(null)
   const [isLoadingPayloadFromBox, setIsLoadingPayloadFromBox] = useState(false)
   const [payloadLoadError, setPayloadLoadError] = useState<string | null>(null)
@@ -170,7 +170,7 @@ function OrderDetailsPage() {
     return order.status === '2'
   }
 
-  // Load encrypted payload from box automatically when component mounts
+  // Load the encrypted buyer payload from HCS automatically when the page opens.
   useEffect(() => {
     const loadEncryptedPayload = async () => {
       if (!order) {
@@ -185,7 +185,7 @@ function OrderDetailsPage() {
       try {
         // Fetch the raw encrypted delivery payload from the chain
 
-        const decodedPayload = await getChainAdapter().viewBuyerData(order.seed)
+        const decodedPayload = await getChainAdapter().viewBuyerData(order.seed, order.messages)
         if (!decodedPayload.isFound) {
           setPayloadLoadError(`Failed to read delivery data "${order.seed}", Not found`)
           return
@@ -866,7 +866,7 @@ function OrderDetailsPage() {
               {isLoadingPayloadFromBox && (
                 <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/>
-                  <span className="text-sm text-blue-700">Loading encrypted payload from box: b-{order.seed}</span>
+                  <span className="text-sm text-blue-700">Loading encrypted buyer payload from HCS for {order.seed}</span>
                 </div>
               )}
 
@@ -881,7 +881,7 @@ function OrderDetailsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle2 className="h-4 w-4"/>
-                    <span className="text-sm font-medium">Encrypted payload loaded from box: b-{order.seed}</span>
+                    <span className="text-sm font-medium">Encrypted buyer payload loaded from HCS for {order.seed}</span>
                   </div>
 
                   <div className="bg-muted p-4 rounded-lg">

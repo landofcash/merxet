@@ -1,19 +1,123 @@
 import type {ChainAdapter} from "@/lib/crypto/types/ChainAdapter.ts";
 import {getCurrentConfig} from "@/config";
-import type {CatalogData} from "@/lib/syncService.ts";
+import type {CatalogData, OrderMessageRef} from "@/lib/syncService.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
-import {hexToBytes} from "@/utils/encoding.ts";
+import {b64ToBytes, hexToBytes} from "@/utils/encoding.ts";
 import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
 import type {NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
 import {toHex} from "viem";
 import MerxetAbi from "@/contracts/Merxet.sol/Merxet.json";
 import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
 import {
-  BatchTransaction,
   ContractExecuteTransaction,
   ContractFunctionParameters,
   TopicId, TopicMessageSubmitTransaction,
 } from "@hiero-ledger/sdk";
+import {decodeHcsEnvelope, encodeHcsEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
+
+function seedToBytes32(seed: string): Uint8Array {
+  return hexToBytes(toHex(new TextEncoder().encode(seed), {size: 32}));
+}
+
+function hashToBytes32(hash: string): Uint8Array {
+  const bytes = hash.startsWith("0x") ? hexToBytes(hash) : b64ToBytes(hash);
+  if (bytes.length !== 32) {
+    throw new Error("Hash must decode to exactly 32 bytes.");
+  }
+  return bytes;
+}
+
+type MirrorTopicMessage = {
+  message: string;
+};
+
+type MirrorTopicResponse = {
+  messages?: MirrorTopicMessage[];
+  links?: {
+    next?: string | null;
+  };
+};
+
+function buildHcsUrl(pathOrUrl: string, mirrorNodeUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+  return `${mirrorNodeUrl}${pathOrUrl}`;
+}
+
+async function findHcsPayloadByEnvelope(
+  topicId: string,
+  seed: string,
+  role: number,
+  allowedTypes: number[],
+): Promise<string | null> {
+  const config = getCurrentConfig();
+  let nextUrl = `${config.hedera.mirrorNodeUrl}/api/v1/topics/${topicId}/messages?order=desc&limit=100`;
+  let pageCount = 0;
+
+  while (nextUrl && pageCount < 20) {
+    const response = await fetch(nextUrl);
+    if (!response.ok) {
+      throw new Error(`Mirror node error ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorTopicResponse;
+    for (const message of data.messages ?? []) {
+      const envelope = decodeHcsEnvelope(b64ToBytes(message.message));
+      if (!envelope) {
+        continue;
+      }
+      if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
+        continue;
+      }
+      return envelope.encryptedPayload;
+    }
+
+    pageCount += 1;
+    nextUrl = data.links?.next ? buildHcsUrl(data.links.next, config.hedera.mirrorNodeUrl) : "";
+  }
+
+  return null;
+}
+
+async function fetchHcsPayloadByMessageRefs(
+  seed: string,
+  messageRefs: OrderMessageRef[],
+  role: number,
+  allowedTypes: number[],
+): Promise<string | null> {
+  const config = getCurrentConfig();
+  const refs = [...messageRefs]
+    .filter(ref => ref.role === role && allowedTypes.includes(ref.type))
+    .sort((a, b) => b.sequenceNumber - a.sequenceNumber);
+
+  for (const ref of refs) {
+    const response = await fetch(
+      `${config.hedera.mirrorNodeUrl}/api/v1/topics/${ref.topicId}/messages?sequencenumber=eq:${ref.sequenceNumber}&limit=1`,
+    );
+    if (!response.ok) {
+      throw new Error(`Mirror node error ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorTopicResponse;
+    const message = data.messages?.[0];
+    if (!message) {
+      continue;
+    }
+
+    const envelope = decodeHcsEnvelope(b64ToBytes(message.message));
+    if (!envelope) {
+      continue;
+    }
+    if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
+      continue;
+    }
+
+    return envelope.encryptedPayload;
+  }
+
+  return null;
+}
 
 
 export const hederaAdapter: ChainAdapter = {
@@ -48,11 +152,10 @@ export const hederaAdapter: ChainAdapter = {
 
     const config = getCurrentConfig();
 
-    const seedBytes32 = toHex(new TextEncoder().encode(seed), {size: 32});
     const sellerPubKeyBytes = new TextEncoder().encode(sellerPubKey);
 
     const params = new ContractFunctionParameters()
-      .addBytes32(hexToBytes(seedBytes32))
+      .addBytes32(seedToBytes32(seed))
       .addBytes(sellerPubKeyBytes)
       .addString(catalogueUrl);
 
@@ -73,7 +176,7 @@ export const hederaAdapter: ChainAdapter = {
     const config = getCurrentConfig();
     const tx = new ContractExecuteTransaction()
       .setContractId(config.account)
-      .setFunction("deleteCatalog", new ContractFunctionParameters().addString(seed))
+      .setFunction("deleteCatalog", new ContractFunctionParameters().addBytes32(seedToBytes32(seed)))
       .setGas(300_000);
 
     const result = await walletAdapter.signAndSubmit(tx);
@@ -93,22 +196,21 @@ export const hederaAdapter: ChainAdapter = {
     }
 
     const config = getCurrentConfig();
+    const topicId = await hederaUtils.requireHcsTopicId();
+    const hcsTx = new TopicMessageSubmitTransaction()
+      .setTopicId(TopicId.fromString(topicId))
+      .setMessage(encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerRefusal, payloadEncrypted));
 
     const contractTx = new ContractExecuteTransaction()
       .setContractId(config.account)
-      .setFunction("refuseOrder", new ContractFunctionParameters().addString(seed).addString(payloadEncrypted))
+      .setFunction("refuseOrder", new ContractFunctionParameters()
+        .addBytes32(seedToBytes32(seed))
+        .addBytes32(hashToBytes32(payloadHashSeller)))
       .setGas(300_000);
 
-    const hcsTx = new TopicMessageSubmitTransaction()
-      .setTopicId(TopicId.fromString(config.topicId))
-      .setMessage(JSON.stringify(payloadEncrypted));
-
-    const batch = new BatchTransaction()
-      .addInnerTransaction(contractTx)
-      .addInnerTransaction(hcsTx);
-
-    const result = await walletAdapter.signAndSubmit(batch);
-    return result.hash;
+    await walletAdapter.signAndSubmit(hcsTx);
+    const result = await walletAdapter.signAndSubmit(contractTx);
+    return result.hash || result.txId || "";
   },
 
   async startDeliveringOrderOnBlockchain(
@@ -123,25 +225,21 @@ export const hederaAdapter: ChainAdapter = {
     }
 
     const config = getCurrentConfig();
-    const sdkClient = getHederaClient().sdkClient;
+    const topicId = await hederaUtils.requireHcsTopicId();
+    const hcsTx = new TopicMessageSubmitTransaction()
+      .setTopicId(TopicId.fromString(topicId))
+      .setMessage(encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerDelivery, payloadEncrypted));
 
     const contractTx = new ContractExecuteTransaction()
       .setContractId(config.account)
-      .setFunction("startDelivering", new ContractFunctionParameters().addString(seed).addString(payloadHashSeller))
+      .setFunction("startDelivering", new ContractFunctionParameters()
+        .addBytes32(seedToBytes32(seed))
+        .addBytes32(hashToBytes32(payloadHashSeller)))
       .setGas(300_000);
 
-    const hcsTx = new TopicMessageSubmitTransaction()
-      .setTopicId(TopicId.fromString(config.topicId))
-      .setMessage(JSON.stringify(payloadEncrypted));
-
-    const batch = new BatchTransaction()
-      .addInnerTransaction(contractTx)
-      .addInnerTransaction(hcsTx);
-
-    batch.freezeWith(sdkClient);
-
-    const result = await walletAdapter.signAndSubmit(batch);
-    return result.hash;
+    await walletAdapter.signAndSubmit(hcsTx);
+    const result = await walletAdapter.signAndSubmit(contractTx);
+    return result.hash || result.txId || "";
   },
 
   async setOrderTimeout(walletAdapter: WalletAdapter, timeoutSeconds: number): Promise<string> {
@@ -198,22 +296,30 @@ export const hederaAdapter: ChainAdapter = {
     }
   },
 
-  async viewBuyerData(seed: string): Promise<GetStorageResult> {
+  async viewBuyerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult> {
     try {
-      const data = null //read from HCS
+      const topicId = await hederaUtils.requireHcsTopicId();
+      const allowedTypes = [HCS_MESSAGE_TYPE.buyerInitialOrder];
+      const data = messageRefs?.length
+        ? await fetchHcsPayloadByMessageRefs(seed, messageRefs, HCS_MESSAGE_ROLE.buyer, allowedTypes)
+        : await findHcsPayloadByEnvelope(topicId, seed, HCS_MESSAGE_ROLE.buyer, allowedTypes);
       if (!data) return {data: null, isFound: false}
-      return {data: "", isFound: true}
+      return {data, isFound: true}
     } catch (error) {
       console.error(`Error viewBuyerData seed:${seed}`, error);
       throw error;
     }
   },
 
-  async viewSellerData(seed: string): Promise<GetStorageResult> {
+  async viewSellerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult> {
     try {
-      const data = null //read from HCS
+      const topicId = await hederaUtils.requireHcsTopicId();
+      const allowedTypes = [HCS_MESSAGE_TYPE.sellerDelivery, HCS_MESSAGE_TYPE.sellerRefusal];
+      const data = messageRefs?.length
+        ? await fetchHcsPayloadByMessageRefs(seed, messageRefs, HCS_MESSAGE_ROLE.seller, allowedTypes)
+        : await findHcsPayloadByEnvelope(topicId, seed, HCS_MESSAGE_ROLE.seller, allowedTypes);
       if (!data) return {data: null, isFound: false}
-      return {data: "", isFound: true}
+      return {data, isFound: true}
     } catch (error) {
       console.error(`Error viewSellerData seed:${seed}`, error);
       throw error;

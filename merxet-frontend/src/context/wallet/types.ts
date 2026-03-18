@@ -3,10 +3,17 @@ export type NetworkId = 'mainnet' | 'testnet' | 'previewnet' | 'local' | string;
 export type WalletKind = 'external' | 'internal';
 export type WalletProviderId = 'hashpack' | 'blade' | string;
 
+export type ContractArgument =
+  | { type: 'address'; value: string }
+  | { type: 'bytes'; value: Uint8Array }
+  | { type: 'bytes32'; value: Uint8Array }
+  | { type: 'string'; value: string }
+  | { type: 'uint256'; value: bigint };
+
 export type ContractFunctionPayload = {
   contractId: string;
   function: string;
-  arguments: any[];
+  arguments: ContractArgument[];
   amount?: bigint; // amount of HBAR to send
 };
 
@@ -40,3 +47,5 @@ export interface WalletAdapter {
   executeContract(payload: ContractFunctionPayload): Promise<{ hash: string }>;
   executeBatch(payloads: TransactionPayload[]): Promise<{ hash: string }>;
 }
+
+export type WalletActionKind = "signMessage" | "executeContract" | "executeBatch";

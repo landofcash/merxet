@@ -1,15 +1,11 @@
-import * as bip39 from '@scure/bip39';
-import {wordlist} from '@scure/bip39/wordlists/english.js';
 import type {InternalAccount} from '@/lib/crypto/types/InternalAccount.ts';
 import {bytesToHex, hexToBytes, type Address, type Hex,} from 'viem';
-import {mnemonicToAccount, privateKeyToAccount} from 'viem/accounts';
-import {getCurrentConfig} from "@/config.ts";
-import {AccountId} from "@hiero-ledger/sdk";
-
-/**
- * Hedera ECDSA wallet derivation path commonly used for HBAR.
- */
-export const HEDERA_PATH = "m/44'/60'/0'/0/0";
+import {privateKeyToAccount} from 'viem/accounts';
+import {getConfig, getCurrentConfig} from "@/config.ts";
+import type {NetworkId} from "@/context/wallet/types.ts";
+import {AccountId, ContractId, Mnemonic, PrivateKey} from "@hiero-ledger/sdk";
+import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
+import MerxetAbi from "@/contracts/Merxet.sol/Merxet.json";
 
 export const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -59,31 +55,72 @@ export function fromAccount(address: Address, privateKeyHex: Hex, mnemonic?: str
 }
 
 export async function generateAccount(): Promise<InternalAccount> {
-  return generateAccountWithMnemonic();
+  const mnemonic = await Mnemonic.generate();
+  return await internalAccountFromMnemonic(mnemonic);
 }
 
 export async function accountFromMnemonic(mnemonic: string): Promise<InternalAccount> {
-  const account = mnemonicToAccount(mnemonic, {path: HEDERA_PATH});
-  const hdKey = account.getHdKey();
-  if (!hdKey?.privateKey) {
-    throw new Error('mnemonicToAccount did not expose a private key.');
-  }
-  const privateKeyHex = (bytesToHex(hdKey.privateKey) as Hex);
-  return fromAccount(account.address, privateKeyHex, mnemonic);
+  const normalizedMnemonic = normalizeMnemonic(mnemonic);
+  const parsedMnemonic = await Mnemonic.fromString(normalizedMnemonic);
+  return await internalAccountFromMnemonic(parsedMnemonic, normalizedMnemonic);
 }
 
 export function accountToMnemonic(internalAccount: InternalAccount): string | undefined {
   return internalAccount.mnemonic;
 }
 
-async function generateAccountWithMnemonic(): Promise<InternalAccount> {
-  const mnemonic = bip39.generateMnemonic(wordlist);
-  return accountFromMnemonic(mnemonic);
+function normalizeMnemonic(mnemonic: string): string {
+  return mnemonic.trim().replace(/\s+/g, ' ');
+}
+
+async function internalAccountFromMnemonic(
+  mnemonic: Mnemonic,
+  mnemonicText = mnemonic.toString(),
+): Promise<InternalAccount> {
+  const privateKey = await mnemonic.toStandardECDSAsecp256k1PrivateKey();
+  return internalAccountFromPrivateKey(privateKey, mnemonicText);
+}
+
+function internalAccountFromPrivateKey(privateKey: PrivateKey, mnemonic?: string): InternalAccount {
+  const privateKeyHex = bytesToHex(privateKey.toBytesRaw()) as Hex;
+  const account = privateKeyToAccount(privateKeyHex);
+  return fromAccount(account.address, privateKeyHex, mnemonic);
 }
 
 export function formatCoinAmount(amount: bigint | number, decimals: number, maximumFractionDigits = 4): string {
   const num = typeof amount === 'bigint' ? Number(amount) : Number(amount);
   return (num / Math.pow(10, decimals)).toLocaleString(undefined, {maximumFractionDigits});
+}
+
+function getNetworkConfig(network?: NetworkId) {
+  return network ? getConfig(network) : getCurrentConfig();
+}
+
+function contractIdToEvmAddress(contractId: string): `0x${string}` {
+  if (contractId.startsWith('0x')) {
+    return contractId as `0x${string}`;
+  }
+
+  return `0x${ContractId.fromString(contractId).toSolidityAddress()}` as `0x${string}`;
+}
+
+export async function getHcsTopicId(network?: NetworkId): Promise<string> {
+  const config = getNetworkConfig(network);
+  const {publicClient} = getHederaClient(network);
+
+  return await publicClient.readContract({
+    address: contractIdToEvmAddress(config.account),
+    abi: MerxetAbi.abi,
+    functionName: 'hcsTopicId',
+  }) as string;
+}
+
+export async function requireHcsTopicId(network?: NetworkId): Promise<string> {
+  const topicId = (await getHcsTopicId(network)).trim();
+  if (!/^\d+\.\d+\.\d+$/.test(topicId)) {
+    throw new Error('HCS topic ID is not configured on-chain.');
+  }
+  return topicId;
 }
 
 export async function getAccountCoinAmount(address: string, coinId: string): Promise<bigint> {

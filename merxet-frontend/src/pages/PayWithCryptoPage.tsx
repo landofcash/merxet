@@ -1,4 +1,4 @@
-import {ArrowLeft, Wallet, Loader2, CheckCircle, AlertCircle, Check, ChevronDown, ChevronUp, X} from 'lucide-react'
+import {ArrowLeft, Wallet, Loader2, CheckCircle, AlertCircle, Check, ChevronDown, ChevronUp, X, LockKeyhole} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, Navigate, useNavigate} from 'react-router-dom'
@@ -26,7 +26,15 @@ type PaymentStep = 1 | 2
 
 function PayWithCryptoPage() {
   const {order, clearOrder} = useOrder()
-  const {walletAddress, connect, signMessage, walletAdapter} = useWallet()
+  const {
+    walletAddress,
+    walletCanTransact,
+    walletBootstrapMessage,
+    walletKind,
+    walletLocked,
+    signMessage,
+    walletAdapter,
+  } = useWallet()
   const navigate = useNavigate()
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle')
   const [currentStep, setCurrentStep] = useState<PaymentStep>(1)
@@ -43,16 +51,7 @@ function PayWithCryptoPage() {
   const [debugExpanded, setDebugExpanded] = useState(false)
 
   const handleConnectWallet = async () => {
-    setPaymentStatus('connecting')
-    setError('')
-
-    try {
-      await connect()
-      setPaymentStatus('idle')
-    } catch {
-      setError('Failed to connect wallet')
-      setPaymentStatus('error')
-    }
+    navigate('/wallet?returnTo=/pay-crypto')
   }
 
   const handleSignSeed = async () => {
@@ -364,7 +363,9 @@ function PayWithCryptoPage() {
                     <div className="text-center space-y-2">
                       <p className="text-muted-foreground">
                         {!walletAddress ? 'Please connect your Hedera wallet to continue' :
-                          currentStep === 1 ? 'Ready to sign order seed' : 'Ready to process payment'}
+                          walletKind === 'internal' && walletLocked ? 'Unlock your wallet on the wallet page before signing' :
+                            walletKind === 'internal' && !walletCanTransact ? (walletBootstrapMessage || 'Fund and activate this wallet before paying') :
+                              currentStep === 1 ? 'Ready to sign order seed' : 'Ready to process payment'}
                       </p>
                       {walletAdapter && walletAddress && (
                         <p className="text-sm font-mono bg-muted p-2 rounded">
@@ -538,7 +539,17 @@ function PayWithCryptoPage() {
                 {!walletAddress ? (
                   <Button className="w-full" size="lg" onClick={handleConnectWallet}>
                     <Wallet className="mr-2 h-5 w-5"/>
-                    Connect The Wallet
+                    Open Wallet
+                  </Button>
+                ) : walletKind === 'internal' && walletLocked ? (
+                  <Button className="w-full" size="lg" onClick={handleConnectWallet}>
+                    <LockKeyhole className="mr-2 h-5 w-5"/>
+                    Unlock in Wallet
+                  </Button>
+                ) : walletKind === 'internal' && !walletCanTransact ? (
+                  <Button className="w-full" size="lg" onClick={handleConnectWallet}>
+                    <Wallet className="mr-2 h-5 w-5"/>
+                    Activate Wallet
                   </Button>
                 ) : currentStep === 1 ? (
                   <div className="space-y-3">

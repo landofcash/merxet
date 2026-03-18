@@ -47,6 +47,16 @@ export interface OrderCacheEntry {
   payloadHashSeller: string;
   createdDate: bigint;
   updatedDate: bigint;
+  messages: OrderMessageRef[];
+}
+
+export interface OrderMessageRef {
+  topicId: string;
+  sequenceNumber: number;
+  consensusTimestamp: string;
+  sender: string;
+  role: number;
+  type: number;
 }
 
 /**

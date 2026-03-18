@@ -21,20 +21,20 @@ export interface TokenConfig {
   name: string;
   decimals: number;
   img: string | null;
-  // Hedera token ID (e.g., "0.0.123456") or "HBAR"
+  // Hedera token ID (e.g., "0.0.123456")
   tokenId: string;
 }
 
 export interface HederaEndpoints {
   mirrorNodeUrl: string;
   rpcUrl: string;
+  faucetUrl?: string;
 }
 
 export interface NetworkConfig {
   cdnBasePath: string;
   name: NetworkId;
   contractAddress: string;
-  hcsTopicId: string;
   apiUrl: string;
   fileApiUrl:string;
   hedera: HederaEndpoints;
@@ -44,44 +44,44 @@ export interface NetworkConfig {
 }
 
 const configs: Record<NetworkId, NetworkConfig> = {
-
   testnet: {
     name: 'testnet',
-    contractAddress: '0x0000000000000000000000000000000000000000', // TODO: Update with deployed contract address
-    hcsTopicId: '0.0.1234567', // TODO: Update
-    apiUrl: 'https://sync.merxet.com/api/t',
-    fileApiUrl: 'https://sync.merxet.com/api/cdn',
+    contractAddress: '0.0.7565091',
+    apiUrl: 'http://localhost:3000/api/v1/t',
+    fileApiUrl: 'http://localhost:3000/api/cdn',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
       mirrorNodeUrl: 'https://testnet.mirrornode.hedera.com',
       rpcUrl: 'https://testnet.hashio.io/api',
+      faucetUrl: 'https://portal.hedera.com/faucet',
     },
     explorerBaseUrl: HEDERA_EXPLORER_BASE,
     approvedShopWallets: [
       '0.0.123456', // Placeholder
     ],
     supportedTokens: [
-      { id: 0, name: 'HBAR', decimals: 8, img: null, tokenId: 'HBAR' }
+      { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: '0.0.0' },
+      { id: 1, name: 'USDC', decimals: 6, img:null, tokenId: '0.0.429274' }
     ],
   },
 
-  devnet: {
-    name: 'devnet',
+  mainnet: {
+    name: 'mainnet',
     contractAddress: '0x0000000000000000000000000000000000000000', // TODO: Update
-    hcsTopicId: '0.0.1234567', // TODO: Update
-    apiUrl: 'https://sync.merxet.com/api/d',
+    apiUrl: 'https://sync.merxet.com/api/m',
     fileApiUrl: 'https://sync.merxet.com/api/cdn',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
-      mirrorNodeUrl: 'https://previewnet.mirrornode.hedera.com',
-      rpcUrl: 'https://previewnet.hashio.io/api',
+      mirrorNodeUrl: 'https://mainnet.mirrornode.hedera.com',
+      rpcUrl: 'https://mainnet.hashio.io/api',
+      faucetUrl: '',
     },
     explorerBaseUrl: HEDERA_EXPLORER_BASE,
     approvedShopWallets: [
       '0.0.123456',
     ],
     supportedTokens: [
-      { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: 'HBAR' }      
+      { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: '0.0.0' }
     ],
   }
 };
@@ -99,8 +99,8 @@ export const getCurrentConfig = (): NetworkConfig => {
 };
 
 export const getNetworkIdFromQRCode = (value:string):NetworkId => {
+  if(value==="1")return "mainnet";
   if(value==="2")return "testnet";
-  if(value==="3")return "devnet";
   return "mainnet";
 }
 
@@ -128,6 +128,5 @@ export function isMobileWeb(): boolean {
   const { any } = isMobile(navigator.userAgent || '');
   return any;
 }
-
 
 

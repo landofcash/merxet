@@ -58,5 +58,6 @@ export function mapOrderRowToCacheEntry(seedBytes32: string, row: any): OrderCac
     payloadHashSeller: bytes32ToHex(String(row?.payloadHashSeller ?? '0x')),
     createdDate: BigInt(String(row?.createdTs ?? 0)),
     updatedDate: BigInt(String(row?.updatedTs ?? 0)),
+    messages: [],
   };
 }

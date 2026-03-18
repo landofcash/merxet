@@ -17,8 +17,10 @@ import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUti
 import {signPrefix} from '@/config'
 import {formatCryptoError} from "@/lib/cryptoFormat.ts";
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
+import type {OrderMessageRef} from "@/lib/syncService.ts";
 
 interface Order {
+  messages?: OrderMessageRef[]
   version: string
   productSeed: string
   status: string
@@ -128,7 +130,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
 
       // Step 4: Decrypt both buyer and seller boxes using the same AES key
       const chainAdapter = getChainAdapter()
-      const encryptedBuyerData = await chainAdapter.viewBuyerData(order.seed)
+      const encryptedBuyerData = await chainAdapter.viewBuyerData(order.seed, order.messages)
 
       let buyerResult: DecryptedBoxResult = {
         decryptedText: null,
@@ -142,7 +144,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       }
       setBuyerDecryptionResult(buyerResult)
 
-      const encryptedSellerData = await chainAdapter.viewSellerData(order.seed)
+      const encryptedSellerData = await chainAdapter.viewSellerData(order.seed, order.messages)
       let sellerResult: DecryptedBoxResult = {
         decryptedText: null,
         error: null,
@@ -155,7 +157,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       }
       setSellerDecryptionResult(sellerResult)
 
-      // Check if there were any critical errors (not including "box not found")
+      // Missing seller payload is normal before delivery, so only surface hard failures.
       if (buyerResult.error || (sellerResult.error && !sellerResult.notFound)) {
         setError(buyerResult.error || sellerResult.error || 'Decryption failed')
         setDecryptionStatus('error')
@@ -327,40 +329,42 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
                   <span className="text-sm font-medium">Order Details Decrypted</span>
                 </div>
 
-                {/* Buyer Data Section */}
+                {/* Buyer Payload Section */}
                 {buyerDecryptionResult && (
                   <div className="bg-muted/50 p-3 rounded-md space-y-2">
-                    <h4 className="font-medium text-sm text-blue-600">Buyer Order Data:</h4>
+                    <h4 className="font-medium text-sm text-blue-600">Buyer Payload:</h4>
                     {buyerDecryptionResult.notFound ? (
                       <p className="text-xs text-muted-foreground">
-                        Buyer data box not found. This might indicate an issue with the order. </p>
+                        Buyer payload not found on HCS. This likely indicates an issue with the order record.
+                      </p>
                     ) : buyerDecryptionResult.error ? (
                       <p className="text-xs text-destructive">
-                        Error decrypting buyer data: {buyerDecryptionResult.error}
+                        Error decrypting buyer payload: {buyerDecryptionResult.error}
                       </p>
                     ) : buyerDecryptionResult.decryptedText ? (
                       renderJsonAsKeyValue(buyerDecryptionResult.decryptedText)
                     ) : (
-                      <p className="text-xs text-muted-foreground">No buyer data available</p>
+                      <p className="text-xs text-muted-foreground">No buyer payload available</p>
                     )}
                   </div>
                 )}
 
-                {/* Seller Data Section */}
+                {/* Seller Payload Section */}
                 {sellerDecryptionResult && (
                   <div className="bg-muted/50 p-3 rounded-md space-y-2">
-                    <h4 className="font-medium text-sm text-purple-600">Seller Order Data:</h4>
+                    <h4 className="font-medium text-sm text-purple-600">Seller Payload:</h4>
                     {sellerDecryptionResult.notFound ? (
                       <p className="text-xs text-muted-foreground">
-                        Seller data box not found. It might not be available yet (normal before delivery). </p>
+                        Seller payload not found on HCS. This is normal until the seller submits delivery data.
+                      </p>
                     ) : sellerDecryptionResult.error ? (
                       <p className="text-xs text-destructive">
-                        Error decrypting seller data: {sellerDecryptionResult.error}
+                        Error decrypting seller payload: {sellerDecryptionResult.error}
                       </p>
                     ) : sellerDecryptionResult.decryptedText ? (
                       renderJsonAsKeyValue(sellerDecryptionResult.decryptedText)
                     ) : (
-                      <p className="text-xs text-muted-foreground">No seller data available</p>
+                      <p className="text-xs text-muted-foreground">No seller payload available</p>
                     )}
                   </div>
                 )}

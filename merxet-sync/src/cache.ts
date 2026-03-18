@@ -1,5 +1,5 @@
 import Loki from 'lokijs';
-import {CatalogStore, CatalogCacheEntry, OrderStore, OrderCacheEntry} from './types/types';
+import {CatalogStore, CatalogCacheEntry, OrderStore, OrderCacheEntry, OrderMessageRef} from './types/types';
 import { normalizeWalletId } from './walletIdentity';
 
 interface ChainCursor {
@@ -8,11 +8,17 @@ interface ChainCursor {
   logIndex: number;
 }
 
+interface MessageCursor {
+  key: string;
+  sequenceNumber: number;
+}
+
 class AppDatabase {
   private db: Loki;
   private catalogs!: Collection<CatalogStore>;
   private orders!: Collection<OrderStore>;
   private chainCursors!: Collection<ChainCursor>;
+  private messageCursors!: Collection<MessageCursor>;
   private initialized: boolean = false;
 
   constructor() {
@@ -35,6 +41,11 @@ class AppDatabase {
     });
 
     this.chainCursors = this.db.addCollection('chainCursors', {
+      unique: ['key'],
+      indices: ['key']
+    });
+
+    this.messageCursors = this.db.addCollection('messageCursors', {
       unique: ['key'],
       indices: ['key']
     });
@@ -113,7 +124,10 @@ class AppDatabase {
         for (const newOrder of newOrders) {
           const index = updatedOrders.findIndex(o => o.seed === newOrder.seed);
           if (index >= 0) {
-            updatedOrders[index] = newOrder;
+            updatedOrders[index] = {
+              ...newOrder,
+              messages: updatedOrders[index].messages ?? newOrder.messages,
+            };
           } else {
             updatedOrders.push(newOrder);
           }
@@ -152,6 +166,7 @@ class AppDatabase {
     this.catalogs.clear();
     this.orders.clear();
     this.chainCursors.clear();
+    this.messageCursors.clear();
   }
 
   // Chain cursors (Hedera EVM logs) by key
@@ -170,6 +185,55 @@ class AppDatabase {
       this.chainCursors.update(existing);
     } else {
       this.chainCursors.insert({ key, blockNumber: cursor.blockNumber, logIndex: cursor.logIndex });
+    }
+  }
+
+  async getMessageCursor(key: string): Promise<number | null> {
+    await this.ensureInitialized();
+    const row = this.messageCursors.findOne({ key });
+    return row ? row.sequenceNumber : null;
+  }
+
+  async setMessageCursor(key: string, sequenceNumber: number): Promise<void> {
+    await this.ensureInitialized();
+    const existing = this.messageCursors.findOne({ key });
+    if (existing) {
+      existing.sequenceNumber = sequenceNumber;
+      this.messageCursors.update(existing);
+    } else {
+      this.messageCursors.insert({ key, sequenceNumber });
+    }
+  }
+
+  async findOrderBySeed(networkName: string, seed: string): Promise<OrderCacheEntry | null> {
+    await this.ensureInitialized();
+    const stores = this.orders.find({ networkName });
+    for (const store of stores) {
+      const match = store.orders.find(order => order.seed === seed);
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  }
+
+  async appendOrderMessageRef(networkName: string, seed: string, ref: OrderMessageRef): Promise<void> {
+    await this.ensureInitialized();
+    const stores = this.orders.find({ networkName });
+    for (const store of stores) {
+      const order = store.orders.find(entry => entry.seed === seed);
+      if (!order) {
+        continue;
+      }
+      const exists = order.messages.some(message =>
+        message.topicId === ref.topicId && message.sequenceNumber === ref.sequenceNumber,
+      );
+      if (!exists) {
+        order.messages.push(ref);
+        order.messages.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+        this.orders.update(store);
+      }
+      return;
     }
   }
 

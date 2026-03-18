@@ -3,7 +3,7 @@ import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, Navigate, useNavigate} from 'react-router-dom'
 import {useState} from 'react'
-import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens } from '@/lib/tokenUtils'
+import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens, getTokenByType } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import {encodeBase64Uuid} from "@/lib/uuidUtils.ts";
 import {MAX_ORDER_PAYLOAD_BYTES, signPrefix} from "@/config.ts";
@@ -239,11 +239,13 @@ function PayWithCreditCardPage() {
     // TODO: Implement real-time crypto to USD conversion
     // For now, using simplified conversion rates by coinType
     const conversionRates: Record<string, number> = {
-      'HBAR': 0.10, // HBAR to USD (placeholder)
+      '0.0.0': 0.10, // HBAR to USD (placeholder)
+      '0.0.429274': 1.0, // USDC to USD placeholder
     }
 
+    const token = getTokenByType(tokenType)
     const rate = conversionRates[tokenType] || 1.0
-    const amount = Number(total) / 1000000 // Convert from base units
+    const amount = Number(total) / (10 ** token.decimals)
     return sum + (amount * rate)
   }, 0)
 

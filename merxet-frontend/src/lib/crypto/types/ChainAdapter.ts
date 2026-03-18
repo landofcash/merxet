@@ -1,6 +1,6 @@
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
 import type {NetworkId, WalletAdapter} from "@/context/wallet/types.ts";
-import type {ProductData} from "@/lib/syncService.ts";
+import type {OrderMessageRef, ProductData} from "@/lib/syncService.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
 import type {CartItem} from "@/lib/cartStorage.ts";
 
@@ -18,27 +18,27 @@ export interface ChainAdapter {
 
 
   /**
-   * Uploads a product catalogue URL to the blockchain
+   * Uploads a product catalog URL to the blockchain
    * @param walletAdapter
    * @param seed The 22-character base64-encoded UUID seed
    * @param sellerPubKey The seller's public key (base64 encoded)
-   * @param catalogueUrl The URL where the product catalogue JSON is hosted
+   * @param catalogUrl The URL where the product catalog JSON is hosted
    * @returns The transaction ID
    */
-  uploadCatalogueUrlToBlockchain(
+  uploadCatalogUrlToBlockchain(
     walletAdapter: WalletAdapter,
     seed: string,
     sellerPubKey: string,
-    catalogueUrl: string
+    catalogUrl: string
   ): Promise<string>
 
   /**
-   * Deletes a product box from the blockchain using the cleanupProduct method
+   * Deletes a catalog from the blockchain
    * @param walletAdapter
    * @param seed The 22-character base64-encoded seed
    * @returns The transaction ID
    */
-  deleteProductBoxOnBlockchain(
+  deleteCatalogOnBlockchain(
     walletAdapter: WalletAdapter,
     seed: string
   ): Promise<string>
@@ -106,11 +106,11 @@ export interface ChainAdapter {
     senderAddress: string
   ): Promise<string>
 
-  viewProductOnBlockchain(seed: string): Promise<ProductData>
+  viewCatalogOnBlockchain(seed: string): Promise<ProductData>
 
-  viewBuyerData(seed: string): Promise<GetStorageResult>
+  viewBuyerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult>
 
-  viewSellerData(seed: string): Promise<GetStorageResult>
+  viewSellerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult>
 
 
   /**

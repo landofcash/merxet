@@ -11,6 +11,7 @@ import OrderPage from './pages/OrderPage.tsx'
 import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
 import PayWithCryptoPage from './pages/PayWithCryptoPage.tsx'
 import PayWithCreditCardPage from './pages/PayWithCreditCardPage.tsx'
+import WalletPage from './pages/WalletPage.tsx'
 import TestEncryptionPage from './pages/debug/TestEncryptionPage.tsx'
 import TestDecryptionPage from './pages/debug/TestDecryptionPage.tsx'
 import LogViewerPage from './pages/debug/LogViewerPage.tsx'
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
                             <Route path="/scan" element={<QrScanPage/>}/>
                             <Route path="/product-details" element={<ProductDetailPage/>}/>
                             <Route path="/settings" element={<SettingsPage/>}/>
+                            <Route path="/wallet" element={<WalletPage/>}/>
                             <Route path="/order" element={<OrderPage/>}/>
                             <Route path="/orders" element={<OrderHistoryPage/>}/>
                             <Route path="/pay-crypto" element={<PayWithCryptoPage/>}/>

@@ -4,9 +4,8 @@ import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} f
 import {Link} from 'react-router-dom'
 import WalletAuth from './components/WalletAuth'
 import {APP_VERSION, APP_KEY_PREFIX, getConfig} from './config'
-import {useEffect, useMemo, useState, useCallback} from 'react'
+import {useEffect, useMemo, useCallback} from 'react'
 import {useWallet} from './context/WalletContext'
-import {requestDevnetFaucet} from './lib/crypto/cryptoUtils'
 
 function App() {
   useEffect(() => {
@@ -39,42 +38,26 @@ function App() {
     }
   }, [])
 
-  const { network, walletAddress } = useWallet()
+  const { network, walletAddress, walletIdentity } = useWallet()
   const cfg = useMemo(() => getConfig(network), [network])
-  const faucetUrl = cfg?.hedera?.mirrorNodeUrl
-  const [isRequesting, setIsRequesting] = useState(false)
+  const faucetUrl = cfg?.hedera?.faucetUrl
+  const faucetTargetUrl = useMemo(() => {
+    if (!faucetUrl) return null
+    const address = walletIdentity?.evmAddress ?? walletAddress
+    if (!address) return faucetUrl
+    return `${faucetUrl}?address=${encodeURIComponent(address)}`
+  }, [faucetUrl, walletAddress, walletIdentity?.evmAddress])
   const onFaucetClick = useCallback(async () => {
     if (!faucetUrl) return
-    if (network === 'testnet') {
-      window.open(faucetUrl, '_blank', 'noopener')
-      return
-    }
-    if (network === 'devnet') {
-      if (!walletAddress) {
-        alert('Please connect your wallet first to request Devnet funds.')
-        return
-      }
-      try {
-        setIsRequesting(true)
-        await requestDevnetFaucet(walletAddress, 100_000_000)
-        alert('Requested 1 APT from Devnet faucet. It may take a few seconds to appear in your wallet.')
-      } catch (e: any) {
-        alert(`Faucet request failed: ${e?.message ?? String(e)}`)
-      } finally {
-        setIsRequesting(false)
-      }
-      return
-    }
-    // Fallback: open faucet page if provided
-    window.open(faucetUrl, '_blank', 'noopener')
-  }, [faucetUrl, network, walletAddress])
+    window.open(faucetTargetUrl ?? faucetUrl, '_blank', 'noopener')
+  }, [faucetTargetUrl, faucetUrl])
 
   return (
     <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl sm:text-4xl font-bold flex items-center justify-center gap-3">
-            <img src="/logo-t-g-64x64.png" alt="Merxet Logo" className="h-10 w-10 sm:h-12 sm:w-12"/>
+            <img src="/logo.svg" alt="Merxet Logo" className="h-10 w-10 sm:h-12 sm:w-12"/>
             Merxet
           </CardTitle>
           <CardDescription className="text-lg sm:text-xl mt-2">
@@ -112,10 +95,9 @@ function App() {
               className="w-full bg-gradient-to-br from-[oklch(0.75_0.12_340)] via-[oklch(0.7_0.13_345)] to-[oklch(0.63_0.11_350)] text-[oklch(0.99_0.02_345)] border border-[oklch(0.8_0.15_345)]"
               size="lg"
               onClick={onFaucetClick}
-              disabled={network==='devnet' && isRequesting}
             >
               <HandCoins className="mr-2 h-5 w-5"/>
-              {network==='testnet' ? 'Get FREE Test APT' : (isRequesting ? 'Requesting APT...' : 'Get FREE Test APT')}
+              Get FREE Test HBAR
             </Button>
           )}
 
