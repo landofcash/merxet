@@ -122,7 +122,7 @@ const WalletDisconnected: React.FC = () => {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button className="px-3 py-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">
+          <Button className="cursor-pointer border-0 bg-[linear-gradient(135deg,#8259EF_0%,#0031FF_100%)] px-3 py-1 text-sm text-white shadow-[0_18px_34px_-18px_rgba(0,49,255,0.55)] hover:brightness-110">
             <WalletIcon className="w-4 h-4"/>
             <span className="hidden sm:inline">Connect wallet</span>
           </Button>

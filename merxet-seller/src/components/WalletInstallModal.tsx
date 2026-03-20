@@ -19,12 +19,12 @@ const WalletInstallModal: React.FC<WalletInstallModalProps> = ({isOpen, onClose}
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-[#041724]/55 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="relative mx-4 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-card shadow-lg"
+        className="relative mx-4 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[#8bb9d5]/30 bg-[linear-gradient(180deg,#fcfeff_0%,#f2f8fc_100%)] shadow-[0_32px_90px_-40px_rgba(3,23,36,0.45)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative bg-linear-to-r from-emerald-700 via-teal-700 to-cyan-700 px-6 py-10 text-white">
+        <div className="relative bg-linear-to-r from-[#0a2940] via-[#0c4d73] to-[#0596d6] px-6 py-10 text-white">
           <button
             onClick={onClose}
             className="absolute right-3 top-3 text-white/90 hover:text-white transition"
@@ -35,7 +35,7 @@ const WalletInstallModal: React.FC<WalletInstallModalProps> = ({isOpen, onClose}
           <div className="space-y-2 text-center">
             <img src="/hedera-logo.svg" alt="Hedera logo" className="mx-auto h-12 w-12"/>
             <h3 className="text-2xl font-semibold">Use the built-in wallet</h3>
-            <p className="text-sm text-emerald-50/90">
+            <p className="text-sm text-sky-50/90">
               Merxet Seller currently supports its encrypted internal Hedera wallet directly in the app.
             </p>
           </div>
@@ -49,7 +49,7 @@ const WalletInstallModal: React.FC<WalletInstallModalProps> = ({isOpen, onClose}
             </p>
           </div>
 
-          <div className="rounded-xl border p-4 text-left">
+          <div className="rounded-xl border border-[#a8c8dc]/45 bg-white/80 p-4 text-left">
             <div className="font-medium mb-2">How it works</div>
             <p className="text-sm text-muted-foreground">
               Open the wallet selector, then create a new internal wallet or import an existing recovery phrase or private key.

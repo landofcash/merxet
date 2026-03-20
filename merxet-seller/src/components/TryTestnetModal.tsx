@@ -122,25 +122,25 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#041724]/55 p-4 backdrop-blur-sm" onClick={onClose}>
         <div
-          className="relative w-full max-w-3xl overflow-hidden rounded-2xl border bg-card shadow-lg"
+          className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-[#8bb9d5]/30 bg-[linear-gradient(180deg,#fcfeff_0%,#f2f8fc_100%)] shadow-[0_32px_90px_-40px_rgba(3,23,36,0.45)]"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="relative h-28 bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-700 px-6 py-5 text-white">
+          <div className="relative h-28 bg-gradient-to-r from-[#0a2940] via-[#0c4d73] to-[#0596d6] px-6 py-5 text-white">
             <button onClick={onClose} className="absolute right-4 top-4 text-white/90 hover:text-white" aria-label="Close">
               <X className="h-6 w-6"/>
             </button>
             <div className="space-y-2">
               <h3 className="text-2xl font-semibold">Try Merxet on Hedera Testnet</h3>
-              <p className="max-w-2xl text-sm text-emerald-50/90">
+              <p className="max-w-2xl text-sm text-sky-50/90">
                 Create or import an encrypted internal wallet in-browser, fund it on Hedera testnet, then start testing marketplace transactions.
               </p>
             </div>
           </div>
 
           <div className="space-y-6 p-6">
-            <div className="flex items-center justify-between rounded-xl border p-4">
+            <div className="flex items-center justify-between rounded-xl border border-[#a8c8dc]/45 bg-white/80 p-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Network</div>
                 <div className="text-sm font-medium">{network.toUpperCase()}</div>
@@ -158,7 +158,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
             </div>
 
             {availableExternalProviders.length > 0 ? (
-              <div className="space-y-3 rounded-xl border p-4">
+              <div className="space-y-3 rounded-xl border border-[#a8c8dc]/45 bg-white/80 p-4">
                 <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">External wallets</div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {availableExternalProviders.map((provider) => (
@@ -185,7 +185,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
               </div>
             ) : null}
 
-            <div className="space-y-3 rounded-xl border p-4">
+              <div className="space-y-3 rounded-xl border border-[#a8c8dc]/45 bg-white/80 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Internal wallet</div>
@@ -210,13 +210,13 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
               </div>
 
               {internalWallets.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                <div className="rounded-xl border border-dashed border-[#a8c8dc]/60 bg-[#f7fbfe] p-4 text-sm text-muted-foreground">
                   No internal wallets saved locally yet.
                 </div>
               ) : (
                 <div className="space-y-2">
                   {internalWallets.map((wallet) => (
-                    <div key={wallet.id} className="rounded-xl border p-3 space-y-3">
+                    <div key={wallet.id} className="rounded-xl border border-[#a8c8dc]/45 bg-[#f8fbfe] p-3 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="font-medium">{wallet.label}</div>
