@@ -18,10 +18,13 @@ import type {
   InternalWalletBalance,
   InternalWalletIdentity,
   InternalWalletLifecycleState,
+  InternalWalletUnlockRequest,
   InternalWalletStatus,
   InternalWalletSummary,
 } from "@/lib/internalWallet/types.ts";
 import {getInternalWalletProvider} from "@/lib/internalWallet/registry.ts";
+import {setInternalWalletUnlockHandler} from "@/lib/internalWallet/unlockGate.ts";
+import InternalWalletUnlockDialog from "@/components/wallet/InternalWalletUnlockDialog";
 
 function createAdaptersForChain(): WalletAdapter[] {
   return [];
@@ -70,6 +73,11 @@ export interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | null>(null);
 
+type UnlockDialogState = InternalWalletUnlockRequest & {
+  resolve: (passphrase: string) => void;
+  reject: (error: Error) => void;
+};
+
 export function WalletProvider({children}: {children: ReactNode}) {
   const [walletKind, setWalletKind] = useState<WalletKind | null>(() => {
     return (localStorage.getItem(`${APP_KEY_PREFIX}-walletKind`) as WalletKind | null) ?? null;
@@ -82,6 +90,9 @@ export function WalletProvider({children}: {children: ReactNode}) {
   const [externalWalletAddress, setExternalWalletAddress] = useState<string | null>(null);
   const [internalWallets, setInternalWallets] = useState<InternalWalletSummary[]>([]);
   const [internalActiveWallet, setInternalActiveWallet] = useState<InternalWalletStatus | null>(null);
+  const [unlockDialogState, setUnlockDialogState] = useState<UnlockDialogState | null>(null);
+  const [unlockDialogBusy, setUnlockDialogBusy] = useState(false);
+  const [unlockDialogError, setUnlockDialogError] = useState<string | null>(null);
   const [walletActionPending, setWalletActionPending] = useState(false);
   const [walletActionLabel, setWalletActionLabel] = useState<string | null>(null);
   const walletActionCountRef = useRef(0);
@@ -131,7 +142,24 @@ export function WalletProvider({children}: {children: ReactNode}) {
     void syncInternalWalletState();
   }, [syncInternalWalletState]);
 
-  const startWalletAction = useCallback((_kind: "signMessage" | "executeContract" | "executeBatch", label: string) => {
+  useEffect(() => {
+    setInternalWalletUnlockHandler((request) => {
+      return new Promise<string>((resolve, reject) => {
+        setUnlockDialogError(null);
+        setUnlockDialogState({
+          ...request,
+          resolve,
+          reject,
+        });
+      });
+    });
+
+    return () => {
+      setInternalWalletUnlockHandler(null);
+    };
+  }, []);
+
+  const startWalletAction = useCallback((_kind: "signMessage" | "executeContract" | "executeBatch" | "signAndSubmit", label: string) => {
     walletActionCountRef.current += 1;
     setWalletActionPending(true);
     setWalletActionLabel(label);
@@ -412,6 +440,33 @@ export function WalletProvider({children}: {children: ReactNode}) {
     return await walletAdapterForUi.signMessage(dataToSign, message);
   }, [walletAdapterForUi, walletKind]);
 
+  const handleUnlockDialogCancel = useCallback(() => {
+    if (unlockDialogState) {
+      unlockDialogState.reject(new Error("Wallet unlock was cancelled."));
+    }
+    setUnlockDialogError(null);
+    setUnlockDialogBusy(false);
+    setUnlockDialogState(null);
+  }, [unlockDialogState]);
+
+  const handleUnlockDialogConfirm = useCallback(async (passphrase: string) => {
+    if (!unlockDialogState) {
+      return;
+    }
+
+    setUnlockDialogBusy(true);
+    setUnlockDialogError(null);
+    try {
+      await unlockInternalWallet(passphrase);
+      unlockDialogState.resolve(passphrase);
+      setUnlockDialogState(null);
+    } catch (error) {
+      setUnlockDialogError(error instanceof Error ? error.message : "Failed to unlock wallet.");
+    } finally {
+      setUnlockDialogBusy(false);
+    }
+  }, [unlockDialogState, unlockInternalWallet]);
+
   const internalAddresses = useMemo(() => internalWallets.map(wallet => wallet.identity.evmAddress), [internalWallets]);
 
   const contextValue = useMemo<WalletContextType>(() => ({
@@ -487,6 +542,19 @@ export function WalletProvider({children}: {children: ReactNode}) {
   return (
     <WalletContext.Provider value={contextValue}>
       {children}
+      <InternalWalletUnlockDialog
+        open={unlockDialogState != null}
+        request={unlockDialogState ? {
+          walletId: unlockDialogState.walletId,
+          walletLabel: unlockDialogState.walletLabel,
+          reason: unlockDialogState.reason,
+          reasonLabel: unlockDialogState.reasonLabel,
+        } : null}
+        busy={unlockDialogBusy}
+        error={unlockDialogError}
+        onCancel={handleUnlockDialogCancel}
+        onConfirm={handleUnlockDialogConfirm}
+      />
     </WalletContext.Provider>
   );
 }

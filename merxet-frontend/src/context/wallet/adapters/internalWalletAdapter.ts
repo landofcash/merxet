@@ -15,6 +15,9 @@ export const internalWalletAdapter: WalletAdapter = {
   async getNetwork() {
     return getCurrentConfig().name;
   },
+  async getPublicKey() {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).getPublicKey?.() ?? null;
+  },
   async connect(options) {
     return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).connect(options);
   },
@@ -35,5 +38,11 @@ export const internalWalletAdapter: WalletAdapter = {
   },
   async executeBatch(payloads) {
     return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).executeBatch(payloads);
+  },
+  async signAndSubmit(transaction: object) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).signAndSubmit!(transaction);
+  },
+  async readFileContents(fileId: string) {
+    return await hederaInternalWalletProvider.getWalletAdapter(getCurrentConfig().name).readFileContents!(fileId);
   },
 };

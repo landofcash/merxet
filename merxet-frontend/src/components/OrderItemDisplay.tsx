@@ -16,7 +16,7 @@ import {formatUtcDate} from '@/lib/dateUtils'
 import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUtils'
 import {signPrefix} from '@/config'
 import {formatCryptoError} from "@/lib/cryptoFormat.ts";
-import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
+import {loadBuyerEncryptedPayloadForDecryption, loadSellerEncryptedPayloadForDecryption} from "@/lib/crypto/providers/hederaAdapter.ts";
 import type {OrderMessageRef} from "@/lib/syncService.ts";
 
 interface Order {
@@ -60,7 +60,7 @@ interface DecryptedBoxResult {
 }
 
 const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
-  const {walletAddress, signMessage} = useWallet()
+  const {walletAddress, signMessage, walletAdapter} = useWallet()
   const [decryptionStatus, setDecryptionStatus] = useState<DecryptionStatus>('idle')
   const [error, setError] = useState<string>('')
   const [buyerDecryptionResult, setBuyerDecryptionResult] = useState<DecryptedBoxResult | null>(null)
@@ -99,7 +99,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
   }
 
   const handleDecryptPayload = async () => {
-    if (!walletAddress) {
+    if (!walletAddress || !walletAdapter) {
       setError('Please connect your wallet to decrypt order data')
       return
     }
@@ -129,8 +129,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       setAesKey(decryptedAESKey)
 
       // Step 4: Decrypt both buyer and seller boxes using the same AES key
-      const chainAdapter = getChainAdapter()
-      const encryptedBuyerData = await chainAdapter.viewBuyerData(order.seed, order.messages)
+      const encryptedBuyerData = await loadBuyerEncryptedPayloadForDecryption(walletAdapter, order.seed, order.messages)
 
       let buyerResult: DecryptedBoxResult = {
         decryptedText: null,
@@ -144,7 +143,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       }
       setBuyerDecryptionResult(buyerResult)
 
-      const encryptedSellerData = await chainAdapter.viewSellerData(order.seed, order.messages)
+      const encryptedSellerData = await loadSellerEncryptedPayloadForDecryption(walletAdapter, order.seed, order.messages)
       let sellerResult: DecryptedBoxResult = {
         decryptedText: null,
         error: null,
@@ -335,7 +334,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
                     <h4 className="font-medium text-sm text-blue-600">Buyer Payload:</h4>
                     {buyerDecryptionResult.notFound ? (
                       <p className="text-xs text-muted-foreground">
-                        Buyer payload not found on HCS. This likely indicates an issue with the order record.
+                        Buyer payload reference not found. This likely indicates an issue with the order record.
                       </p>
                     ) : buyerDecryptionResult.error ? (
                       <p className="text-xs text-destructive">
@@ -355,7 +354,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
                     <h4 className="font-medium text-sm text-purple-600">Seller Payload:</h4>
                     {sellerDecryptionResult.notFound ? (
                       <p className="text-xs text-muted-foreground">
-                        Seller payload not found on HCS. This is normal until the seller submits delivery data.
+                        Seller payload reference not found. This is normal until the seller submits delivery data.
                       </p>
                     ) : sellerDecryptionResult.error ? (
                       <p className="text-xs text-destructive">

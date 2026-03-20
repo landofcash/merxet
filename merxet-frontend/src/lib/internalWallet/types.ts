@@ -106,3 +106,10 @@ export interface InternalWalletPassphraseChangeInput {
   currentPassphrase?: string;
   nextPassphrase: string;
 }
+
+export interface InternalWalletUnlockRequest {
+  walletId: string;
+  walletLabel: string;
+  reason: "sign-message" | "sign-transaction" | "backup-reveal";
+  reasonLabel: string;
+}

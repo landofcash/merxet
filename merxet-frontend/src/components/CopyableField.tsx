@@ -9,9 +9,18 @@ interface CopyableFieldProps {
     small?: boolean;
     length?: number;
     mdLength?: number;
+    className?: string;
 }
 
-const CopyableField: React.FC<CopyableFieldProps> = ({label, value, displayValue=null, small = false, length = 0, mdLength = 0}) => {
+const CopyableField: React.FC<CopyableFieldProps> = ({
+    label,
+    value,
+    displayValue = null,
+    small = false,
+    length = 0,
+    mdLength = 0,
+    className = "",
+}) => {
     const [copied, setCopied] = useState(false);
 
     const copyToClipboard = async (e: React.MouseEvent)  => {
@@ -40,7 +49,7 @@ const CopyableField: React.FC<CopyableFieldProps> = ({label, value, displayValue
         <button
             type="button"
             onClick={copyToClipboard}
-            className={`max-w-fit inline-block cursor-pointer bg-transparent border-0 p-0 m-0 text-left ${small ? "text-xs" : "text-sm"} hover:underline`}
+            className={`max-w-fit inline-block cursor-pointer bg-transparent border-0 p-0 m-0 text-left ${small ? "text-xs" : "text-sm"} hover:underline ${className}`}
         >
             <span className="md:hidden  font-mono">{displayText}</span>
             <span className="hidden md:inline break-words whitespace-pre-wrap font-mono">{displayTextMd}</span>

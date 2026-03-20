@@ -7,7 +7,8 @@ import type {CartItem} from "@/lib/cartStorage.ts";
 import {hexToBytes, b64FromBytes, b64ToBytes} from "@/utils/encoding.ts";
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
 import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
-import {decodeHcsEnvelope, encodeHcsEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
+import {decodeHcsEnvelope, encodeHcsReferenceEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
+import {loadEncryptedPayloadFromHfs, loadEncryptedPayloadFromHfsWithWallet, uploadEncryptedPayloadToHfs} from "@/lib/hedera/hfsStorage.ts";
 // @ts-ignore
 import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar, TokenId, ContractId} from "@hiero-ledger/sdk";
 import {ethers} from "ethers";
@@ -88,6 +89,14 @@ function contractIdToEvmAddress(contractId: string): string {
   return "0x" + ContractId.fromString(contractId).toSolidityAddress();
 }
 
+function contractAddressToTokenId(tokenAddress: string): string {
+  if (!tokenAddress || tokenAddress === ethers.ZeroAddress) {
+    return "0.0.0";
+  }
+
+  return TokenId.fromSolidityAddress(tokenAddress.replace(/^0x/i, "")).toString();
+}
+
 type MirrorTopicMessage = {
   message: string;
 };
@@ -98,6 +107,20 @@ type MirrorTopicResponse = {
     next?: string | null;
   };
 };
+
+async function resolveEncryptedPayloadFromEnvelope(
+  envelope: ReturnType<typeof decodeHcsEnvelope>,
+): Promise<string | null> {
+  if (!envelope) {
+    return null;
+  }
+
+  if (envelope.payloadKind === "legacyText") {
+    return envelope.encryptedPayload;
+  }
+
+  return await loadEncryptedPayloadFromHfs(envelope.reference.fileId, envelope.reference.payloadHash);
+}
 
 function buildHcsUrl(pathOrUrl: string, mirrorNodeUrl: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) {
@@ -131,7 +154,7 @@ async function findHcsPayloadByEnvelope(
       if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
         continue;
       }
-      return envelope.encryptedPayload;
+      return await resolveEncryptedPayloadFromEnvelope(envelope);
     }
 
     pageCount += 1;
@@ -174,10 +197,140 @@ async function fetchHcsPayloadByMessageRefs(
       continue;
     }
 
-    return envelope.encryptedPayload;
+    return await resolveEncryptedPayloadFromEnvelope(envelope);
   }
 
   return null;
+}
+
+async function findHcsEnvelope(
+  topicId: string,
+  seed: string,
+  role: number,
+  allowedTypes: number[],
+) {
+  const config = getCurrentConfig();
+  let nextUrl = `${config.hedera.mirrorNodeUrl}/api/v1/topics/${topicId}/messages?order=desc&limit=100`;
+  let pageCount = 0;
+
+  while (nextUrl && pageCount < 20) {
+    const response = await fetch(nextUrl);
+    if (!response.ok) {
+      throw new Error(`Mirror node error ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorTopicResponse;
+    for (const message of data.messages ?? []) {
+      const envelope = decodeHcsEnvelope(b64ToBytes(message.message));
+      if (!envelope) {
+        continue;
+      }
+      if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
+        continue;
+      }
+      return envelope;
+    }
+
+    pageCount += 1;
+    nextUrl = data.links?.next ? buildHcsUrl(data.links.next, config.hedera.mirrorNodeUrl) : "";
+  }
+
+  return null;
+}
+
+async function fetchHcsEnvelopeByMessageRefs(
+  seed: string,
+  messageRefs: OrderMessageRef[],
+  role: number,
+  allowedTypes: number[],
+) {
+  const config = getCurrentConfig();
+  const refs = [...messageRefs]
+    .filter(ref => ref.role === role && allowedTypes.includes(ref.type))
+    .sort((a, b) => b.sequenceNumber - a.sequenceNumber);
+
+  for (const ref of refs) {
+    const response = await fetch(
+      `${config.hedera.mirrorNodeUrl}/api/v1/topics/${ref.topicId}/messages?sequencenumber=eq:${ref.sequenceNumber}&limit=1`,
+    );
+    if (!response.ok) {
+      throw new Error(`Mirror node error ${response.status}`);
+    }
+
+    const data = await response.json() as MirrorTopicResponse;
+    const message = data.messages?.[0];
+    if (!message) {
+      continue;
+    }
+
+    const envelope = decodeHcsEnvelope(b64ToBytes(message.message));
+    if (!envelope) {
+      continue;
+    }
+    if (envelope.seed !== seed || envelope.role !== role || !allowedTypes.includes(envelope.type)) {
+      continue;
+    }
+
+    return envelope;
+  }
+
+  return null;
+}
+
+export async function loadBuyerEncryptedPayloadForDecryption(
+  walletAdapter: WalletAdapter,
+  seed: string,
+  messageRefs?: OrderMessageRef[],
+): Promise<GetStorageResult> {
+  const topicId = await hederaUtils.requireHcsTopicId();
+  const allowedTypes = [HCS_MESSAGE_TYPE.buyerInitialOrder];
+  const envelope = messageRefs?.length
+    ? await fetchHcsEnvelopeByMessageRefs(seed, messageRefs, HCS_MESSAGE_ROLE.buyer, allowedTypes)
+    : await findHcsEnvelope(topicId, seed, HCS_MESSAGE_ROLE.buyer, allowedTypes);
+
+  if (!envelope) {
+    return {data: null, isFound: false};
+  }
+
+  if (envelope.payloadKind === "legacyText") {
+    return {data: envelope.encryptedPayload, isFound: true};
+  }
+
+  const data = await loadEncryptedPayloadFromHfsWithWallet(
+    walletAdapter,
+    envelope.reference.fileId,
+    envelope.reference.payloadHash,
+  );
+
+  return {data, isFound: true};
+}
+
+export async function loadSellerEncryptedPayloadForDecryption(
+  walletAdapter: WalletAdapter,
+  seed: string,
+  messageRefs?: OrderMessageRef[],
+): Promise<GetStorageResult> {
+  const topicId = await hederaUtils.requireHcsTopicId();
+  const allowedTypes = [HCS_MESSAGE_TYPE.sellerDelivery, HCS_MESSAGE_TYPE.sellerRefusal];
+  const envelope = messageRefs?.length
+    ? await fetchHcsEnvelopeByMessageRefs(seed, messageRefs, HCS_MESSAGE_ROLE.seller, allowedTypes)
+    : await findHcsEnvelope(topicId, seed, HCS_MESSAGE_ROLE.seller, allowedTypes);
+
+  if (!envelope) {
+    return {data: null, isFound: false};
+  }
+
+  if (envelope.payloadKind === "legacyText") {
+    return {data: envelope.encryptedPayload, isFound: true};
+  }
+
+  const data = await loadEncryptedPayloadFromHfsWithWallet(
+    walletAdapter,
+    envelope.reference.fileId,
+    envelope.reference.payloadHash,
+  );
+
+  return {data, isFound: true};
 }
 
 export const hederaAdapter: ChainAdapter = {
@@ -295,13 +448,19 @@ export const hederaAdapter: ChainAdapter = {
     const tokenId = tokenIds[0] || "0.0.0";
     const amount = tokenTotals[tokenId] ?? 0n;
     const tokenAddress = tokenIdToContractAddress(tokenId);
+    const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedData);
 
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
           topicId,
-          message: encodeHcsEnvelope(orderSeed, HCS_MESSAGE_ROLE.buyer, HCS_MESSAGE_TYPE.buyerInitialOrder, encryptedData)
+          message: encodeHcsReferenceEnvelope(orderSeed, HCS_MESSAGE_ROLE.buyer, HCS_MESSAGE_TYPE.buyerInitialOrder, {
+            fileId,
+            total: amount.toString(),
+            token: tokenId,
+            payloadHash: encryptedPayloadHash,
+          })
         }
       },
       {
@@ -349,13 +508,19 @@ export const hederaAdapter: ChainAdapter = {
     const tokenId = tokenIds[0] || "0.0.0";
     const amount = tokenTotals[tokenId] ?? 0n;
     const tokenAddress = tokenIdToContractAddress(tokenId);
+    const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedData);
 
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
           topicId,
-          message: encodeHcsEnvelope(orderSeed, HCS_MESSAGE_ROLE.buyer, HCS_MESSAGE_TYPE.buyerInitialOrder, encryptedData)
+          message: encodeHcsReferenceEnvelope(orderSeed, HCS_MESSAGE_ROLE.buyer, HCS_MESSAGE_TYPE.buyerInitialOrder, {
+            fileId,
+            total: amount.toString(),
+            token: tokenId,
+            payloadHash: encryptedPayloadHash,
+          })
         }
       }
     ];
@@ -409,12 +574,21 @@ export const hederaAdapter: ChainAdapter = {
   ): Promise<string> {
     const config = getCurrentConfig();
     const topicId = await hederaUtils.requireHcsTopicId();
+    const orderData = await viewOrder(seed);
+    const total = BigInt(orderData.priceAmount ?? orderData.amount ?? 0).toString();
+    const token = contractAddressToTokenId(orderData.priceToken ?? orderData.token ?? ethers.ZeroAddress);
+    const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedDeliveryCommentData);
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
           topicId,
-          message: encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerRefusal, encryptedDeliveryCommentData)
+          message: encodeHcsReferenceEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerRefusal, {
+            fileId,
+            total,
+            token,
+            payloadHash: encryptedPayloadHash,
+          })
         }
       },
       {
@@ -443,12 +617,21 @@ export const hederaAdapter: ChainAdapter = {
   ): Promise<string> {
     const config = getCurrentConfig();
     const topicId = await hederaUtils.requireHcsTopicId();
+    const orderData = await viewOrder(seed);
+    const total = BigInt(orderData.priceAmount ?? orderData.amount ?? 0).toString();
+    const token = contractAddressToTokenId(orderData.priceToken ?? orderData.token ?? ethers.ZeroAddress);
+    const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedDeliveryCommentData);
     const batch: TransactionPayload[] = [
       {
         type: 'hcs',
         data: {
           topicId,
-          message: encodeHcsEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerDelivery, encryptedDeliveryCommentData)
+          message: encodeHcsReferenceEnvelope(seed, HCS_MESSAGE_ROLE.seller, HCS_MESSAGE_TYPE.sellerDelivery, {
+            fileId,
+            total,
+            token,
+            payloadHash: encryptedPayloadHash,
+          })
         }
       },
       {

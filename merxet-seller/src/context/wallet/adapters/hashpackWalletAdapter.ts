@@ -111,6 +111,10 @@ export class HederaWalletConnectAdapter implements WalletAdapter {
     return this.network
   }
 
+  async getPublicKey(): Promise<string | null> {
+    return null
+  }
+
   async connect(opts?: { silent?: boolean }): Promise<string | null> {
     await this.ensureInit()
 
@@ -160,7 +164,7 @@ export class HederaWalletConnectAdapter implements WalletAdapter {
     }
   }
 
-  async signAndSubmit(transaction: object): Promise<{ hash: string, txId: string }> {
+  async signAndSubmit(transaction: object): Promise<{ hash: string, txId: string, fileId?: string }> {
     await this.ensureInit()
     const hederaTransaction = transaction as any
     const account = await this.requireAccount()
@@ -173,6 +177,10 @@ export class HederaWalletConnectAdapter implements WalletAdapter {
     const hash =result.transactionHash;
     const txId = result.transactionId;
     return { hash, txId }
+  }
+
+  async readFileContents(_fileId: string): Promise<Uint8Array> {
+    throw new Error('External Hedera file reads are not configured in seller yet.')
   }
 
   async executeContract(_payload: ContractFunctionPayload): Promise<{ hash: string }> {
@@ -256,3 +264,4 @@ export function createHashpackWalletAdapter(network: NetworkId = getCurrentConfi
 }
 
 export const hashpackWalletAdapter = createHashpackWalletAdapter()
+

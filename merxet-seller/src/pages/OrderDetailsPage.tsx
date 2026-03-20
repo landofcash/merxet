@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react'
+import React, {useState} from 'react'
 import {useLocation, Link} from 'react-router-dom'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Button} from '@/components/ui/button'
@@ -38,8 +38,8 @@ import {signPrefix} from '@/config'
 import ConfirmDelivery from '@/components/ConfirmDelivery'
 import RefuseDelivery from '@/components/RefuseDelivery'
 import OrderStatusBadge from '@/components/OrderStatusBadge'
-import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 import AddressWithName from "@/components/AddressWithName.tsx";
+import {loadBuyerEncryptedPayloadForDecryption} from "@/lib/crypto/providers/hederaAdapter.ts";
 
 // Helper function to safely parse timestamp strings to numbers
 function parseTimestamp(timestamp: string): number {
@@ -140,10 +140,10 @@ const ViewContentModal: React.FC<ViewContentModalProps> = ({isOpen, onClose, tit
 function OrderDetailsPage() {
   const location = useLocation()
 
-  const {walletAddress, signMessage} = useWallet()
+  const {walletAddress, walletAdapter, signMessage} = useWallet()
   const order = location.state?.order as Order | undefined
 
-  // Encrypted buyer payload loaded from HCS.
+  // Encrypted buyer payload loaded on-demand for decryption.
   const [encryptedPayloadFromBox, setEncryptedPayloadFromBox] = useState<string | null>(null)
   const [isLoadingPayloadFromBox, setIsLoadingPayloadFromBox] = useState(false)
   const [payloadLoadError, setPayloadLoadError] = useState<string | null>(null)
@@ -170,43 +170,14 @@ function OrderDetailsPage() {
     return order.status === '2'
   }
 
-  // Load the encrypted buyer payload from HCS automatically when the page opens.
-  useEffect(() => {
-    const loadEncryptedPayload = async () => {
-      if (!order) {
-        setPayloadLoadError('Order data not available')
-        return
-      }
-
-      setIsLoadingPayloadFromBox(true)
-      setPayloadLoadError(null)
-      setEncryptedPayloadFromBox(null)
-
-      try {
-        // Fetch the raw encrypted delivery payload from the chain
-
-        const decodedPayload = await getChainAdapter().viewBuyerData(order.seed, order.messages)
-        if (!decodedPayload.isFound) {
-          setPayloadLoadError(`Failed to read delivery data "${order.seed}", Not found`)
-          return
-        }
-        // Decode the raw payload to a string using TextDecoder
-        setEncryptedPayloadFromBox(decodedPayload.data)
-      } catch (error) {
-        setPayloadLoadError(error instanceof Error ? error.message : 'Failed to load encrypted delivery payload')
-      } finally {
-        setIsLoadingPayloadFromBox(false)
-      }
-    }
-
-    if (order) {
-      loadEncryptedPayload()
-    }
-  }, [order])
-
   const handleDecryptDeliveryInfo = async () => {
     if (!walletAddress) {
       setDecryptionError('Wallet not connected')
+      return
+    }
+
+    if (!walletAdapter) {
+      setDecryptionError('Wallet adapter not available')
       return
     }
 
@@ -215,13 +186,10 @@ function OrderDetailsPage() {
       return
     }
 
-    if (!encryptedPayloadFromBox) {
-      setDecryptionError('No encrypted payload available. Please wait for the payload to load.')
-      return
-    }
-
     setIsDecrypting(true)
+    setIsLoadingPayloadFromBox(true)
     setDecryptionError(null)
+    setPayloadLoadError(null)
     setDecryptedDeliveryInfo(null)
     setParsedOrderData(null)
 
@@ -237,11 +205,18 @@ function OrderDetailsPage() {
       const signedBase64 = btoa(String.fromCharCode(...new Uint8Array(signedBytes)))
       const keyPair = await generateKeyPairFromB64(signedBase64)
 
+      const decodedPayload = await loadBuyerEncryptedPayloadForDecryption(walletAdapter, order.seed, order.messages)
+      if (!decodedPayload.isFound || !decodedPayload.data) {
+        setPayloadLoadError(`Failed to read delivery data "${order.seed}", not found`)
+        return
+      }
+      setEncryptedPayloadFromBox(decodedPayload.data)
+
       // Decrypt the symmetric key using the seller's private key
       const decryptedSymKey = await decryptWithECIES(keyPair.privateKey, order.encryptedSymKeySeller)
 
       // Decrypt the delivery payload using the decrypted symmetric key
-      const decryptedPayload = await decryptAES(decryptedSymKey, encryptedPayloadFromBox)
+      const decryptedPayload = await decryptAES(decryptedSymKey, decodedPayload.data)
       setDecryptedDeliveryInfo(decryptedPayload)
 
       // Try to parse the decrypted payload as JSON
@@ -257,6 +232,7 @@ function OrderDetailsPage() {
       setDecryptionError(error instanceof Error ? error.message : 'Failed to decrypt delivery info')
     } finally {
       setIsDecrypting(false)
+      setIsLoadingPayloadFromBox(false)
     }
   }
 
@@ -593,8 +569,8 @@ function OrderDetailsPage() {
                   Decrypt the encrypted delivery payload to view order contents and customer delivery details </p>
               </div>
 
-              <Button onClick={handleDecryptDeliveryInfo} disabled={isDecrypting || !encryptedPayloadFromBox}
-                      variant="default">
+              <Button onClick={handleDecryptDeliveryInfo} disabled={isDecrypting || isLoadingPayloadFromBox || !walletAddress || !walletAdapter}
+                        variant="default">
                 {isDecrypting ? (
                   <>
                     <div
@@ -863,10 +839,18 @@ function OrderDetailsPage() {
                 <Lock className="h-4 w-4"/>
                 Encrypted Delivery Payload </h4>
 
+              <div className="mb-3 p-3 bg-muted/50 border rounded-lg">
+                <div className="text-sm font-medium mb-1">Buyer Payload Hash</div>
+                <CopyableField value={order.payloadHashBuyer} length={30} mdLength={70} small={true}/>
+                <div className="text-xs text-muted-foreground mt-2">
+                  The encrypted buyer payload is stored in HFS. It is fetched only when you click `Decrypt Payload`.
+                </div>
+              </div>
+
               {isLoadingPayloadFromBox && (
                 <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"/>
-                  <span className="text-sm text-blue-700">Loading encrypted buyer payload from HCS for {order.seed}</span>
+                  <span className="text-sm text-blue-700">Loading encrypted buyer payload from HFS for {order.seed}</span>
                 </div>
               )}
 
@@ -881,7 +865,7 @@ function OrderDetailsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle2 className="h-4 w-4"/>
-                    <span className="text-sm font-medium">Encrypted buyer payload loaded from HCS for {order.seed}</span>
+                    <span className="text-sm font-medium">Encrypted buyer payload loaded from HFS for {order.seed}</span>
                   </div>
 
                   <div className="bg-muted p-4 rounded-lg">

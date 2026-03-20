@@ -1,4 +1,4 @@
-import {ArrowLeft, Wallet, Loader2, CheckCircle, AlertCircle, Check, ChevronDown, ChevronUp, X, LockKeyhole} from 'lucide-react'
+import {ArrowLeft, Wallet, Loader2, CheckCircle, AlertCircle, Check, ChevronDown, ChevronUp, X} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, Navigate, useNavigate} from 'react-router-dom'
@@ -6,7 +6,7 @@ import {useState} from 'react'
 import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import {useWallet} from '@/context/WalletContext'
-import {MAX_ORDER_PAYLOAD_BYTES, explorerTxUrl} from '@/config'
+import {explorerTxUrl} from '@/config'
 import {formatCryptoError} from '@/lib/cryptoFormat'
 import {encodeBase64Uuid} from '@/lib/uuidUtils'
 import {generateKeyPairFromB64} from '@/utils/keygen'
@@ -31,7 +31,6 @@ function PayWithCryptoPage() {
     walletCanTransact,
     walletBootstrapMessage,
     walletKind,
-    walletLocked,
     signMessage,
     walletAdapter,
   } = useWallet()
@@ -84,21 +83,9 @@ function PayWithCryptoPage() {
       const seed = encodeBase64Uuid(crypto.randomUUID())
       setOrderSeed(seed)
 
-      // Step 2: Prepare order data and validate size
+      // Step 2: Prepare order data
       const orderData = stateToOrderData(order)
       const orderDataJson = JSON.stringify(orderData)
-
-      // Validate payload size before proceeding
-      const payloadSizeBytes = new TextEncoder().encode(orderDataJson).length
-      if (payloadSizeBytes > MAX_ORDER_PAYLOAD_BYTES) {
-        const errorMessage = `Order data is too large (${payloadSizeBytes} bytes). ` +
-          `Maximum allowed size is ${MAX_ORDER_PAYLOAD_BYTES} bytes. ` +
-          `Please reduce the length of comments or delivery information.`
-        console.error(errorMessage)
-        setError(errorMessage)
-        setPaymentStatus('error')
-        return
-      }
 
       // Step 3: Sign the seed with the wallet
       const data = signPrefix + seed
@@ -116,6 +103,7 @@ function PayWithCryptoPage() {
 
       // Encrypt order data
       const encryptedPayload = await encryptAES(aes, orderDataJson)
+
       const encryptedKey = await encryptWithECIES(generatedKeyPair.publicKey, aes)
 
       setEncryptedDeliveryInfo(encryptedPayload)
@@ -363,9 +351,8 @@ function PayWithCryptoPage() {
                     <div className="text-center space-y-2">
                       <p className="text-muted-foreground">
                         {!walletAddress ? 'Please connect your Hedera wallet to continue' :
-                          walletKind === 'internal' && walletLocked ? 'Unlock your wallet on the wallet page before signing' :
-                            walletKind === 'internal' && !walletCanTransact ? (walletBootstrapMessage || 'Fund and activate this wallet before paying') :
-                              currentStep === 1 ? 'Ready to sign order seed' : 'Ready to process payment'}
+                          walletKind === 'internal' && !walletCanTransact ? (walletBootstrapMessage || 'Fund and activate this wallet before paying') :
+                            currentStep === 1 ? 'Ready to sign order seed' : 'Ready to process payment'}
                       </p>
                       {walletAdapter && walletAddress && (
                         <p className="text-sm font-mono bg-muted p-2 rounded">
@@ -540,11 +527,6 @@ function PayWithCryptoPage() {
                   <Button className="w-full" size="lg" onClick={handleConnectWallet}>
                     <Wallet className="mr-2 h-5 w-5"/>
                     Open Wallet
-                  </Button>
-                ) : walletKind === 'internal' && walletLocked ? (
-                  <Button className="w-full" size="lg" onClick={handleConnectWallet}>
-                    <LockKeyhole className="mr-2 h-5 w-5"/>
-                    Unlock in Wallet
                   </Button>
                 ) : walletKind === 'internal' && !walletCanTransact ? (
                   <Button className="w-full" size="lg" onClick={handleConnectWallet}>

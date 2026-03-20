@@ -48,12 +48,15 @@ export interface WalletAdapter {
   onAccountChange?(cb: (address: string | null) => void): () => void;
   onNetworkChange?(cb: (network: NetworkId | null) => void): () => void;
 
+  getPublicKey?(): Promise<string | null>;
   signMessage(dataToSign: string, message?: string): Promise<Uint8Array>;
   executeContract(payload: ContractFunctionPayload): Promise<{ hash: string }>;
   executeBatch(payloads: TransactionPayload[]): Promise<{ hash: string }>;
-  signAndSubmit?(transaction: object): Promise<{ hash: string, txId?: string }>;
+  signAndSubmit?(transaction: object): Promise<{ hash: string, txId?: string, fileId?: string }>;
+  readFileContents?(fileId: string): Promise<Uint8Array>;
 }
 
 export type WalletActionKind = "signMessage" | "executeContract" | "executeBatch" | "signAndSubmit";
+
 
 

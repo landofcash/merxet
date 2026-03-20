@@ -11,10 +11,6 @@ export const signPrefix = "merxet-";
 export const APP_KEY_PREFIX = 'Merxet';
 const HEDERA_EXPLORER_BASE = 'https://hashscan.io';
 
-// Maximum size for order payload in bytes (2KB)
-// while keeping transaction costs reasonable
-export const MAX_ORDER_PAYLOAD_BYTES = 2048;
-
 // Keep TokenConfig backward-compatible (numeric id) for current UI/helpers
 export interface TokenConfig {
   id: number; // synthetic numeric id for UI (0 reserved for HBAR)
@@ -128,5 +124,4 @@ export function isMobileWeb(): boolean {
   const { any } = isMobile(navigator.userAgent || '');
   return any;
 }
-
 

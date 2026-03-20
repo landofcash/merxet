@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {resolveName} from "@/lib/cryptoNameHelpers.ts";
-import {truncateString} from "@/lib/cryptoFormat.ts";
+import CopyableField from "@/components/CopyableField.tsx";
 
 interface AddressDisplayProps {
   value: string;
@@ -42,23 +42,25 @@ const AddressDisplay: React.FC<AddressDisplayProps> = ({
   // Show loading state briefly
   if (loading) {
     return (
-      <span className={`font-mono ${small ? "text-xs" : "text-sm"} ${className} text-muted-foreground`}>
-                <span className="md:hidden">{truncateString(value, length)}</span>
-                <span
-                  className="hidden md:inline break-words whitespace-pre-wrap">{truncateString(value, mdLength)}</span>
-            </span>
+      <CopyableField
+        value={value}
+        small={small}
+        length={length}
+        mdLength={mdLength}
+        className={`${className} text-muted-foreground`.trim()}
+      />
     );
   }
 
-  const displayValue = name ?? value;
-  const displayText = truncateString(displayValue, length);
-  const displayTextMd = truncateString(displayValue, mdLength);
-
   return (
-    <span className={`font-mono ${small ? "text-xs" : "text-sm"} ${className}`}>
-            <span className="md:hidden">{displayText}</span>
-            <span className="hidden md:inline break-words whitespace-pre-wrap">{displayTextMd}</span>
-        </span>
+    <CopyableField
+      value={value}
+      displayValue={name ?? value}
+      small={small}
+      length={length}
+      mdLength={mdLength}
+      className={className}
+    />
   );
 };
 

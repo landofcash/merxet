@@ -1,13 +1,17 @@
 import {
   AccountId,
+  BatchTransaction,
   ContractFunctionParameters,
   ContractId,
   ContractExecuteTransaction,
+  FileContentsQuery,
+  FileId,
   Hbar,
   PrivateKey,
   TopicMessageSubmitTransaction,
   TokenAssociateTransaction,
   TokenId,
+  Transaction,
 } from "@hiero-ledger/sdk";
 import BigNumber from "bignumber.js";
 import {getConfig} from "@/config.ts";
@@ -47,6 +51,7 @@ import type {
   InternalWalletStatus,
   InternalWalletSummary,
 } from "@/lib/internalWallet/types.ts";
+import {requestInternalWalletPassphrase} from "@/lib/internalWallet/unlockGate.ts";
 
 type MirrorAccountResponse = {
   account?: string;
@@ -253,12 +258,24 @@ async function getActiveWalletRecord(network: NetworkId): Promise<InternalWallet
   return await getProviderRecord(activeWalletId);
 }
 
-function requireUnlockedSecret(record: InternalWalletRecord) {
+async function requireUnlockedSecret(
+  record: InternalWalletRecord,
+  reason: "sign-message" | "sign-transaction" | "backup-reveal",
+  reasonLabel: string,
+) {
   const cached = getCachedUnlockedSecret(record.id);
-  if (!cached) {
-    throw new Error("Wallet is locked. Open Wallet and unlock it first.");
+  if (cached) {
+    return cached;
   }
-  return cached;
+
+  const passphrase = await requestInternalWalletPassphrase({
+    walletId: record.id,
+    walletLabel: record.label,
+    reason,
+    reasonLabel,
+  });
+
+  return await unlockWalletRecord(record, passphrase);
 }
 
 async function markWalletUsed(record: InternalWalletRecord) {
@@ -308,6 +325,25 @@ function toSdkContractId(contractId: string): ContractId | string {
   return contractId;
 }
 
+function buildSdkTransaction(payload: TransactionPayload) {
+  if (payload.type === "contract") {
+    const transaction = new ContractExecuteTransaction()
+      .setContractId(toSdkContractId(payload.data.contractId))
+      .setGas(1_000_000)
+      .setFunction(payload.data.function, buildContractFunctionParameters(payload.data.arguments));
+
+    if (payload.data.amount) {
+      transaction.setPayableAmount(Hbar.fromTinybars(payload.data.amount.toString()));
+    }
+
+    return transaction;
+  }
+
+  return new TopicMessageSubmitTransaction()
+    .setTopicId(payload.data.topicId)
+    .setMessage(payload.data.message);
+}
+
 async function executeContractWithSecret(
   status: InternalWalletStatus,
   privateKeyHex: string,
@@ -342,36 +378,61 @@ async function executeBatchWithSecret(
   const accountId = AccountId.fromString(status.identity.accountId!);
   const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
   sdkClient.setOperator(accountId, privateKey);
-
-  let lastHash = "";
+  const batchKey = privateKey.publicKey;
+  const innerTransactions = [];
 
   for (const payload of payloads) {
-    if (payload.type === "contract") {
-      const transaction = new ContractExecuteTransaction()
-        .setContractId(toSdkContractId(payload.data.contractId))
-        .setGas(1_000_000)
-        .setFunction(payload.data.function, buildContractFunctionParameters(payload.data.arguments));
-
-      if (payload.data.amount) {
-        transaction.setPayableAmount(Hbar.fromTinybars(payload.data.amount.toString()));
-      }
-
-      const response = await transaction.execute(sdkClient);
-      await response.getReceipt(sdkClient);
-      lastHash = response.transactionId.toString();
-      continue;
-    }
-
-    const transaction = new TopicMessageSubmitTransaction()
-      .setTopicId(payload.data.topicId)
-      .setMessage(payload.data.message);
-
-    const response = await transaction.execute(sdkClient);
-    await response.getReceipt(sdkClient);
-    lastHash = response.transactionId.toString();
+    const transaction = buildSdkTransaction(payload);
+    await transaction.batchify(sdkClient, batchKey);
+    innerTransactions.push(transaction);
   }
 
-  return {hash: lastHash};
+  const batchTransaction = new BatchTransaction()
+    .setInnerTransactions(innerTransactions)
+    .freezeWith(sdkClient);
+
+  await batchTransaction.sign(privateKey);
+  const response = await batchTransaction.execute(sdkClient);
+  await response.getReceipt(sdkClient);
+
+  return {hash: response.transactionId.toString()};
+}
+
+async function signAndSubmitWithSecret(
+  status: InternalWalletStatus,
+  privateKeyHex: string,
+  transaction: Transaction,
+): Promise<{hash: string; txId?: string; fileId?: string}> {
+  const {sdkClient} = getHederaClient();
+  const accountId = AccountId.fromString(status.identity.accountId!);
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  sdkClient.setOperator(accountId, privateKey);
+
+  const response = await transaction.execute(sdkClient);
+  const receipt = await response.getReceipt(sdkClient);
+
+  return {
+    hash: response.transactionHash ? Buffer.from(response.transactionHash).toString("hex") : "",
+    txId: response.transactionId?.toString(),
+    fileId: receipt.fileId?.toString(),
+  };
+}
+
+async function readFileContentsWithSecret(
+  status: InternalWalletStatus,
+  privateKeyHex: string,
+  fileId: string,
+): Promise<Uint8Array> {
+  const {sdkClient} = getHederaClient();
+  const accountId = AccountId.fromString(status.identity.accountId!);
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  sdkClient.setOperator(accountId, privateKey);
+
+  const contents = await new FileContentsQuery()
+    .setFileId(FileId.fromString(fileId))
+    .execute(sdkClient);
+
+  return new Uint8Array(contents);
 }
 
 class HederaInternalWalletProvider implements InternalWalletProvider {
@@ -537,7 +598,7 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
     const record = await getProviderRecord(walletId);
     const secret = passphrase
       ? await unlockWalletRecord(record, passphrase)
-      : requireUnlockedSecret(record);
+      : await requireUnlockedSecret(record, "backup-reveal", "Reveal backup material");
 
     if (!secret.mnemonic) {
       return [];
@@ -558,7 +619,7 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
       throw new Error(status.bootstrapMessage ?? "This wallet is not ready for token association yet.");
     }
 
-    const secret = requireUnlockedSecret(record);
+    const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
     const {sdkClient} = getHederaClient();
     const accountId = AccountId.fromString(status.identity.accountId);
     const privateKey = PrivateKey.fromStringECDSA(secret.privateKeyHex);
@@ -587,6 +648,10 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
       async getAddress() {
         const activeWallet = await hederaInternalWalletProvider.getActiveWallet(network);
         return activeWallet?.identity.address ?? null;
+      },
+      async getPublicKey() {
+        const record = await getActiveWalletRecord(network);
+        return record?.baseIdentity.publicKey ?? null;
       },
       async getNetwork() {
         return network;
@@ -624,7 +689,7 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
           throw new Error("No active internal wallet.");
         }
 
-        const secret = requireUnlockedSecret(record);
+        const secret = await requireUnlockedSecret(record, "sign-message", "Sign message");
         return await signWithInternalAccount({
           addr: normalizeEvmAddress(record.baseIdentity.evmAddress),
           sk: privateKeyHexToBytes(secret.privateKeyHex),
@@ -642,7 +707,7 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
           throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
         }
 
-        const secret = requireUnlockedSecret(record);
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
         const result = await executeContractWithSecret(status, secret.privateKeyHex, payload);
         await markWalletUsed(record);
         return result;
@@ -658,8 +723,40 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
           throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
         }
 
-        const secret = requireUnlockedSecret(record);
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
         const result = await executeBatchWithSecret(status, secret.privateKeyHex, payloads);
+        await markWalletUsed(record);
+        return result;
+      },
+      async signAndSubmit(transaction: object) {
+        const record = await getActiveWalletRecord(network);
+        if (!record) {
+          throw new Error("No active internal wallet.");
+        }
+
+        const status = await saveRefreshedStatus(record, network);
+        if (!status.canTransact || !status.identity.accountId) {
+          throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
+        }
+
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Sign transaction");
+        const result = await signAndSubmitWithSecret(status, secret.privateKeyHex, transaction as Transaction);
+        await markWalletUsed(record);
+        return result;
+      },
+      async readFileContents(fileId: string) {
+        const record = await getActiveWalletRecord(network);
+        if (!record) {
+          throw new Error("No active internal wallet.");
+        }
+
+        const status = await saveRefreshedStatus(record, network);
+        if (!status.canTransact || !status.identity.accountId) {
+          throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
+        }
+
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Read file contents");
+        const result = await readFileContentsWithSecret(status, secret.privateKeyHex, fileId);
         await markWalletUsed(record);
         return result;
       },

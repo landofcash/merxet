@@ -6,7 +6,7 @@ import {useState} from 'react'
 import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens, getTokenByType } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import {encodeBase64Uuid} from "@/lib/uuidUtils.ts";
-import {MAX_ORDER_PAYLOAD_BYTES, signPrefix} from "@/config.ts";
+import {signPrefix} from "@/config.ts";
 import {useWallet} from "@/context/WalletContext.tsx";
 import {generateKeyPairFromB64} from '@/utils/keygen'
 import {encryptAES, encryptWithECIES, generateAESKey} from '@/utils/encryption'
@@ -138,18 +138,9 @@ function PayWithCreditCardPage() {
       const {tokenTotals, cartItems} = order
       const sellerPublicKey = cartItems[0].sellerPubKey
 
-      // Prepare order data and validate size
+      // Prepare order data
       const orderData = stateToOrderData(order)
       const orderDataJson = JSON.stringify(orderData)
-
-      // Validate payload size before proceeding
-      const payloadSizeBytes = new TextEncoder().encode(orderDataJson).length
-      if (payloadSizeBytes > MAX_ORDER_PAYLOAD_BYTES) {
-        logError(`Order data is too large (${payloadSizeBytes} bytes). ` +
-          `Maximum allowed size is ${MAX_ORDER_PAYLOAD_BYTES} bytes. ` +
-          `Please reduce the length of comments or delivery information.`)
-        return
-      }
 
       //create seed and sign it
       const seed = encodeBase64Uuid(crypto.randomUUID())
@@ -164,6 +155,7 @@ function PayWithCreditCardPage() {
       setAesKey(aesLocal)
 
       const encryptedDeliveryInfoLocal = await encryptAES(aesLocal, orderDataJson)
+
       const encryptedSymKeyLocal = await encryptWithECIES(generatedKeyPairLocal.publicKey, aesLocal)
       const encryptedSymKeySellerLocal = await encryptWithECIES(sellerPublicKey, aesLocal)
       setEncryptedDeliveryInfo(encryptedDeliveryInfoLocal)

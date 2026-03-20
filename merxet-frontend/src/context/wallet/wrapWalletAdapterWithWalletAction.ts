@@ -6,7 +6,7 @@ type WrapOpts = {
 };
 
 function defaultLabel(kind: WalletActionKind): string {
-  if (kind === "executeBatch" || kind === "executeContract") {
+  if (kind === "executeBatch" || kind === "executeContract" || kind === "signAndSubmit") {
     return "Waiting for transaction signature in your wallet...";
   }
   return "Waiting for signature in your wallet...";
@@ -22,6 +22,7 @@ export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: 
     isInstalled: adapter.isInstalled ? () => adapter.isInstalled!() : undefined,
     getAddress: () => adapter.getAddress(),
     getNetwork: adapter.getNetwork ? () => adapter.getNetwork!() : undefined,
+    getPublicKey: adapter.getPublicKey ? () => adapter.getPublicKey!() : undefined,
     connect: (options) => adapter.connect(options),
     disconnect: () => adapter.disconnect(),
     onAccountChange: adapter.onAccountChange ? (cb) => adapter.onAccountChange!(cb) : undefined,
@@ -50,5 +51,14 @@ export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: 
         end();
       }
     },
+    signAndSubmit: adapter.signAndSubmit ? async (transaction: object) => {
+      const end = opts.onStart("signAndSubmit", labelFor("signAndSubmit"));
+      try {
+        return await adapter.signAndSubmit!(transaction);
+      } finally {
+        end();
+      }
+    } : undefined,
+    readFileContents: adapter.readFileContents ? (fileId: string) => adapter.readFileContents!(fileId) : undefined,
   };
 }

@@ -4,10 +4,24 @@ export function getSupportedTokens() {
   return getCurrentConfig().supportedTokens;
 }
 
+function normalizeTokenType(coinType: string): string {
+  const key = coinType.trim();
+  if (
+    key === "0" ||
+    key.toUpperCase() === "HBAR" ||
+    key === "0.0.0" ||
+    /^0x0{40}$/i.test(key)
+  ) {
+    return "0.0.0";
+  }
+
+  return key;
+}
+
 // Resolver that accepts only coinType string (no backward compatibility)
 export function getTokenByType(coinType: string): TokenConfig {
   const tokens = getSupportedTokens();
-  const key = coinType.trim();
+  const key = normalizeTokenType(coinType);
   const byType = tokens.find(t => t.tokenId === key);
   if (!byType) throw new Error('Token not found');
   return byType;
@@ -49,7 +63,7 @@ export function priceToDisplayString(tokenType: string, price: number | bigint, 
 
 export function tryGetTokenByType(coinType: string) {
   const tokens = getSupportedTokens()
-  const key = coinType.trim()
+  const key = normalizeTokenType(coinType)
   return tokens.find(t => t.tokenId === key) ?? null
 }
 

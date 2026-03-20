@@ -22,6 +22,8 @@ export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: 
     isInstalled: adapter.isInstalled ? () => adapter.isInstalled!() : undefined,
     getAddress: () => adapter.getAddress(),
     getNetwork: adapter.getNetwork ? () => adapter.getNetwork!() : undefined,
+    getPublicKey: adapter.getPublicKey ? () => adapter.getPublicKey!() : undefined,
+    readFileContents: adapter.readFileContents ? (fileId: string) => adapter.readFileContents!(fileId) : undefined,
     connect: (o) => adapter.connect(o),
     disconnect: () => adapter.disconnect(),
     onAccountChange: adapter.onAccountChange ? (cb) => adapter.onAccountChange!(cb) : undefined,
@@ -60,3 +62,4 @@ export function wrapWalletAdapterWithWalletAction(adapter: WalletAdapter, opts: 
     } : undefined,
   }
 }
+

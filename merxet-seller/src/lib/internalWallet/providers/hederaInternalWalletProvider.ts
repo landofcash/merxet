@@ -4,6 +4,8 @@ import {
   ContractFunctionParameters,
   ContractId,
   ContractExecuteTransaction,
+  FileContentsQuery,
+  FileId,
   Hbar,
   PrivateKey,
   TokenAssociateTransaction,
@@ -402,7 +404,7 @@ async function signAndSubmitWithSecret(
   status: InternalWalletStatus,
   privateKeyHex: string,
   transaction: Transaction,
-): Promise<{ hash: string; txId?: string; status: string }> {
+): Promise<{ hash: string; txId?: string; status: string; fileId?: string }> {
   const {sdkClient} = getHederaClient();
   const accountId = AccountId.fromString(status.identity.accountId!);
   const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
@@ -415,7 +417,24 @@ async function signAndSubmitWithSecret(
     hash: transactionResponse.transactionHash ? Buffer.from(transactionResponse.transactionHash).toString("hex") : "",
     txId: transactionResponse.transactionId?.toString(),
     status: receipt.status.toString(),
+    fileId: receipt.fileId?.toString(),
   };
+}
+async function readFileContentsWithSecret(
+  status: InternalWalletStatus,
+  privateKeyHex: string,
+  fileId: string,
+): Promise<Uint8Array> {
+  const {sdkClient} = getHederaClient();
+  const accountId = AccountId.fromString(status.identity.accountId!);
+  const privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+  sdkClient.setOperator(accountId, privateKey);
+
+  const contents = await new FileContentsQuery()
+    .setFileId(FileId.fromString(fileId))
+    .execute(sdkClient);
+
+  return new Uint8Array(contents);
 }
 
 class HederaInternalWalletProvider implements InternalWalletProvider {
@@ -645,6 +664,10 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
         const activeWallet = await hederaInternalWalletProvider.getActiveWallet(network);
         return activeWallet?.identity.address ?? null;
       },
+      async getPublicKey() {
+        const record = await getActiveWalletRecord(network);
+        return record?.baseIdentity.publicKey ?? null;
+      },
       async getNetwork() {
         return network;
       },
@@ -733,10 +756,30 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
         await markWalletUsed(record);
         return result;
       },
+      async readFileContents(fileId: string) {
+        const record = await getActiveWalletRecord(network);
+        if (!record) {
+          throw new Error("No active internal wallet.");
+        }
+
+        const status = await saveRefreshedStatus(record, network);
+        if (!status.canTransact || !status.identity.accountId) {
+          throw new Error(status.bootstrapMessage ?? "This wallet is not ready for transactions yet.");
+        }
+
+        const secret = await requireUnlockedSecret(record, "sign-transaction", "Read file contents");
+        const result = await readFileContentsWithSecret(status, secret.privateKeyHex, fileId);
+        await markWalletUsed(record);
+        return result;
+      },
     };
   }
 }
 
 export const hederaInternalWalletProvider = new HederaInternalWalletProvider();
+
+
+
+
 
 
