@@ -5,6 +5,7 @@ declare const __APP_VERSION__: string;
 export const APP_VERSION = __APP_VERSION__
 export const APP_NAME='Merxet'
 export const BASE_URL='https://merxet.com'
+export const BASE_APP_URL='https://app.merxet.com'
 
 // Sign prefix for encryption seed generation
 export const signPrefix = "merxet-";
