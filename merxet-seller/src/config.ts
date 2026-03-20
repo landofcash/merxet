@@ -133,6 +133,15 @@ export function explorerAccountUrl(address: string, network?: NetworkId): string
   return `${cfg.explorerBaseUrl}/${cfg.name}/account/${address}`
 }
 
+export function faucetAccountUrl(faucetUrl: string, address?: string | null): string {
+  if (!address) {
+    return faucetUrl;
+  }
+
+  const separator = faucetUrl.includes("?") ? "&" : "?";
+  return `${faucetUrl}${separator}address=${encodeURIComponent(address)}`;
+}
+
 // Lightweight environment helper to detect mobile web
 export function isMobileWeb(): boolean {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;

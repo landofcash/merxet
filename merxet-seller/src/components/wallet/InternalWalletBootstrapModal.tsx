@@ -2,6 +2,7 @@ import React from "react";
 import {createPortal} from "react-dom";
 import {ExternalLink} from "lucide-react";
 import {Button} from "@/components/ui/button";
+import {faucetAccountUrl} from "@/config";
 import type {NetworkId} from "@/context/wallet/types.ts";
 import type {InternalWalletIdentity} from "@/lib/internalWallet/types.ts";
 import CopyableField from "@/components/CopyableField";
@@ -28,6 +29,10 @@ const InternalWalletBootstrapModal: React.FC<InternalWalletBootstrapModalProps> 
   if (!open) {
     return null;
   }
+
+  const faucetTargetUrl = faucetUrl
+    ? faucetAccountUrl(faucetUrl, identity?.evmAddress ?? identity?.address ?? identity?.accountId ?? null)
+    : null;
 
   const modal = (
     <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 p-4">
@@ -64,9 +69,9 @@ const InternalWalletBootstrapModal: React.FC<InternalWalletBootstrapModalProps> 
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
-          {network === "testnet" && faucetUrl ? (
+          {network === "testnet" && faucetTargetUrl ? (
             <Button asChild>
-              <a href={faucetUrl} target="_blank" rel="noreferrer">
+              <a href={faucetTargetUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4"/>
                 Open faucet
               </a>

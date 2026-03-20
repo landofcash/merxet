@@ -10,7 +10,7 @@ import InternalWalletCreateModal from "@/components/wallet/InternalWalletCreateM
 import InternalWalletImportModal from "@/components/wallet/InternalWalletImportModal";
 import InternalWalletSuccessModal from "@/components/wallet/InternalWalletSuccessModal";
 import type {InternalWalletStatus} from "@/lib/internalWallet/types.ts";
-import {getConfig} from "@/config";
+import {faucetAccountUrl, getConfig} from "@/config";
 
 interface TryTestnetModalProps {
   open: boolean;
@@ -25,6 +25,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
     setExternalProviderId,
     connect,
     internalWallets,
+    activeInternalWalletId,
     refreshInternalWallets,
     connectInternalWallet,
     createInternalWallet,
@@ -61,6 +62,9 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
     petra: petraLogo,
     pontem: pontemLogo,
   }), []);
+  const activeInternalWallet = useMemo(() => {
+    return internalWallets.find(wallet => wallet.id === activeInternalWalletId) ?? null;
+  }, [activeInternalWalletId, internalWallets]);
 
   if (!open) {
     return null;
@@ -119,6 +123,14 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
   };
 
   const faucetUrl = getConfig("testnet").hedera.faucetUrl;
+  const faucetTargetUrl = faucetUrl
+    ? faucetAccountUrl(
+      faucetUrl,
+      createdWallet?.identity.evmAddress
+        ?? activeInternalWallet?.identity.evmAddress
+        ?? (internalWallets.length === 1 ? internalWallets[0]?.identity.evmAddress : null),
+    )
+    : null;
 
   return (
     <>
@@ -149,7 +161,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
                 <Button onClick={() => void switchNetwork("testnet")}>Switch to testnet</Button>
               ) : (
                 <Button asChild variant="outline">
-                  <a href={faucetUrl} target="_blank" rel="noreferrer">
+                  <a href={faucetTargetUrl ?? faucetUrl} target="_blank" rel="noreferrer">
                     <HandCoins className="mr-2 h-4 w-4"/>
                     Open faucet
                   </a>
