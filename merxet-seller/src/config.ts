@@ -70,8 +70,10 @@ const configs: Record<NetworkId, NetworkConfig> = {
     name: 'testnet',
     account: '0.0.7565091',
     adminWalletAddress: '0.0.7558265',
-    apiUrl: 'http://localhost:3000/api/v1/t',
-    fileApiUrl: 'http://localhost:3000/api/cdn',
+    //apiUrl: 'http://localhost:3000/api/v1/t',
+    //fileApiUrl: 'http://localhost:3000/api/cdn',
+    apiUrl: 'https://sync.merxet.com/api/v1/t',
+    fileApiUrl: 'https://sync.merxet.com/api/cdn',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
       mirrorNodeUrl: 'https://testnet.mirrornode.hedera.com',

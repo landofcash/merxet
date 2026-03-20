@@ -43,8 +43,10 @@ const configs: Record<NetworkId, NetworkConfig> = {
   testnet: {
     name: 'testnet',
     contractAddress: '0.0.7565091',
-    apiUrl: 'http://localhost:3000/api/v1/t',
-    fileApiUrl: 'http://localhost:3000/api/cdn',
+    //apiUrl: 'http://localhost:3000/api/v1/t',
+    //fileApiUrl: 'http://localhost:3000/api/cdn',
+    apiUrl: 'https://sync.merxet.com/api/v1/t',
+    fileApiUrl: 'https://sync.merxet.com/api/cdn',
     cdnBasePath: 'https://merxet.b-cdn.net',
     hedera: {
       mirrorNodeUrl: 'https://testnet.mirrornode.hedera.com',
