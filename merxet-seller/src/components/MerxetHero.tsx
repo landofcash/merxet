@@ -21,27 +21,31 @@ type HeroSlide = {
   image: string
 }
 
+const heroSlideImage = "/slides/slide-1.jpg"
+const heroSlideImage2 = "/slides/slide-2.jpg"
+const heroSlideImage3 = "/slides/slide-3.jpg"
+
 const heroSlides: HeroSlide[] = [
   {
     id: "catalog",
     label: "QR product discovery",
     title: "Live catalog at the shelf",
     description: "Buyers scan a tag, open a product view instantly, and save items without creating an account.",
-    image: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=2070",
+    image: heroSlideImage,
   },
   {
     id: "cart",
     label: "Saved cart flow",
     title: "Cart first, payment when ready",
     description: "Products stay organized in a buyer cart so checkout happens only when the customer is ready.",
-    image: "https://images.unsplash.com/photo-1557821552-17105176677c?auto=format&fit=crop&q=80&w=2089",
+    image: heroSlideImage2,
   },
   {
     id: "settlement",
     label: "Merchant settlement",
     title: "Orders settle directly on-ledger",
     description: "Merchants receive structured orders, encrypted buyer details, and a clear settlement status without intermediaries.",
-    image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&q=80&w=2070",
+    image: heroSlideImage3,
   },
 ]
 
