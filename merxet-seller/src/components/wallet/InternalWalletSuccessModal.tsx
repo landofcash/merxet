@@ -30,7 +30,7 @@ const InternalWalletSuccessModal: React.FC<InternalWalletSuccessModalProps> = ({
           <div>
             <h2 className="text-xl font-semibold">Wallet created</h2>
             <p className="text-sm text-muted-foreground">
-              {label ?? "Internal wallet"} is now stored locally and encrypted.
+              {label ?? "Built-in wallet"} is now stored locally and encrypted.
             </p>
           </div>
         </div>

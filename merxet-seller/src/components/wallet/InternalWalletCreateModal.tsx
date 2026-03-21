@@ -40,7 +40,7 @@ const InternalWalletCreateModal: React.FC<InternalWalletCreateModalProps> = ({
     <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-xl border bg-background p-6 shadow-xl space-y-5">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold">Create internal wallet</h2>
+          <h2 className="text-xl font-semibold">Create built-in wallet</h2>
           <p className="text-sm text-muted-foreground">
             Your Hedera private key will be generated locally in this browser and encrypted before storage.
           </p>

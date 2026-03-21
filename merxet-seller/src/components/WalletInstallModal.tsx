@@ -36,14 +36,14 @@ const WalletInstallModal: React.FC<WalletInstallModalProps> = ({isOpen, onClose}
             <img src="/hedera-logo.svg" alt="Hedera logo" className="mx-auto h-12 w-12"/>
             <h3 className="text-2xl font-semibold">Use the built-in wallet</h3>
             <p className="text-sm text-sky-50/90">
-              Merxet Seller currently supports its encrypted internal Hedera wallet directly in the app.
+              Merxet Seller can be tried with its encrypted built-in Hedera wallet directly in the app.
             </p>
           </div>
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-6 text-center">
           <div className="space-y-3">
-            <h4 className="text-lg font-semibold">Internal wallet</h4>
+            <h4 className="text-lg font-semibold">Built-in wallet</h4>
             <p className="text-sm text-muted-foreground">
               Create or import a wallet from the wallet selector. The private key stays in your browser and is encrypted with your passphrase.
             </p>
@@ -52,7 +52,7 @@ const WalletInstallModal: React.FC<WalletInstallModalProps> = ({isOpen, onClose}
           <div className="rounded-xl border border-[#a8c8dc]/45 bg-white/80 p-4 text-left">
             <div className="font-medium mb-2">How it works</div>
             <p className="text-sm text-muted-foreground">
-              Open the wallet selector, then create a new internal wallet or import an existing recovery phrase or private key.
+              Open the wallet selector, then create a new built-in wallet or import an existing recovery phrase or private key.
             </p>
           </div>
         </div>

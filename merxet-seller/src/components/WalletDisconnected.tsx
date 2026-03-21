@@ -122,9 +122,12 @@ const WalletDisconnected: React.FC = () => {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button className="cursor-pointer border-0 bg-[linear-gradient(135deg,#8259EF_0%,#0031FF_100%)] px-3 py-1 text-sm text-white shadow-[0_18px_34px_-18px_rgba(0,49,255,0.55)] hover:brightness-110">
+          <Button
+            aria-label="Open wallet setup"
+            className="cursor-pointer border-0 bg-[linear-gradient(135deg,#8259EF_0%,#0031FF_100%)] px-3 py-1 text-sm text-white shadow-[0_18px_34px_-18px_rgba(0,49,255,0.55)] hover:brightness-110"
+          >
             <WalletIcon className="w-4 h-4"/>
-            <span className="hidden sm:inline">Connect wallet</span>
+            <span className="hidden sm:inline">Get started</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -133,6 +136,13 @@ const WalletDisconnected: React.FC = () => {
           collisionPadding={8}
           className="w-[min(26rem,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain p-4 text-sm shadow-lg space-y-4 sm:w-104 sm:space-y-5"
         >
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">Start with a wallet</div>
+            <div className="text-sm text-muted-foreground">
+              Create a built-in wallet in this browser to try Merxet, or connect an external wallet you already use.
+            </div>
+          </div>
+
           {availableExternalProviders.length > 0 ? (
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">External wallets</div>
@@ -164,9 +174,9 @@ const WalletDisconnected: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Internal wallet</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Built-in wallet</div>
                 <div className="text-sm text-muted-foreground">
-                  Create, import, connect, or remove encrypted local wallets.
+                  Create, import, use, or remove encrypted wallets stored only in this browser.
                 </div>
               </div>
               <div className="flex gap-2">
@@ -189,7 +199,7 @@ const WalletDisconnected: React.FC = () => {
 
             {internalWallets.length === 0 ? (
               <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                No internal wallets saved in this browser yet.
+                No built-in wallets saved in this browser yet.
               </div>
             ) : (
               <div className="space-y-2">
@@ -209,7 +219,7 @@ const WalletDisconnected: React.FC = () => {
                           </span>
                         ) : null}
                         <Button size="sm" onClick={() => void handleConnectInternal(wallet.id)} disabled={busy}>
-                          Connect
+                          Use
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => setConfirmDeleteWalletId(wallet.id)} disabled={busy}>
                           <Trash2 className="h-4 w-4"/>

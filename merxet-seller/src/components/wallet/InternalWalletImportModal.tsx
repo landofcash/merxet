@@ -58,7 +58,7 @@ const InternalWalletImportModal: React.FC<InternalWalletImportModalProps> = ({
     <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl rounded-xl border bg-background p-6 shadow-xl space-y-5">
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold">Import internal wallet</h2>
+          <h2 className="text-xl font-semibold">Import built-in wallet</h2>
           <p className="text-sm text-muted-foreground">
             Import a Hedera wallet from a recovery phrase or raw ECDSA private key. The imported key is encrypted locally before storage.
           </p>
