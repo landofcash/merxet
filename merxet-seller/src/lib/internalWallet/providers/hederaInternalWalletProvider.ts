@@ -171,15 +171,15 @@ function buildBalances(network: NetworkId, account: MirrorAccountResponse | null
   });
 }
 
-function buildBootstrapCopy(network: NetworkId, lifecycleState: InternalWalletLifecycleState) {
+function buildBootstrapCopy(_network: NetworkId, lifecycleState: InternalWalletLifecycleState) {
+  const fundingMessage = "Fund this wallet with 1-5 HBAR. HBAR is required to pay Hedera network fees when creating catalogs and submitting marketplace transactions. Then refresh the wallet status.";
+
   if (lifecycleState === "local_only") {
     return {
       bootstrapRequired: true,
       canTransact: false,
       bootstrapTitle: "Activate wallet on Hedera",
-      bootstrapMessage: network === "testnet"
-        ? "This wallet exists only in your browser. Fund the alias/EVM address from the Hedera testnet faucet or another wallet, then refresh until an account ID is resolved."
-        : "This wallet exists only in your browser. Fund the alias/EVM address or create the account externally, then refresh until the Hedera account ID is resolved.",
+      bootstrapMessage: fundingMessage,
     };
   }
 
@@ -188,7 +188,7 @@ function buildBootstrapCopy(network: NetworkId, lifecycleState: InternalWalletLi
       bootstrapRequired: true,
       canTransact: false,
       bootstrapTitle: "Wallet detected, HBAR still needed",
-      bootstrapMessage: "The Hedera account exists, but it does not have enough HBAR to be used reliably for marketplace transactions. Add HBAR, then refresh.",
+      bootstrapMessage: fundingMessage,
     };
   }
 
@@ -777,9 +777,4 @@ class HederaInternalWalletProvider implements InternalWalletProvider {
 }
 
 export const hederaInternalWalletProvider = new HederaInternalWalletProvider();
-
-
-
-
-
 

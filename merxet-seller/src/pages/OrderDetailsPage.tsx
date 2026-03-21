@@ -34,7 +34,7 @@ import {formatUtcDate} from '@/lib/dateUtils'
 import {useWallet} from '@/context/WalletContext'
 import {generateKeyPairFromB64} from '@/utils/keygen'
 import {decryptAES, decryptWithECIES} from '@/utils/encryption'
-import {signPrefix} from '@/config'
+import {CRYPTO_NAME_BLOCKCHAIN, signPrefix} from '@/config'
 import ConfirmDelivery from '@/components/ConfirmDelivery'
 import RefuseDelivery from '@/components/RefuseDelivery'
 import OrderStatusBadge from '@/components/OrderStatusBadge'
@@ -535,7 +535,7 @@ function OrderDetailsPage() {
 
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Payer:</div>
-                  {order.payer === "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ" || order.payer === "" ?
+                  {order.payer === "" ?
                     (<div className="text-sm">----</div>) : (
                       <AddressWithName value={order.payer} length={22} mdLength={70}/>
                     )}
@@ -559,7 +559,7 @@ function OrderDetailsPage() {
                 <Lock className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0"/>
                 <p>
                   The delivery address and the list of ordered items
-                  are encrypted and securely stored on the blockchain — accessible only to you and the buyer. </p>
+                  are encrypted and securely stored on the {CRYPTO_NAME_BLOCKCHAIN} — accessible only to you and the buyer. </p>
               </div>
             </div>
             <div className="flex items-center justify-between">
@@ -807,7 +807,7 @@ function OrderDetailsPage() {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground text-center mt-4">
-                Choose an action to update the order status on the blockchain </p>
+                Choose an action to update the order status on the {CRYPTO_NAME_BLOCKCHAIN} </p>
             </CardContent>
           </Card>
         )}

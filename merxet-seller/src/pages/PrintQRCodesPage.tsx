@@ -20,7 +20,7 @@ const PrintQRCodesPage: React.FC = () => {
   useEffect(() => {
     const loadCatalogue = async () => {
       if (!catalogueUrl) {
-        setError('No catalogue URL provided')
+        setError('No catalog URL provided')
         setIsLoading(false)
         return
       }
@@ -28,14 +28,14 @@ const PrintQRCodesPage: React.FC = () => {
       try {
         const response = await fetch(catalogueUrl)
         if (!response.ok) {
-          throw new Error(`Failed to fetch catalogue: ${response.status}`)
+          throw new Error(`Failed to fetch catalog: ${response.status}`)
         }
 
         const data = await response.json()
         const parsedProducts = ProductCatalogueSchema.parse(data)
         setProducts(parsedProducts)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load catalogue')
+        setError(err instanceof Error ? err.message : 'Failed to load catalog')
       } finally {
         setIsLoading(false)
       }
@@ -53,7 +53,7 @@ const PrintQRCodesPage: React.FC = () => {
       <div className="px-4 py-8">
         <Card className="w-full max-w-7xl mx-auto">
           <CardContent className="flex items-center justify-center py-16">
-            <div className="text-muted-foreground">Loading catalogue...</div>
+            <div className="text-muted-foreground">Loading catalog...</div>
           </CardContent>
         </Card>
       </div>
@@ -121,7 +121,7 @@ const PrintQRCodesPage: React.FC = () => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex-1">
                     <h3 className="font-semibold text-blue-900 mb-1">
-                      🛍️ Product Demo Catalogue
+                      🛍️ Product Demo Catalog
                     </h3>
                     <p className="text-sm text-blue-700">
                       Preview how your products look to customers in the interactive shopping experience

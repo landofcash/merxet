@@ -277,8 +277,7 @@ const TryTestnetModal: React.FC<TryTestnetModalProps> = ({open, onClose}) => {
       />
       <InternalWalletSuccessModal
         open={createdWallet != null}
-        walletLabel={createdWallet?.label ?? null}
-        identity={createdWallet?.identity ?? null}
+        wallet={createdWallet}
         onClose={() => {
           setCreatedWallet(null);
           onClose();

@@ -177,7 +177,7 @@ function OrderPage() {
                   <p className="text-xs text-amber-800">
                     <strong>Important:</strong> Delivery and refunds are handled by the shop, not Merxet.
                     Merxet is not responsible for order fulfillment or customer service.
-                    Blockchain payments are final and can't be reversed by Merxet.
+                    Payments are final and can't be reversed by Merxet.
                   </p>
                 </div>
               )}

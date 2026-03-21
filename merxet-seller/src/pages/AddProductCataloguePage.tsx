@@ -10,7 +10,7 @@ import {priceToDisplayString, getSupportedTokens} from '@/lib/tokenUtils'
 import {formatCryptoError} from '@/lib/cryptoFormat'
 import {encodeBase64Uuid} from '@/lib/uuidUtils'
 import {generateKeyPairFromB64} from '@/utils/keygen'
-import {signPrefix} from '@/config'
+import {CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN, signPrefix} from '@/config'
 import {
   CloudUpload,
   Link2,
@@ -61,9 +61,9 @@ function AddProductCataloguePage() {
 
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error('Catalogue not found at the specified URL')
+          throw new Error('Catalog not found at the specified URL')
         }
-        throw new Error(`Failed to fetch catalogue: ${response.status} ${response.statusText}`)
+        throw new Error(`Failed to fetch catalog: ${response.status} ${response.statusText}`)
       }
 
       const data = await response.json()
@@ -74,12 +74,12 @@ function AddProductCataloguePage() {
       const invalid = parsedCatalogue.filter(p => !supported.has(p.PriceToken))
       if (invalid.length > 0) {
         const invalidTokens = Array.from(new Set(invalid.map(p => p.PriceToken))).join(', ')
-        throw new Error(`Catalogue contains unsupported token type(s): ${invalidTokens}`)
+        throw new Error(`Catalog contains unsupported token type(s): ${invalidTokens}`)
       }
 
       setCatalogue(parsedCatalogue)
     } catch (err) {
-      let errorMessage = 'Failed to load catalogue'
+      let errorMessage = 'Failed to load catalog'
 
       if (err instanceof Error) {
         errorMessage = err.message
@@ -169,11 +169,11 @@ function AddProductCataloguePage() {
       <div className="px-4 py-8 sm:py-16">
         <Card className="w-full max-w-4xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">Add Product Catalogue</CardTitle>
+            <CardTitle className="text-2xl font-bold">Add Product Catalog</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Please connect your wallet to add a product catalogue. </p>
+              Please connect your wallet to add a product catalog. </p>
           </CardContent>
         </Card>
       </div>
@@ -186,7 +186,7 @@ function AddProductCataloguePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Info className="h-5 w-5 text-blue-500"/>
-            How Blockchain Storage works
+            How Storage works
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -194,11 +194,11 @@ function AddProductCataloguePage() {
             <div className="flex items-start gap-3">
               <Globe className="h-5 w-5 mt-0.5 text-blue-600 flex-shrink-0"/>
               <div>
-                <p className="font-medium">Why Store on the Blockchain?</p>
+                <p className="font-medium">Why store on the {CRYPTO_NAME_BLOCKCHAIN}?</p>
                 <p className="text-blue-600">
-                  When you add your catalogue URL, it’s saved in a secure public record powered by the blockchain.
+                  When you add your catalog URL, it’s saved in a secure public record powered by the {CRYPTO_NAME_BLOCKCHAIN}.
                   This works like a decentralized database, ensuring shoppers can always find your products.
-                  Only the link is stored on the blockchain; the actual catalogue (images and product details)
+                  Only the link is stored on the {CRYPTO_NAME_BLOCKCHAIN}; the actual catalog (images and product details)
                   is hosted off-chain, under your full control. </p>
               </div>
             </div>
@@ -206,10 +206,10 @@ function AddProductCataloguePage() {
             <div className="flex items-start gap-3 ">
               <img src="/hedera-logo.svg" alt="Hedera" className="h-5 w-5 mt-0.5"/>
               <div>
-                <p className="font-medium">What is Hedera?</p>
+                <p className="font-medium">What is {CRYPTO_NAME}?</p>
                 <p className="text-blue-600">
-                  Hedera is a fast, secure, and energy-efficient distributed ledger network.
-                  It acts like a shared global database that no single company controls - making your catalogue
+                  {CRYPTO_NAME} is a fast, secure, and energy-efficient distributed ledger network.
+                  It acts like a shared global database that no single company controls - making your catalog
                   link permanently available and tamper-proof. </p>
               </div>
             </div>
@@ -238,20 +238,20 @@ function AddProductCataloguePage() {
             <div className="flex items-start gap-3">
               <Link2 className="h-5 w-5 mt-0.5 text-blue-600 flex-shrink-0"/>
               <div>
-                <p className="font-medium">Step 1 – Fetch & Review Your Catalogue</p>
+                <p className="font-medium">Step 1 – Fetch & Review Your Catalog</p>
                 <p className="text-blue-600">
-                  Enter the URL where your catalogue JSON is hosted.
-                  Click <strong>Fetch & Review Catalogue</strong> to preview your products before uploading to the
-                  blockchain. </p>
+                  Enter the URL where your catalog JSON is hosted.
+                  Click <strong>Fetch & Review Catalog</strong> to preview your products before uploading to the
+                  {CRYPTO_NAME_BLOCKCHAIN}. </p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
               <Key className="h-5 w-5 mt-0.5 text-blue-600 flex-shrink-0"/>
               <div>
-                <p className="font-medium">Step 2 – Sign Catalogue ID (Unique Seed)</p>
+                <p className="font-medium">Step 2 – Sign Catalog ID (Unique Seed)</p>
                 <p className="text-blue-600">
-                  Sign your unique catalogue ID using your wallet.
+                  Sign your unique catalog ID using your wallet.
                   This will generate a secure public/private key pair
                   that can be used to encrypt delivery data for future orders. </p>
               </div>
@@ -260,9 +260,9 @@ function AddProductCataloguePage() {
             <div className="flex items-start gap-3">
               <CloudUpload className="h-5 w-5 mt-0.5 text-blue-600 flex-shrink-0"/>
               <div>
-                <p className="font-medium">Step 3 – Submit to Blockchain</p>
+                <p className="font-medium">Step 3 – Submit to {CRYPTO_NAME}</p>
                 <p className="text-blue-600">
-                  After signing, your catalogue link and public key will be stored on the blockchain.
+                  After signing, your catalog link and public key will be stored on the {CRYPTO_NAME_BLOCKCHAIN}.
                   This makes your shop discoverable and order-ready. </p>
               </div>
             </div>
@@ -275,20 +275,20 @@ function AddProductCataloguePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Info className="h-5 w-5"/>
-            Fetch & Review Product Catalogue
+            Fetch & Review Product Catalog
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="catalogueUrl" className="text-sm font-medium">
-                Catalogue URL
+                Catalog URL
               </label>
               <Input id="catalogueUrl" type="url" value={catalogueUrl} onChange={(e) => setCatalogueUrl(e.target.value)}
                      placeholder="https://example.com/products.json" required/>
             </div>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Loading...' : 'Fetch & Review Catalogue'}
+              {isLoading ? 'Loading...' : 'Fetch & Review Catalog'}
             </Button>
           </form>
 
@@ -329,7 +329,7 @@ function AddProductCataloguePage() {
                     <div className="flex-1">
                       <h4 className="font-medium">Sign Seed</h4>
                       <p className="text-sm text-muted-foreground">
-                        Generate and sign a unique seed for your catalogue </p>
+                        Generate and sign a unique seed for your catalog </p>
                       {isSigningComplete && seed && (
                         <div className="mt-2 text-xs">
                           <p className="text-green-600">✓ Seed generated and signed</p>
@@ -369,15 +369,15 @@ function AddProductCataloguePage() {
                       2
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium">Upload to Blockchain</h4>
+                      <h4 className="font-medium">Upload to {CRYPTO_NAME}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Store your catalogue on the blockchain </p>
+                        Store your catalog on the {CRYPTO_NAME_BLOCKCHAIN} </p>
                     </div>
                   </div>
                   <Button className="w-full sm:w-auto sm:ml-auto" onClick={() => setIsConfirmModalVisible(true)}
                           disabled={!isSigningComplete}>
                     <CloudUpload className="w-4 h-4 mr-2"/>
-                    Submit to Blockchain
+                    Submit to {CRYPTO_NAME}
                   </Button>
                 </div>
 
@@ -404,31 +404,31 @@ function AddProductCataloguePage() {
               ✕
             </button>
 
-            <h2 className="text-2xl font-bold text-center">Ready to Upload Your Catalogue</h2>
+            <h2 className="text-2xl font-bold text-center">Ready to Upload Your Catalog</h2>
             <div className="space-y-4 text-base">
               <p className="font-medium">Before proceeding, please note:</p>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <Link2 className="w-5 h-5 mt-1 text-blue-500 flex-shrink-0"/>
-                  <span className="text-muted-foreground">Your catalogue URL will be permanently stored on the blockchain</span>
+                  <span className="text-muted-foreground">Your catalog URL will be permanently stored on the {CRYPTO_NAME_BLOCKCHAIN}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Wallet2 className="w-5 h-5 mt-1 text-green-500 flex-shrink-0"/>
-                  <span className="text-muted-foreground">A small network fee will apply when storing data on-chain</span>
+                  <span className="text-muted-foreground">A small network fee will apply when storing data</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Store className="w-5 h-5 mt-1 text-purple-500 flex-shrink-0"/>
-                  <span className="text-muted-foreground">Keep your catalogue URL active and accessible for customers to view your products</span>
+                  <span className="text-muted-foreground">Keep your catalog URL active and accessible for customers to view your products</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <ShieldCheck className="w-5 h-5 mt-1 text-amber-500 flex-shrink-0"/>
-                  <span className="text-muted-foreground">You can update products in your catalogue anytime without additional blockchain transactions</span>
+                  <span className="text-muted-foreground">You can update products in your catalog anytime without additional transactions</span>
                 </li>
               </ul>
 
               {/* Show seed and public key info */}
               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                <p className="font-medium">Catalogue Details:</p>
+                <p className="font-medium">Catalog Details:</p>
                 <p className="text-sm"><strong>Seed:</strong> <span className="font-mono">{seed}</span></p>
                 <p className="text-sm"><strong>Seller Public Key:</strong> <span
                   className="font-mono text-xs">{sellerPubKey}</span></p>
@@ -459,7 +459,7 @@ function AddProductCataloguePage() {
               </div>
               <h2 className="text-2xl font-bold">Success!</h2>
               <p className="text-muted-foreground">
-                Your product catalogue has been successfully uploaded to the blockchain! </p>
+                Your product catalog has been successfully uploaded! </p>
               {txId && (
                 <div className="text-sm bg-muted/50 p-4 rounded-lg">
                   <p className="font-medium">Transaction ID:</p>
@@ -471,11 +471,11 @@ function AddProductCataloguePage() {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <Store className="w-5 h-5 mt-1 text-purple-500 flex-shrink-0"/>
-                    <span>Your catalogue is now accessible to potential customers</span>
+                    <span>Your catalog is now accessible to potential customers</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <ShieldCheck className="w-5 h-5 mt-1 text-amber-500 flex-shrink-0"/>
-                    <span>You can update your products anytime through the catalogue URL</span>
+                    <span>You can update your products anytime through the catalog URL</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Link2 className="w-5 h-5 mt-1 text-blue-500 flex-shrink-0"/>

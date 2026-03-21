@@ -37,7 +37,7 @@ const Header: React.FC = () => {
             <Link to="/edit-product-catalogue"
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
               <PackageSearch className="h-5 w-5"/>
-              Create Catalogue
+              Create Catalog
             </Link>
             <Link to="/my-orders"
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">

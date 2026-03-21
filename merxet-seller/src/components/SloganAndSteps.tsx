@@ -1,5 +1,5 @@
 import React from 'react'
-import {APP_NAME} from "@/config.ts";
+import {APP_NAME, CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN} from "@/config.ts";
 import { HyperText } from "@/components/ui/hyper-text"
 
 interface SloganAndStepsProps {
@@ -58,9 +58,9 @@ const SloganAndSteps: React.FC<SloganAndStepsProps> = ({setShowInstallModal, set
                   <a onClick={() => setShowTestnetModal(true)}
                      className="text-emerald-800 dark:text-emerald-300 underline cursor-pointer hover:text-emerald-900">
                     Connect
-                  </a> a Hedera wallet to login, no email or password needed.
+                  </a> a {CRYPTO_NAME} wallet to login, no email or password needed.
                   <br/>
-                  New to blockchain? <a onClick={() => setShowInstallModal(true)}
+                  New to {CRYPTO_NAME}? <a onClick={() => setShowInstallModal(true)}
                                         className="text-emerald-800 dark:text-emerald-300 underline cursor-pointer hover:text-emerald-900">
                   Download Crypto Wallet</a> and we’ll help you connect.
                 </p>
@@ -76,19 +76,19 @@ const SloganAndSteps: React.FC<SloganAndStepsProps> = ({setShowInstallModal, set
             <div className="order-2 sm:order-1 h-full flex items-center sm:justify-end">
               <div className="w-full max-w-xl text-left sm:text-right">
                 <h4 className="text-lg sm:text-3xl font-semibold text-slate-900 dark:text-white">Create Your
-                  Product Catalogue</h4>
+                  Product Catalog</h4>
                 <p
                   className="mt-4 text-[15px] sm:text-base leading-7 sm:leading-8 text-slate-700/90 dark:text-slate-300/95">
                   Add your products, set prices, and write descriptions.
                   <br/>
                   Host it on {APP_NAME} or your own server. No credit card needed.
                   <br/>
-                  Catalogue link is stored on the blockchain, making your products visible to customers. </p>
+                  Catalog link is stored on the {CRYPTO_NAME_BLOCKCHAIN}, making your products visible to customers. </p>
               </div>
             </div>
             {/* Illustration */}
             <div className="order-1 sm:order-2 h-full flex items-center justify-center">
-              <img src="/icons/gpt-catalogue-green.webp" alt="Create Catalogue"
+              <img src="/icons/gpt-catalogue-green.webp" alt="Create Catalog"
                    className="h-full max-h-72 w-auto object-contain select-none pointer-events-none drop-shadow"
                    loading="lazy"/>
             </div>
@@ -133,7 +133,7 @@ const SloganAndSteps: React.FC<SloganAndStepsProps> = ({setShowInstallModal, set
                   className="mt-4 text-[15px] sm:text-base leading-7 sm:leading-8 text-slate-700/90 dark:text-slate-300/95">
                   Shoppers scan your QR codes, view products, and pay with crypto or card.
                   <br/>
-                  Orders are encrypted and stored on the blockchain. Only you and the buyer can see them. </p>
+                  Orders are encrypted and stored on the {CRYPTO_NAME_BLOCKCHAIN}. Only you and the buyer can see them. </p>
               </div>
             </div>
             {/* Illustration */}

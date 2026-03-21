@@ -5,7 +5,7 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Textarea} from '@/components/ui/textarea';
 import {toast} from 'sonner';
-import {getCurrentConfig, type TokenConfig} from '@/config';
+import {CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN, getCurrentConfig, type TokenConfig} from '@/config';
 import {encodeBase64Uuid} from '@/lib/uuidUtils';
 import {useNavigate, Link} from "react-router-dom";
 import {
@@ -249,7 +249,7 @@ function CatalogueEditPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Info className="h-5 w-5 text-blue-500"/>
-            Catalogue Storage Options
+            Catalog Storage Options
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -259,7 +259,7 @@ function CatalogueEditPage() {
               <div>
                 <p className="font-medium">Create with Merxet Seller</p>
                 <p className="text-blue-600">
-                  Use this page to create your product catalogue and store it on our secure servers.
+                  Use this page to create your product catalog and store it on our secure servers.
                   This is the easiest way to get started - just add your products and we'll handle the hosting. </p>
               </div>
             </div>
@@ -350,8 +350,8 @@ function CatalogueEditPage() {
               <div>
                 <p className="font-medium">What happens next?</p>
                 <p className="text-blue-600">
-                  After uploading to our CDN, you'll be redirected to review your catalogue and then store its link on
-                  the blockchain.
+                  After uploading to our CDN, you'll be redirected to review your catalog and then store its link on
+                  the {CRYPTO_NAME_BLOCKCHAIN}.
                   This final step makes your products discoverable to customers while keeping your data secure and
                   decentralized. </p>
               </div>
@@ -359,9 +359,9 @@ function CatalogueEditPage() {
             <div className="flex items-center gap-2 text-xs text-blue-600 pt-1">
               <span>Upload to CDN</span>
               <ArrowRight className="h-3 w-3"/>
-              <span>Review Catalogue</span>
+              <span>Review Catalog</span>
               <ArrowRight className="h-3 w-3"/>
-              <span>Store Link on Blockchain</span>
+              <span>Store Link on {CRYPTO_NAME}</span>
               <ArrowRight className="h-3 w-3"/>
               <span>Print QR codes</span>
             </div>
@@ -388,21 +388,22 @@ function CatalogueEditPage() {
               <div>
                 <p className="font-medium">Host on Your Own Server</p>
                 <p className="text-blue-600">
-                  Already have a catalogue hosted elsewhere? You can use your own server or hosting provider.
-                  Only the link to your catalogue is stored on the blockchain, giving you full control over your
+                  Already have a catalog hosted elsewhere? You can use your own server or hosting provider.
+                  Only the link to your catalog is stored on the {CRYPTO_NAME_BLOCKCHAIN}, giving you full control over
+                  your
                   data. </p>
                 <Link to="/add-product-catalogue"
                       className="inline-flex items-center gap-1 mt-2 text-blue-700 hover:text-blue-800 font-medium hover:underline">
                   <ExternalLink className="h-3 w-3"/>
-                  Upload External Catalogue URL
+                  Upload External Catalog URL
                 </Link>
               </div>
             </div>
 
             <div className="pt-2 border-t border-blue-200">
               <p className="text-xs text-blue-600">
-                <strong>Note:</strong> Regardless of where you store your catalogue, only the URL link is recorded on
-                the blockchain.
+                <strong>Note:</strong> Regardless of where you store your catalog, only the URL link is recorded on
+                the {CRYPTO_NAME_BLOCKCHAIN}.
                 This ensures decentralization while giving you flexibility in how you manage your product data. </p>
             </div>
           </div>
@@ -474,7 +475,7 @@ function CatalogueEditPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  <strong>Note:</strong> All products in the catalogue must use the same token. </p>
+                  <strong>Note:</strong> All products in the catalog must use the same token. </p>
               </div>
 
               {/* Right Column - Image Upload */}
@@ -538,7 +539,7 @@ function CatalogueEditPage() {
       {showFinishModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-background p-6 rounded-md shadow-lg w-full max-w-md text-center space-y-4">
-            <h2 className="text-lg font-semibold">Catalogue Uploaded</h2>
+            <h2 className="text-lg font-semibold">Catalog Uploaded</h2>
             <p className="text-sm break-all text-muted-foreground">
               {`${config.cdnBasePath}/${cdnPath}.json`}
             </p>

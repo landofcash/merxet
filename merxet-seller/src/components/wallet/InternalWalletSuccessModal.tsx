@@ -2,25 +2,25 @@ import React from "react";
 import {createPortal} from "react-dom";
 import {CheckCircle2} from "lucide-react";
 import {Button} from "@/components/ui/button";
-import type {InternalWalletIdentity} from "@/lib/internalWallet/types.ts";
+import type {InternalWalletStatus} from "@/lib/internalWallet/types.ts";
 import CopyableField from "@/components/CopyableField";
 
 interface InternalWalletSuccessModalProps {
   open: boolean;
-  walletLabel: string | null;
-  identity: InternalWalletIdentity | null;
+  wallet: InternalWalletStatus | null;
   onClose: () => void;
 }
 
 const InternalWalletSuccessModal: React.FC<InternalWalletSuccessModalProps> = ({
   open,
-  walletLabel,
-  identity,
+  wallet,
   onClose,
 }) => {
-  if (!open || !identity) {
+  if (!open || !wallet) {
     return null;
   }
+
+  const {identity, label} = wallet;
 
   const modal = (
     <div className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 p-4">
@@ -30,7 +30,7 @@ const InternalWalletSuccessModal: React.FC<InternalWalletSuccessModalProps> = ({
           <div>
             <h2 className="text-xl font-semibold">Wallet created</h2>
             <p className="text-sm text-muted-foreground">
-              {walletLabel ?? "Internal wallet"} is now stored locally and encrypted.
+              {label ?? "Internal wallet"} is now stored locally and encrypted.
             </p>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Zap, Shield, Wallet, Users, Download, ChevronDown } from 'lucide-react'
-import { APP_NAME } from "@/config.ts";
+import {APP_NAME, CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN} from "@/config.ts";
 
 interface SystemDescriptionProps {
   walletAddress: string | null
@@ -45,11 +45,11 @@ const SystemDescription: React.FC<SystemDescriptionProps> = ({ walletAddress, se
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-sm font-bold">1</div>
                   <div>
-                    <p className="font-medium text-slate-900 dark:text-white">Create Product Catalogues</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">Upload your product listings to the blockchain</p>
+                    <p className="font-medium text-slate-900 dark:text-white">Create Product Catalogs</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">Upload your product listings to the {CRYPTO_NAME_BLOCKCHAIN}</p>
                     <p className="text-xs text-slate-700/90 dark:text-slate-300/90 mt-2 bg-emerald-50 p-2 rounded border-l-2 border-emerald-200">
-                      <strong>Storage Options:</strong> You can create your catalogue with {APP_NAME} Seller and store it on our CDN,
-                      or host it on your own server. Only the link to your catalogue is stored on the blockchain,
+                      <strong>Storage Options:</strong> You can create your catalog with {APP_NAME} Seller and store it on our CDN,
+                      or host it on your own server. Only the link to your catalog is stored on the {CRYPTO_NAME_BLOCKCHAIN},
                       giving you flexibility while maintaining decentralization.
                     </p>
                   </div>
@@ -97,7 +97,7 @@ const SystemDescription: React.FC<SystemDescriptionProps> = ({ walletAddress, se
           {open && (
             <CardContent className="space-y-4">
               <p className="text-slate-700 dark:text-slate-300">
-                Your wallet serves as your secure login and identity on the Hedera network.
+                Your wallet serves as your secure login and identity on the {CRYPTO_NAME} network.
                 No passwords, no accounts to manage - just your wallet.
               </p>
 
@@ -109,7 +109,7 @@ const SystemDescription: React.FC<SystemDescriptionProps> = ({ walletAddress, se
 
                 <div className="flex items-center gap-3">
                   <Wallet className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm text-slate-800 dark:text-slate-200">Direct blockchain transactions</span>
+                  <span className="text-sm text-slate-800 dark:text-slate-200">Direct {CRYPTO_NAME_BLOCKCHAIN} transactions</span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ const SystemDescription: React.FC<SystemDescriptionProps> = ({ walletAddress, se
               <div className="p-3 rounded-lg bg-emerald-50 dark:bg-slate-800/70">
                 <p className="text-xs text-slate-700 dark:text-slate-300">
                   <strong>Note:</strong> Your wallet address is your unique seller identity.
-                  All your products and orders are linked to this address on the blockchain.
+                  All your products and orders are linked to this address on {CRYPTO_NAME}.
                 </p>
               </div>
 

@@ -7,7 +7,7 @@ import {useWallet} from '@/context/WalletContext'
 import {sha256, b64FromBytes} from '@/utils/encoding'
 import {decryptWithECIES, encryptAES} from '@/utils/encryption'
 import {generateKeyPairFromB64} from '@/utils/keygen'
-import {signPrefix} from '@/config'
+import {CRYPTO_NAME_BLOCKCHAIN, signPrefix} from '@/config'
 import {formatCryptoError} from '@/lib/cryptoFormat'
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 
@@ -73,7 +73,7 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
       return
     }
     if (walletKind === 'internal' && !walletCanTransact) {
-      setSigningError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
+      setSigningError(walletBootstrapMessage ?? 'This wallet is not ready for transactions yet.')
       return
     }
 
@@ -139,7 +139,7 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
       return
     }
     if (walletKind === 'internal' && !walletCanTransact) {
-      setTransactionError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
+      setTransactionError(walletBootstrapMessage ?? 'This wallet is not ready for transactions yet.')
       return
     }
 
@@ -265,9 +265,9 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
             </div>
             <div className="flex-1">
               <p className={`font-medium text-foreground`}>
-                Send Blockchain Transaction </p>
+                Send Transaction </p>
               <p className="text-sm text-muted-foreground">
-                Refuse delivery on the blockchain </p>
+                Refuse delivery</p>
             </div>
           </div>
 
@@ -302,7 +302,7 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
 
             {currentStep === 2 && !isRefusingDelivery && (
               <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Ready to refuse delivery on blockchain</p>
+                <p className="text-muted-foreground">Ready to refuse delivery on the {CRYPTO_NAME_BLOCKCHAIN}</p>
                 <Button onClick={handleRefuseDelivery} variant="destructive" disabled={isRefusingDelivery}
                         className="mt-4">
                   <XCircle className="mr-2 h-4 w-4"/>
@@ -354,14 +354,14 @@ const RefuseDelivery: React.FC<RefuseDeliveryProps> = ({
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0"/>
           <div>
             <p className="font-medium">Warning: This action cannot be undone</p>
-            <p>Refusing delivery will cancel the order and update the status to "Cancelled" on the blockchain.</p>
+            <p>Refusing delivery will cancel the order and update the status to "Cancelled" on the {CRYPTO_NAME_BLOCKCHAIN}.</p>
           </div>
         </div>
 
         {/* Info Message */}
         <div className="text-sm text-muted-foreground flex items-center gap-2">
           <MessageSquare className="h-4 w-4"/>
-          This will update the order status to "Cancelled" on the blockchain
+          This will update the order status to "Cancelled" on the {CRYPTO_NAME_BLOCKCHAIN}
         </div>
       </CardContent>
     </Card>

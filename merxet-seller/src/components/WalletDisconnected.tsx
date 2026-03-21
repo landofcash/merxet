@@ -127,7 +127,12 @@ const WalletDisconnected: React.FC = () => {
             <span className="hidden sm:inline">Connect wallet</span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" side="bottom" className="w-104 p-4 text-sm shadow-lg space-y-5">
+        <PopoverContent
+          align="end"
+          side="bottom"
+          collisionPadding={8}
+          className="w-[min(26rem,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain p-4 text-sm shadow-lg space-y-4 sm:w-104 sm:space-y-5"
+        >
           {availableExternalProviders.length > 0 ? (
             <div className="space-y-2">
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">External wallets</div>
@@ -235,8 +240,7 @@ const WalletDisconnected: React.FC = () => {
       />
       <InternalWalletSuccessModal
         open={createdWallet != null}
-        walletLabel={createdWallet?.label ?? null}
-        identity={createdWallet?.identity ?? null}
+        wallet={createdWallet}
         onClose={() => setCreatedWallet(null)}
       />
       <ConfirmModal

@@ -29,7 +29,7 @@ const ShopVerificationMessage: React.FC<ShopVerificationMessageProps> = ({
       <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0"/>
       <p className="text-xs text-amber-800">
         <strong>Important:</strong> Delivery and refunds are handled by the shop, not Merxet. Merxet is not
-        responsible for order fulfillment or customer service. Blockchain payments are final and can't be reversed by
+        responsible for order fulfillment or customer service. Payments are final and can't be reversed by
         Merxet. </p>
     </div>
   )

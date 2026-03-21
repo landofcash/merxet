@@ -570,7 +570,7 @@ function PayWithCryptoPage() {
           {/* Security Notice */}
           {paymentStatus === 'idle' && walletAdapter && !hasMultipleTokens && (
             <div className="text-xs text-muted-foreground text-center space-y-1">
-              <p>🔒 Your transaction will be securely processed on the blockchain</p>
+              <p>🔒 Your transaction will be securely processed</p>
               <p>⚡ Fast confirmation times</p>
               <p>🔐 Order information is encrypted with your wallet signature</p>
             </div>

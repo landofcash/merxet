@@ -60,6 +60,7 @@ const WalletConnected: React.FC = () => {
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [associatingTokenId, setAssociatingTokenId] = useState<string | null>(null);
   const wasOpenRef = useRef(false);
+  const lastAutoBootstrapKeyRef = useRef<string | null>(null);
 
   const activeInternalWallet = useMemo(() => {
     return internalWallets.find(wallet => wallet.id === activeInternalWalletId) ?? null;
@@ -78,6 +79,28 @@ const WalletConnected: React.FC = () => {
       setBackupError(null);
     }
   }, [backupOpen]);
+
+  useEffect(() => {
+    if (walletKind !== "internal" || !activeInternalWalletId || !walletBootstrapMessage || walletCanTransact) {
+      lastAutoBootstrapKeyRef.current = null;
+      return;
+    }
+
+    const bootstrapKey = `${network}:${activeInternalWalletId}:${walletLifecycleState ?? "unknown"}`;
+    if (lastAutoBootstrapKeyRef.current === bootstrapKey) {
+      return;
+    }
+
+    lastAutoBootstrapKeyRef.current = bootstrapKey;
+    setBootstrapOpen(true);
+  }, [
+    activeInternalWalletId,
+    network,
+    walletBootstrapMessage,
+    walletCanTransact,
+    walletKind,
+    walletLifecycleState,
+  ]);
 
   if (!walletAddress) {
     return null;
@@ -166,7 +189,11 @@ const WalletConnected: React.FC = () => {
           </Button>
         </PopoverTrigger>
 
-        <PopoverContent align="end" className="w-176 max-w-[calc(100vw-1.5rem)] space-y-5 p-5">
+        <PopoverContent
+          align="end"
+          collisionPadding={8}
+          className="w-[min(44rem,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain space-y-4 p-4 sm:w-176 sm:max-w-[calc(100vw-1.5rem)] sm:space-y-5 sm:p-5"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -331,7 +358,7 @@ const WalletConnected: React.FC = () => {
 
               {walletKind === "internal" && !walletCanTransact ? (
                 <div className="text-xs text-muted-foreground">
-                  Marketplace signing stays disabled until this wallet is activated on-chain and has usable HBAR.
+                  Marketplace signing stays disabled until this wallet is activated on-chain and funded with 1-5 HBAR to pay Hedera network fees for catalog creation and other transactions.
                 </div>
               ) : null}
             </div>

@@ -8,7 +8,7 @@ import {useWallet} from '@/context/WalletContext'
 import {sha256, b64FromBytes} from '@/utils/encoding'
 import {decryptWithECIES, encryptAES} from '@/utils/encryption'
 import {generateKeyPairFromB64} from '@/utils/keygen'
-import {signPrefix} from '@/config'
+import {CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN, signPrefix} from '@/config'
 import {formatCryptoError} from '@/lib/cryptoFormat'
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 
@@ -91,7 +91,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
       return
     }
     if (walletKind === 'internal' && !walletCanTransact) {
-      setSigningError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
+      setSigningError(walletBootstrapMessage ?? 'This wallet is not ready for transactions yet.')
       return
     }
 
@@ -158,7 +158,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
       return
     }
     if (walletKind === 'internal' && !walletCanTransact) {
-      setTransactionError(walletBootstrapMessage ?? 'This wallet is not ready for Hedera transactions yet.')
+      setTransactionError(walletBootstrapMessage ?? 'This wallet is not ready for transactions yet.')
       return
     }
 
@@ -244,7 +244,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
             <Shield className="h-4 w-4 mt-0.5 text-green-600 flex-shrink-0"/>
             <p>
               The <strong>Shipment Code</strong> and <strong>Custom Information</strong> you enter
-              will be encrypted and stored on the blockchain. Only you and the buyer can decrypt and view it.
+              will be encrypted and stored on {CRYPTO_NAME}. Only you and the buyer can decrypt and view it.
             </p>
           </div>
 
@@ -253,7 +253,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
             <p>
               The confirmation involves <strong>2 steps</strong>: <br/>
               <strong>1.</strong> Sign the seed to encrypt the payload <br/>
-              <strong>2.</strong> Approve the blockchain transaction<br/>
+              <strong>2.</strong> Approve the transaction<br/>
               Please prepare your crypto wallet to sign both steps. </p>
           </div>
         </div>
@@ -313,10 +313,8 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
               </div>
             </div>
             <div className="flex-1">
-              <p className={`font-medium text-foreground`}>
-                Send Blockchain Transaction </p>
-              <p className="text-sm text-muted-foreground">
-                Confirm delivery on the blockchain </p>
+              <p className={`font-medium text-foreground`}>Send Transaction </p>
+              <p className="text-sm text-muted-foreground">Confirm delivery </p>
             </div>
           </div>
 
@@ -351,7 +349,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
 
             {currentStep === 2 && !isConfirmingDelivery && (
               <div className="text-center space-y-2">
-                <p className="text-muted-foreground">Ready to confirm delivery on blockchain</p>
+                <p className="text-muted-foreground">Ready to confirm delivery on the {CRYPTO_NAME_BLOCKCHAIN}</p>
                 <Button onClick={handleConfirmDelivery} disabled={isConfirmingDelivery}
                         className="bg-green-600 hover:bg-green-700 mt-4">
                   <CheckCircle2 className="mr-2 h-4 w-4"/>
@@ -404,7 +402,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
             <p>
               You are about to <strong>confirm the start of the delivery process</strong>. This will encrypt the
               shipment details
-              and store them on the blockchain. The buyer will be notified and able to decrypt the delivery
+              and store them on {CRYPTO_NAME}. The buyer will be notified and able to decrypt the delivery
               info.
               <br/><br/>
               <strong>This action is irreversible.</strong> Once confirmed, <strong>funds will be released to the
@@ -416,7 +414,7 @@ const ConfirmDelivery: React.FC<ConfirmDeliveryProps> = ({
         {/* Info Message */}
         <div className="text-sm text-muted-foreground flex items-center gap-2">
           <MessageSquare className="h-4 w-4"/>
-          This will update the order status to "Shipped" on the blockchain
+          This will update the order status to "Shipped"
         </div>
       </CardContent>
     </Card>
