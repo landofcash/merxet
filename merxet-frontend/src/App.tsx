@@ -6,6 +6,7 @@ import WalletAuth from './components/WalletAuth'
 import {APP_VERSION, APP_KEY_PREFIX, getConfig} from './config'
 import {useEffect, useMemo, useCallback} from 'react'
 import {useWallet} from './context/WalletContext'
+import BrandLockup from './components/BrandLockup'
 
 function App() {
   useEffect(() => {
@@ -56,9 +57,13 @@ function App() {
     <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl sm:text-4xl font-bold flex items-center justify-center gap-3">
-            <img src="/logo.svg" alt="Merxet Logo" className="h-10 w-10 sm:h-12 sm:w-12"/>
-            Merxet
+          <CardTitle className="flex justify-center">
+            <BrandLockup
+              size="hero"
+              className="justify-center"
+              wordmarkClassName="text-slate-950"
+              logoClassName="drop-shadow-[0_14px_24px_rgba(15,23,42,0.08)]"
+            />
           </CardTitle>
           <CardDescription className="text-lg sm:text-xl mt-2">
             Scan. Shop. Pay in a flash.

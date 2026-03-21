@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -7,6 +8,7 @@
 /* Define CSS Variables */
 :root {
     --font-sans: 'Inter', sans-serif;
+    --font-brand: 'Sora', 'Avenir Next', 'Segoe UI', sans-serif;
     --color-background-body: oklch(0.984 0.003 247.858);
     --color-background: oklch(1 0 0);
     --color-foreground: oklch(0.145 0 0);

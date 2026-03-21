@@ -24,7 +24,7 @@ import {Input} from "@/components/ui/input";
 import AppShellCard from "@/components/AppShellCard";
 import CopyableField from "@/components/CopyableField";
 import TokenIcon from "@/components/TokenIcon";
-import {explorerAccountUrl, getAvailableNetworkIds, getConfig} from "@/config";
+import {explorerAccountUrl, getConfig} from "@/config";
 import {useWallet} from "@/context/WalletContext";
 import {truncateString} from "@/lib/cryptoFormat";
 
@@ -77,7 +77,6 @@ function WalletPage() {
     revealInternalWalletBackup,
     associateInternalToken,
     disconnect,
-    switchNetwork,
   } = useWallet();
 
   const [formMode, setFormMode] = useState<FormMode>("none");
@@ -232,21 +231,18 @@ function WalletPage() {
   return (
     <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
       <AppShellCard className="w-full max-w-lg">
-        <CardHeader className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center gap-4">
             <Link to={safeReturnTo}>
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5"/>
               </Button>
             </Link>
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{network}</div>
+            <CardTitle className="text-2xl font-bold">Wallet</CardTitle>
           </div>
-          <div className="space-y-1">
-            <CardTitle className="text-2xl">Wallet</CardTitle>
-            <CardDescription>
-              Create, unlock, and use your Hedera wallet from one secure place.
-            </CardDescription>
-          </div>
+          <CardDescription>
+            Create, unlock, and use your Hedera wallet from one secure place.
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -267,26 +263,6 @@ function WalletPage() {
               {pageNotice}
             </div>
           ) : null}
-
-	          <div className="flex flex-wrap gap-2">
-	            {getAvailableNetworkIds().map(id => (
-	              <Button
-	                key={id}
-                variant={network === id ? "default" : "outline"}
-                size="sm"
-                disabled={id === "mainnet" || network === id}
-                onClick={() => void withBusy(`network:${id}`, async () => {
-                  await switchNetwork(id);
-                  await refreshInternalWallets();
-                })}
-	              >
-	                {id.toUpperCase()}
-	              </Button>
-	            ))}
-	          </div>
-	          <div className="text-xs text-muted-foreground">
-	            Mainnet is temporarily disabled.
-	          </div>
 
           {walletAddress && walletKind === "internal" ? (
             <>
@@ -384,7 +360,12 @@ function WalletPage() {
 
 	              <div className="rounded-xl border p-4 space-y-3">
 	                <div className="flex items-center justify-between gap-3">
-	                  <div className="text-sm font-medium">Balances</div>
+	                  <div>
+	                    <div className="text-sm font-medium">Balances</div>
+	                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+	                      {network}
+	                    </div>
+	                  </div>
 	                  <Button
 	                    variant="outline"
 	                    size="sm"
