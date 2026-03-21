@@ -106,6 +106,21 @@ export interface ChainAdapter {
     senderAddress: string
   ): Promise<string>
 
+  cancelOrderOnBlockchain(
+    walletAdapter: WalletAdapter,
+    seed: string
+  ): Promise<string>
+
+  confirmOrderOnBlockchain(
+    walletAdapter: WalletAdapter,
+    seed: string
+  ): Promise<string>
+
+  requestRefundOnBlockchain(
+    walletAdapter: WalletAdapter,
+    seed: string
+  ): Promise<string>
+
   viewCatalogOnBlockchain(seed: string): Promise<ProductData>
 
   viewBuyerData(seed: string, messageRefs?: OrderMessageRef[]): Promise<GetStorageResult>

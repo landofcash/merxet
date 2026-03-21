@@ -1,7 +1,7 @@
-import React, {type JSX, useState} from 'react'
+import {type JSX, useState} from 'react'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent} from '@/components/ui/card'
-import {AlertCircle, ChevronDown, ChevronUp, Eye, Loader2, Unlock} from 'lucide-react'
+import {AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Eye, Loader2, Unlock} from 'lucide-react'
 import {useWallet} from '@/context/WalletContext'
 import {generateKeyPairFromB64} from '@/utils/keygen'
 import {decryptAES, decryptWithECIES} from '@/utils/encryption'
@@ -13,40 +13,16 @@ import OrderStatusBadge from '@/components/OrderStatusBadge'
 import ApprovedShopBadge from '@/components/ApprovedShopBadge'
 import AddressDisplay from '@/components/AddressDisplay'
 import {formatUtcDate} from '@/lib/dateUtils'
-import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUtils'
+import {safePriceToDisplayString as priceToDisplayString} from '@/lib/tokenUtils'
 import {signPrefix} from '@/config'
-import {formatCryptoError} from "@/lib/cryptoFormat.ts";
-import {loadBuyerEncryptedPayloadForDecryption, loadSellerEncryptedPayloadForDecryption} from "@/lib/crypto/providers/hederaAdapter.ts";
-import type {OrderMessageRef} from "@/lib/syncService.ts";
-
-interface Order {
-  messages?: OrderMessageRef[]
-  version: string
-  productSeed: string
-  status: string
-  price: string
-  priceToken: string
-  seller: string
-  buyer: string
-  payer: string
-  buyerPubKey: string
-  sellerPubKey: string
-  encryptedSymKeyBuyer: string
-  encryptedSymKeySeller: string
-  symKeyHash: string
-  payloadHashBuyer: string
-  payloadHashSeller: string
-  createdDate: string
-  updatedDate: string
-  seed: string
-  buyerWallet: string
-  sellerWallet: string
-  amount: string
-  boxName: string
-}
+import {formatCryptoError} from '@/lib/cryptoFormat.ts'
+import {getChainAdapter} from '@/lib/crypto/cryptoUtils.ts'
+import {loadBuyerEncryptedPayloadForDecryption, loadSellerEncryptedPayloadForDecryption} from '@/lib/crypto/providers/hederaAdapter.ts'
+import type {Order} from '@/lib/syncService.ts'
 
 interface OrderItemDisplayProps {
   order: Order
+  onOrderUpdated?: () => Promise<void> | void
 }
 
 type DecryptionStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -59,20 +35,47 @@ interface DecryptedBoxResult {
   notFound: boolean
 }
 
-const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
-  const {walletAddress, signMessage, walletAdapter} = useWallet()
+function OrderItemDisplay({order, onOrderUpdated}: OrderItemDisplayProps) {
+  const {
+    walletAddress,
+    signMessage,
+    walletAdapter,
+    walletCanTransact,
+    walletBootstrapMessage,
+    walletKind,
+  } = useWallet()
   const [decryptionStatus, setDecryptionStatus] = useState<DecryptionStatus>('idle')
-  const [error, setError] = useState<string>('')
+  const [decryptionError, setDecryptionError] = useState<string>('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState<string>('')
+  const [actionSuccess, setActionSuccess] = useState<string>('')
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [buyerDecryptionResult, setBuyerDecryptionResult] = useState<DecryptedBoxResult | null>(null)
   const [sellerDecryptionResult, setSellerDecryptionResult] = useState<DecryptedBoxResult | null>(null)
   const [debugExpanded, setDebugExpanded] = useState(false)
-
-  // Common decryption state (shared between both boxes)
   const [signedSeed, setSignedSeed] = useState<string>('')
   const [keyPair, setKeyPair] = useState<{ publicKey: string; privateKey: string } | null>(null)
   const [aesKey, setAesKey] = useState<CryptoKey | null>(null)
 
-  // Generic function to decrypt a specific order box using the provided AES key
+  const chainAdapter = getChainAdapter()
+  const price = BigInt(order.price)
+  const priceToken = order.priceToken
+  const canDecrypt = order.status !== '1'
+  const showCancel = order.status === '2'
+  const showConfirmReceipt = order.status === '3'
+  const showRefundRequest = order.status === '3'
+
+  const resetDecryptionState = () => {
+    setDecryptionStatus('idle')
+    setDecryptionError('')
+    setBuyerDecryptionResult(null)
+    setSellerDecryptionResult(null)
+    setSignedSeed('')
+    setKeyPair(null)
+    setAesKey(null)
+    setDebugExpanded(false)
+  }
+
   const decryptOrderData = async (
     encryptedData: string,
     decryptedAESKey: CryptoKey
@@ -84,6 +87,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       encryptedData: '',
       notFound: true,
     }
+
     try {
       const decryptedText = await decryptAES(decryptedAESKey, encryptedData)
       result.encryptedData = encryptedData
@@ -92,7 +96,7 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       result.payloadHash = b64FromBytes(await sha256(new TextEncoder().encode(decryptedText)))
       return result
     } catch (err) {
-      console.error(`Decryption error:`, err)
+      console.error('Decryption error:', err)
       result.error = formatCryptoError(err)
       return result
     }
@@ -100,44 +104,39 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
 
   const handleDecryptPayload = async () => {
     if (!walletAddress || !walletAdapter) {
-      setError('Please connect your wallet to decrypt order data')
+      setDecryptionError('Please connect your wallet to decrypt order data')
+      setDecryptionStatus('error')
       return
     }
 
     setDecryptionStatus('loading')
-    setError('')
+    setDecryptionError('')
+    setActionError('')
 
     try {
-      // Step 1: Sign the order seed with the connected wallet
       const messageToSign = signPrefix + order.seed
-      let signedBase64: string
-
       const signed = await signMessage(
         messageToSign,
-        "Sign order seed to decrypt order data"
+        'Sign order seed to decrypt order data'
       )
-      signedBase64 = btoa(String.fromCharCode(...new Uint8Array(signed)))
+      const signedBase64 = btoa(String.fromCharCode(...new Uint8Array(signed)))
       setSignedSeed(signedBase64)
 
-      // Step 2: Generate the key pair from signed seed
       const generatedKeyPair = await generateKeyPairFromB64(signedBase64)
       setKeyPair(generatedKeyPair)
 
-      // Step 3: Decrypt the symmetric key using the buyer's encrypted key
-      // (This is the buyer's view, so we always use encryptedSymKeyBuyer)
       const decryptedAESKey = await decryptWithECIES(generatedKeyPair.privateKey, order.encryptedSymKeyBuyer)
       setAesKey(decryptedAESKey)
 
-      // Step 4: Decrypt both buyer and seller boxes using the same AES key
       const encryptedBuyerData = await loadBuyerEncryptedPayloadForDecryption(walletAdapter, order.seed, order.messages)
-
       let buyerResult: DecryptedBoxResult = {
         decryptedText: null,
         error: null,
         payloadHash: '',
         encryptedData: '',
-        notFound: true
+        notFound: true,
       }
+
       if (encryptedBuyerData.isFound && encryptedBuyerData.data) {
         buyerResult = await decryptOrderData(encryptedBuyerData.data, decryptedAESKey)
       }
@@ -149,31 +148,77 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
         error: null,
         payloadHash: '',
         encryptedData: '',
-        notFound: true
+        notFound: true,
       }
+
       if (encryptedSellerData.isFound && encryptedSellerData.data) {
         sellerResult = await decryptOrderData(encryptedSellerData.data, decryptedAESKey)
       }
       setSellerDecryptionResult(sellerResult)
 
-      // Missing seller payload is normal before delivery, so only surface hard failures.
       if (buyerResult.error || (sellerResult.error && !sellerResult.notFound)) {
-        setError(buyerResult.error || sellerResult.error || 'Decryption failed')
+        setDecryptionError(buyerResult.error || sellerResult.error || 'Decryption failed')
         setDecryptionStatus('error')
         return
       }
 
       setDecryptionStatus('success')
-
     } catch (err) {
       console.error('Overall decryption error:', err)
-      setError(formatCryptoError(err))
+      setDecryptionError(formatCryptoError(err))
       setDecryptionStatus('error')
     }
   }
 
-  // Helper function to render JSON as name:value pairs
-  const renderJsonAsKeyValue = (jsonString: string) => {
+  const handleDecryptionToggle = async () => {
+    if (decryptionStatus === 'idle') {
+      await handleDecryptPayload()
+      return
+    }
+
+    if (decryptionStatus === 'loading') {
+      return
+    }
+
+    resetDecryptionState()
+  }
+
+  const handleAction = async (action: () => Promise<string>, successMessage: string) => {
+    if (!walletAddress || !walletAdapter) {
+      setActionError('Please connect your wallet to continue')
+      return
+    }
+
+    if (walletKind === 'internal' && !walletCanTransact) {
+      setActionError(walletBootstrapMessage ?? 'This wallet is not ready for transactions yet.')
+      return
+    }
+
+    setActionLoading(true)
+    setActionError('')
+    setActionSuccess('')
+
+    try {
+      const txId = await action()
+      setActionSuccess(`${successMessage} Transaction ID: ${txId}`)
+      setShowCancelConfirm(false)
+
+      if (onOrderUpdated) {
+        try {
+          await onOrderUpdated()
+        } catch (refreshError) {
+          console.error('Order refresh failed after successful action:', refreshError)
+        }
+      }
+    } catch (err) {
+      console.error('Order action failed:', err)
+      setActionError(formatCryptoError(err))
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const renderJsonAsKeyValue = (jsonString: string): JSX.Element => {
     try {
       const parsedData = JSON.parse(jsonString)
       return renderObjectAsKeyValue(parsedData)
@@ -186,7 +231,6 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
     }
   }
 
-  // Recursive function to render an object as key-value pairs
   const renderObjectAsKeyValue = (obj: object, prefix = ''): JSX.Element => {
     return (
       <div className="space-y-1">
@@ -221,10 +265,9 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
                     <div key={`${fullKey}[${index}]`}>
                       <div className="font-medium text-muted-foreground">[{index}]:</div>
                       <div className="ml-2">
-                        {typeof item === 'object' ?
-                          renderObjectAsKeyValue(item, `${fullKey}[${index}]`) :
-                          <span>{String(item)}</span>
-                        }
+                        {typeof item === 'object' && item !== null
+                          ? renderObjectAsKeyValue(item, `${fullKey}[${index}]`)
+                          : <span>{String(item)}</span>}
                       </div>
                     </div>
                   ))}
@@ -242,10 +285,6 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
       </div>
     )
   }
-
-  const price = BigInt(order.price)
-  const priceToken = order.priceToken
-  const canDecrypt = order.status !== '1' // Not initial status
 
   return (
     <Card className="border-2">
@@ -287,179 +326,270 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
           )}
         </div>
 
-        {/* Decrypt Payload Section */}
-        {canDecrypt && (
+        {(showCancel || showConfirmReceipt || showRefundRequest || canDecrypt) && (
           <div className="pt-4 border-t space-y-3">
-            {decryptionStatus === 'idle' && (
-              <Button variant="outline" size="sm" onClick={handleDecryptPayload} className="w-full">
-                <Unlock className="mr-2 h-4 w-4"/>
-                Decrypt Order Details
-              </Button>
-            )}
-
-            {decryptionStatus === 'loading' && (
-              <div className="text-center space-y-2">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto"/>
-                <p className="text-sm text-muted-foreground">Decrypting order data...</p>
-              </div>
-            )}
-
-            {decryptionStatus === 'error' && (
+            {(showConfirmReceipt || showRefundRequest || showCancel) && (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="h-4 w-4"/>
-                  <span className="text-sm font-medium">Decryption failed</span>
-                </div>
-                {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded text-left whitespace-pre-wrap">
-                    {error}
+                {actionSuccess && (
+                  <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0"/>
+                    <span>{actionSuccess}</span>
                   </div>
                 )}
-                <Button variant="outline" size="sm" onClick={handleDecryptPayload} className="w-full">
-                  Try Again
-                </Button>
+
+                {actionError && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0"/>
+                    <span>{actionError}</span>
+                  </div>
+                )}
+
+                {showConfirmReceipt && (
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={actionLoading}
+                    onClick={() => handleAction(
+                      () => chainAdapter.confirmOrderOnBlockchain(walletAdapter!, order.seed),
+                      'Order confirmed and funds released to the seller.'
+                    )}
+                  >
+                    {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    Confirm Receipt
+                  </Button>
+                )}
+
+                {showRefundRequest && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={actionLoading}
+                    onClick={() => handleAction(
+                      () => chainAdapter.requestRefundOnBlockchain(walletAdapter!, order.seed),
+                      'Refund request submitted.'
+                    )}
+                  >
+                    {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                    Request Refund
+                  </Button>
+                )}
+
+                {showCancel && !showCancelConfirm && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={actionLoading}
+                    onClick={() => {
+                      setShowCancelConfirm(true)
+                      setActionError('')
+                      setActionSuccess('')
+                    }}
+                  >
+                    Cancel Order
+                  </Button>
+                )}
+
+                {showCancel && showCancelConfirm && (
+                  <div className="space-y-2 rounded-md border border-destructive/20 bg-destructive/5 p-3">
+                    <p className="text-sm text-muted-foreground">
+                      Cancel this paid order and return the funds to the buyer wallet?
+                    </p>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      disabled={actionLoading}
+                      onClick={() => handleAction(
+                        () => chainAdapter.cancelOrderOnBlockchain(walletAdapter!, order.seed),
+                        'Order canceled and funds returned to the buyer.'
+                      )}
+                    >
+                      {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                      Confirm Cancel
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      disabled={actionLoading}
+                      onClick={() => setShowCancelConfirm(false)}
+                    >
+                      Back
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
-            {decryptionStatus === 'success' && (buyerDecryptionResult || sellerDecryptionResult) && (
+            {canDecrypt && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-green-600">
-                  <Eye className="h-4 w-4"/>
-                  <span className="text-sm font-medium">Order Details Decrypted</span>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDecryptionToggle}
+                  disabled={decryptionStatus === 'loading'}
+                  className="w-full"
+                >
+                  {decryptionStatus === 'loading'
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+                    : decryptionStatus === 'idle'
+                      ? <Unlock className="mr-2 h-4 w-4"/>
+                      : <Eye className="mr-2 h-4 w-4"/>}
+                  {decryptionStatus === 'idle'
+                    ? 'View Order Details'
+                    : decryptionStatus === 'loading'
+                      ? 'Decrypting...'
+                      : 'Hide Order Details'}
+                </Button>
 
-                {/* Buyer Payload Section */}
-                {buyerDecryptionResult && (
-                  <div className="bg-muted/50 p-3 rounded-md space-y-2">
-                    <h4 className="font-medium text-sm text-blue-600">Buyer Payload:</h4>
-                    {buyerDecryptionResult.notFound ? (
-                      <p className="text-xs text-muted-foreground">
-                        Buyer payload reference not found. This likely indicates an issue with the order record.
-                      </p>
-                    ) : buyerDecryptionResult.error ? (
-                      <p className="text-xs text-destructive">
-                        Error decrypting buyer payload: {buyerDecryptionResult.error}
-                      </p>
-                    ) : buyerDecryptionResult.decryptedText ? (
-                      renderJsonAsKeyValue(buyerDecryptionResult.decryptedText)
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No buyer payload available</p>
+                {decryptionStatus === 'error' && (
+                  <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-4 w-4"/>
+                      <span className="text-sm font-medium">Decryption failed</span>
+                    </div>
+                    {decryptionError && (
+                      <div className="text-sm text-destructive whitespace-pre-wrap">
+                        {decryptionError}
+                      </div>
                     )}
+                    <p className="text-xs text-muted-foreground">
+                      Hide the details panel and try again to request a fresh signature.
+                    </p>
                   </div>
                 )}
 
-                {/* Seller Payload Section */}
-                {sellerDecryptionResult && (
-                  <div className="bg-muted/50 p-3 rounded-md space-y-2">
-                    <h4 className="font-medium text-sm text-purple-600">Seller Payload:</h4>
-                    {sellerDecryptionResult.notFound ? (
-                      <p className="text-xs text-muted-foreground">
-                        Seller payload reference not found. This is normal until the seller submits delivery data.
-                      </p>
-                    ) : sellerDecryptionResult.error ? (
-                      <p className="text-xs text-destructive">
-                        Error decrypting seller payload: {sellerDecryptionResult.error}
-                      </p>
-                    ) : sellerDecryptionResult.decryptedText ? (
-                      renderJsonAsKeyValue(sellerDecryptionResult.decryptedText)
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No seller payload available</p>
-                    )}
-                  </div>
-                )}
+                {decryptionStatus === 'success' && (buyerDecryptionResult || sellerDecryptionResult) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Eye className="h-4 w-4"/>
+                      <span className="text-sm font-medium">Order details decrypted</span>
+                    </div>
 
-                {/* Debug Information Toggle */}
-                {signedSeed && (
-                  <div className="border-t pt-3">
-                    <Button variant="ghost" size="sm" onClick={() => setDebugExpanded(!debugExpanded)}
-                            className="w-full flex items-center justify-center gap-2">
-                      {debugExpanded ? (
-                        <>
-                          <ChevronUp className="h-4 w-4"/>
-                          Hide Debug Info </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4"/>
-                          Show Debug Info </>
-                      )}
-                    </Button>
-
-                    {debugExpanded && (
-                      <div className="space-y-3 mt-3">
-                        {/* Common Debug Information */}
-                        <div className="space-y-3">
-                          <h5 className="font-medium text-sm text-green-600">Common Decryption Information:</h5>
-
-                          {/* Signed Seed */}
-                          <div className="p-3 bg-muted rounded-md">
-                            <h3 className="font-semibold text-yellow-600 mb-2 text-sm">Signed Seed (base64)</h3>
-                            <ExpandableData value={signedSeed}/>
-                          </div>
-
-                          {/* Key Pair */}
-                          {keyPair && (
-                            <div className="p-3 bg-muted rounded-md space-y-2">
-                              <div>
-                                <p className="text-sm font-medium">🔓 Public Key:</p>
-                                <p className="text-xs font-mono break-all">{keyPair.publicKey}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">🔐 Private Key:</p>
-                                <ExpandableData value={keyPair.privateKey}/>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* AES Key */}
-                          {aesKey && (
-                            <div className="p-3 bg-muted rounded-md">
-                              <h3 className="font-semibold text-blue-600 mb-2 text-sm">Decrypted AES Key</h3>
-                              <ExpandableData value={aesKey}/>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Buyer-specific Debug Information */}
-                        {buyerDecryptionResult && !buyerDecryptionResult.notFound && (
-                          <div className="space-y-3">
-                            <h5 className="font-medium text-sm text-blue-600">Buyer Debug Information:</h5>
-
-                            {/* Payload Hash */}
-                            {buyerDecryptionResult.payloadHash && (
-                              <div className="p-3 bg-muted rounded-md">
-                                <p className="text-sm font-medium">📦 Buyer Payload Hash:</p>
-                                <p className="text-xs font-mono break-all">{buyerDecryptionResult.payloadHash}</p>
-                              </div>
-                            )}
-
-                            {/* Encrypted Data */}
-                            {buyerDecryptionResult.encryptedData && (
-                              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                                <h3 className="font-semibold text-blue-700 mb-2 text-sm">Encrypted Buyer Data</h3>
-                                <ExpandableData value={buyerDecryptionResult.encryptedData}/>
-                              </div>
-                            )}
-                          </div>
+                    {buyerDecryptionResult && (
+                      <div className="bg-muted/50 p-3 rounded-md space-y-2">
+                        <h4 className="font-medium text-sm text-blue-600">Buyer Payload</h4>
+                        {buyerDecryptionResult.notFound ? (
+                          <p className="text-xs text-muted-foreground">
+                            Buyer payload reference not found. This likely indicates an issue with the order record.
+                          </p>
+                        ) : buyerDecryptionResult.error ? (
+                          <p className="text-xs text-destructive">
+                            Error decrypting buyer payload: {buyerDecryptionResult.error}
+                          </p>
+                        ) : buyerDecryptionResult.decryptedText ? (
+                          renderJsonAsKeyValue(buyerDecryptionResult.decryptedText)
+                        ) : (
+                          <p className="text-xs text-muted-foreground">No buyer payload available</p>
                         )}
+                      </div>
+                    )}
 
-                        {/* Seller-specific Debug Information */}
-                        {sellerDecryptionResult && !sellerDecryptionResult.notFound && (
-                          <div className="space-y-3">
-                            <h5 className="font-medium text-sm text-purple-600">Seller Debug Information:</h5>
+                    {sellerDecryptionResult && (
+                      <div className="bg-muted/50 p-3 rounded-md space-y-2">
+                        <h4 className="font-medium text-sm text-purple-600">Seller Payload</h4>
+                        {sellerDecryptionResult.notFound ? (
+                          <p className="text-xs text-muted-foreground">
+                            Seller payload reference not found. This is normal until the seller submits delivery data.
+                          </p>
+                        ) : sellerDecryptionResult.error ? (
+                          <p className="text-xs text-destructive">
+                            Error decrypting seller payload: {sellerDecryptionResult.error}
+                          </p>
+                        ) : sellerDecryptionResult.decryptedText ? (
+                          renderJsonAsKeyValue(sellerDecryptionResult.decryptedText)
+                        ) : (
+                          <p className="text-xs text-muted-foreground">No seller payload available</p>
+                        )}
+                      </div>
+                    )}
 
-                            {/* Payload Hash */}
-                            {sellerDecryptionResult.payloadHash && (
+                    {signedSeed && (
+                      <div className="border-t pt-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDebugExpanded(!debugExpanded)}
+                          className="w-full flex items-center justify-center gap-2"
+                        >
+                          {debugExpanded ? (
+                            <>
+                              <ChevronUp className="h-4 w-4"/>
+                              Hide Debug Info
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4"/>
+                              Show Debug Info
+                            </>
+                          )}
+                        </Button>
+
+                        {debugExpanded && (
+                          <div className="space-y-3 mt-3">
+                            <div className="space-y-3">
+                              <h5 className="font-medium text-sm text-green-600">Common Decryption Information</h5>
+
                               <div className="p-3 bg-muted rounded-md">
-                                <p className="text-sm font-medium">📦 Seller Payload Hash:</p>
-                                <p className="text-xs font-mono break-all">{sellerDecryptionResult.payloadHash}</p>
+                                <h3 className="font-semibold text-yellow-600 mb-2 text-sm">Signed Seed (base64)</h3>
+                                <ExpandableData value={signedSeed}/>
+                              </div>
+
+                              {keyPair && (
+                                <div className="p-3 bg-muted rounded-md space-y-2">
+                                  <div>
+                                    <p className="text-sm font-medium">Public Key:</p>
+                                    <p className="text-xs font-mono break-all">{keyPair.publicKey}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Private Key:</p>
+                                    <ExpandableData value={keyPair.privateKey}/>
+                                  </div>
+                                </div>
+                              )}
+
+                              {aesKey && (
+                                <div className="p-3 bg-muted rounded-md">
+                                  <h3 className="font-semibold text-blue-600 mb-2 text-sm">Decrypted AES Key</h3>
+                                  <ExpandableData value={aesKey}/>
+                                </div>
+                              )}
+                            </div>
+
+                            {buyerDecryptionResult && !buyerDecryptionResult.notFound && (
+                              <div className="space-y-3">
+                                <h5 className="font-medium text-sm text-blue-600">Buyer Debug Information</h5>
+
+                                {buyerDecryptionResult.payloadHash && (
+                                  <div className="p-3 bg-muted rounded-md">
+                                    <p className="text-sm font-medium">Buyer Payload Hash:</p>
+                                    <p className="text-xs font-mono break-all">{buyerDecryptionResult.payloadHash}</p>
+                                  </div>
+                                )}
+
+                                {buyerDecryptionResult.encryptedData && (
+                                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                    <h3 className="font-semibold text-blue-700 mb-2 text-sm">Encrypted Buyer Data</h3>
+                                    <ExpandableData value={buyerDecryptionResult.encryptedData}/>
+                                  </div>
+                                )}
                               </div>
                             )}
 
-                            {/* Encrypted Data */}
-                            {sellerDecryptionResult.encryptedData && (
-                              <div className="p-3 bg-purple-50 border border-purple-200 rounded-md">
-                                <h3 className="font-semibold text-purple-700 mb-2 text-sm">Encrypted Seller Data</h3>
-                                <ExpandableData value={sellerDecryptionResult.encryptedData}/>
+                            {sellerDecryptionResult && !sellerDecryptionResult.notFound && (
+                              <div className="space-y-3">
+                                <h5 className="font-medium text-sm text-purple-600">Seller Debug Information</h5>
+
+                                {sellerDecryptionResult.payloadHash && (
+                                  <div className="p-3 bg-muted rounded-md">
+                                    <p className="text-sm font-medium">Seller Payload Hash:</p>
+                                    <p className="text-xs font-mono break-all">{sellerDecryptionResult.payloadHash}</p>
+                                  </div>
+                                )}
+
+                                {sellerDecryptionResult.encryptedData && (
+                                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-md">
+                                    <h3 className="font-semibold text-purple-700 mb-2 text-sm">Encrypted Seller Data</h3>
+                                    <ExpandableData value={sellerDecryptionResult.encryptedData}/>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

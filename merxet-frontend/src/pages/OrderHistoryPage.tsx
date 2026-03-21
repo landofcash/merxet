@@ -7,46 +7,11 @@ import AppShellCard from '@/components/AppShellCard'
 import {useWallet} from '@/context/WalletContext'
 import OrderItemDisplay from '@/components/OrderItemDisplay'
 import {getCurrentConfig} from "@/config.ts";
-
-interface Order {
-  version: string
-  productSeed: string
-  status: string
-  price: string
-  priceToken: string
-  seller: string
-  buyer: string
-  payer: string
-  buyerPubKey: string
-  sellerPubKey: string
-  encryptedSymKeyBuyer: string
-  encryptedSymKeySeller: string
-  symKeyHash: string
-  payloadHashBuyer: string
-  payloadHashSeller: string
-  createdDate: string
-  updatedDate: string
-  seed: string
-  buyerWallet: string
-  sellerWallet: string
-  amount: string
-  boxName: string
-}
+import type {BuyerOrderGroup, Order} from '@/lib/syncService.ts'
 
 interface OrdersResponse {
   success: boolean
-  data: {
-    buyerWallet: string
-    networkName: string
-    orders: Order[]
-    meta: {
-      revision: number
-      created: number
-      version: number
-      updated: number
-    }
-    $loki: number
-  }
+  data: BuyerOrderGroup
 }
 
 function OrderHistoryPage() {
@@ -85,7 +50,10 @@ function OrderHistoryPage() {
 
       // Filter orders by current network
       if (data.data.networkName === network) {
-        setOrders(data.data.orders)
+        const sortedOrders = [...data.data.orders].sort(
+          (a, b) => Number(b.createdDate) - Number(a.createdDate)
+        )
+        setOrders(sortedOrders)
       } else {
         setOrders([])
       }
@@ -158,7 +126,7 @@ function OrderHistoryPage() {
           {!loading && !error && orders.length > 0 && (
             <div className="space-y-4">
               {orders.map((order) => (
-                <OrderItemDisplay key={order.seed} order={order}/>
+                <OrderItemDisplay key={order.seed} order={order} onOrderUpdated={fetchOrders}/>
               ))}
 
               <div className="text-center pt-4">

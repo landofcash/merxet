@@ -644,6 +644,51 @@ export const hederaAdapter: ChainAdapter = {
     return result.hash;
   },
 
+  async cancelOrderOnBlockchain(
+    walletAdapter: WalletAdapter,
+    seed: string
+  ): Promise<string> {
+    const config = getCurrentConfig();
+    const payload: ContractFunctionPayload = {
+      contractId: config.contractAddress,
+      function: "cancelOrder",
+      arguments: [bytes32Arg(seedToBytes32(seed))]
+    };
+
+    const result = await walletAdapter.executeContract(payload);
+    return result.hash;
+  },
+
+  async confirmOrderOnBlockchain(
+    walletAdapter: WalletAdapter,
+    seed: string
+  ): Promise<string> {
+    const config = getCurrentConfig();
+    const payload: ContractFunctionPayload = {
+      contractId: config.contractAddress,
+      function: "confirmOrder",
+      arguments: [bytes32Arg(seedToBytes32(seed))]
+    };
+
+    const result = await walletAdapter.executeContract(payload);
+    return result.hash;
+  },
+
+  async requestRefundOnBlockchain(
+    walletAdapter: WalletAdapter,
+    seed: string
+  ): Promise<string> {
+    const config = getCurrentConfig();
+    const payload: ContractFunctionPayload = {
+      contractId: config.contractAddress,
+      function: "requireRefund",
+      arguments: [bytes32Arg(seedToBytes32(seed))]
+    };
+
+    const result = await walletAdapter.executeContract(payload);
+    return result.hash;
+  },
+
   async viewCatalogOnBlockchain(seed: string): Promise<ProductData> {
     const config = getCurrentConfig();
     const seedBytes = seedToBytes32(seed);

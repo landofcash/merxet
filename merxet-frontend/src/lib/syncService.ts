@@ -63,7 +63,7 @@ export interface CatalogByWalletResponse {
 export interface Order {
   messages?: OrderMessageRef[]
   version: string
-  productSeed: string
+  catalogSeed: string
   status: string
   price: string
   priceToken: string

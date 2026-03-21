@@ -22,7 +22,7 @@ export function getOrderStatusText(status: string): string {
     case '7':
       return 'Refunded to Seller'
     case '8':
-      return 'Refunded'
+      return 'Canceled'
     default:
       return `Status ${status}`
   }
