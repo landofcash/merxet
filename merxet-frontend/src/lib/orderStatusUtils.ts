@@ -18,8 +18,10 @@ export function getOrderStatusText(status: string): string {
     case '5':
       return 'Refund Requested'
     case '6':
-      return 'Refunded to Seller'
+      return 'Refunded to Buyer'
     case '7':
+      return 'Refunded to Seller'
+    case '8':
       return 'Refunded'
     default:
       return `Status ${status}`
@@ -42,8 +44,10 @@ export function getOrderStatusColor(status: string): string {
     case '5':
       return 'text-orange-600 bg-orange-100'
     case '6':
-      return 'text-yellow-600 bg-yellow-100'
+      return 'text-red-600 bg-red-100'
     case '7':
+      return 'text-yellow-600 bg-yellow-100'
+    case '8':
       return 'text-red-600 bg-red-100'
     default:
       return 'text-gray-600 bg-gray-100'
@@ -66,9 +70,11 @@ export function getOrderStatusDescription(status: string): string {
     case '5':
       return 'Customer has requested a refund'
     case '6':
-      return 'Refund has been processed and returned to seller'
-    case '7':
       return 'Refund has been processed and returned to buyer'
+    case '7':
+      return 'Refund has been processed and returned to seller'
+    case '8':
+      return 'Order was canceled and funds were returned to the buyer'
     default:
       return 'Unknown status'
   }

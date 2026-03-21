@@ -107,7 +107,7 @@ function OrderPage() {
                   <div className="flex items-center gap-2 pb-2 border-b">
                     <Store className="h-4 w-4 text-muted-foreground"/>
                     <div className="flex items-center gap-2">
-                      <AddressDisplay value={shopWallet} length={20} small />
+                      <AddressDisplay value={shopWallet} length={20} small preferAccountId />
                       <ApprovedShopBadge walletAddress={shopWallet} />
                     </div>
                   </div>

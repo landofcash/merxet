@@ -19,21 +19,23 @@ function SettingsPage() {
         <CardContent className="space-y-6">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-muted-foreground">Crypto Network</span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant={network === 'testnet' ? 'default' : 'outline'}
                 onClick={() => switchNetwork('testnet')}
-                size="sm" disabled={true}
+                size="sm"
+                disabled={network === 'testnet'}
               >
                 Testnet
               </Button>
               <Button
                 variant={network === 'mainnet' ? 'default' : 'outline'}
-                onClick={() => switchNetwork('mainnet')}
                 size="sm"
+                disabled
               >
                 Mainnet
               </Button>
+              <span className="text-xs text-muted-foreground">Mainnet temporarily disabled</span>
             </div>
           </div>
 

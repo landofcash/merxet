@@ -273,9 +273,9 @@ const OrderItemDisplay: React.FC<OrderItemDisplayProps> = ({order}) => {
           </div>
 
           <div className="flex justify-between text-sm">
-            <span>Seller:</span>
+            <span>Shop:</span>
             <div className="flex items-center gap-2">
-              <AddressDisplay value={order.sellerWallet} length={16} small/>
+              <AddressDisplay value={order.sellerWallet} length={16} small preferAccountId/>
               <ApprovedShopBadge walletAddress={order.sellerWallet}/>
             </div>
           </div>

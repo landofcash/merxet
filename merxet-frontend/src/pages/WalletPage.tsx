@@ -268,32 +268,25 @@ function WalletPage() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            {getAvailableNetworkIds().map(id => (
-              <Button
-                key={id}
+	          <div className="flex flex-wrap gap-2">
+	            {getAvailableNetworkIds().map(id => (
+	              <Button
+	                key={id}
                 variant={network === id ? "default" : "outline"}
                 size="sm"
+                disabled={id === "mainnet" || network === id}
                 onClick={() => void withBusy(`network:${id}`, async () => {
                   await switchNetwork(id);
                   await refreshInternalWallets();
                 })}
-              >
-                {id.toUpperCase()}
-              </Button>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void withBusy("refresh", async () => {
-                await refreshInternalWallets();
-                await refreshActiveInternalWallet();
-              })}
-            >
-              <RefreshCcw className="h-4 w-4"/>
-              Refresh
-            </Button>
-          </div>
+	              >
+	                {id.toUpperCase()}
+	              </Button>
+	            ))}
+	          </div>
+	          <div className="text-xs text-muted-foreground">
+	            Mainnet is temporarily disabled.
+	          </div>
 
           {walletAddress && walletKind === "internal" ? (
             <>
@@ -389,10 +382,23 @@ function WalletPage() {
                 </div>
               ) : null}
 
-              <div className="rounded-xl border p-4 space-y-3">
-                <div className="text-sm font-medium">Balances</div>
-                <div className="space-y-2">
-                  {walletBalances.map(balance => (
+	              <div className="rounded-xl border p-4 space-y-3">
+	                <div className="flex items-center justify-between gap-3">
+	                  <div className="text-sm font-medium">Balances</div>
+	                  <Button
+	                    variant="outline"
+	                    size="sm"
+	                    onClick={() => void withBusy("refresh", async () => {
+	                      await refreshInternalWallets();
+	                      await refreshActiveInternalWallet();
+	                    })}
+	                  >
+	                    <RefreshCcw className="h-4 w-4"/>
+	                    Refresh
+	                  </Button>
+	                </div>
+	                <div className="space-y-2">
+	                  {walletBalances.map(balance => (
                     <div key={balance.tokenId} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
                       <div className="flex items-center gap-2">
                         <TokenIcon assetId={balance.tokenId} size={20}/>

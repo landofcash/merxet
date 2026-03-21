@@ -1,4 +1,7 @@
 import {getCurrentConfig, type TokenConfig} from "@/config.ts";
+import {TokenId} from "@hiero-ledger/sdk";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export function getSupportedTokens() {
   return getCurrentConfig().supportedTokens;
@@ -6,13 +9,20 @@ export function getSupportedTokens() {
 
 function normalizeTokenType(coinType: string): string {
   const key = coinType.trim();
-  if (
-    key === "0" ||
-    key.toUpperCase() === "HBAR" ||
-    key === "0.0.0" ||
-    /^0x0{40}$/i.test(key)
-  ) {
+  if (!key) {
+    return key;
+  }
+
+  if (key === "0" || key === "0.0.0" || key.toUpperCase() === "HBAR" || key.toLowerCase() === ZERO_ADDRESS) {
     return "0.0.0";
+  }
+
+  if (/^0x[0-9a-fA-F]{40}$/.test(key)) {
+    try {
+      return TokenId.fromSolidityAddress(key).toString();
+    } catch {
+      return key;
+    }
   }
 
   return key;
@@ -22,7 +32,7 @@ function normalizeTokenType(coinType: string): string {
 export function getTokenByType(coinType: string): TokenConfig {
   const tokens = getSupportedTokens();
   const key = normalizeTokenType(coinType);
-  const byType = tokens.find(t => t.tokenId === key);
+  const byType = tokens.find(t => normalizeTokenType(t.tokenId) === key);
   if (!byType) throw new Error('Token not found');
   return byType;
 }
@@ -64,7 +74,7 @@ export function priceToDisplayString(tokenType: string, price: number | bigint, 
 export function tryGetTokenByType(coinType: string) {
   const tokens = getSupportedTokens()
   const key = normalizeTokenType(coinType)
-  return tokens.find(t => t.tokenId === key) ?? null
+  return tokens.find(t => normalizeTokenType(t.tokenId) === key) ?? null
 }
 
 export function safePriceToDisplayString(tokenType: string, price: number | bigint, displayName: boolean = true): string {

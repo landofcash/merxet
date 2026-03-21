@@ -5,11 +5,12 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,} from "@/compo
 interface CopyableFieldProps {
     label?: string;
     value: string;
-    displayValue?: string;
+    displayValue?: string | null;
     small?: boolean;
     length?: number;
     mdLength?: number;
     className?: string;
+    copyable?: boolean;
 }
 
 const CopyableField: React.FC<CopyableFieldProps> = ({
@@ -20,6 +21,7 @@ const CopyableField: React.FC<CopyableFieldProps> = ({
     length = 0,
     mdLength = 0,
     className = "",
+    copyable = true,
 }) => {
     const [copied, setCopied] = useState(false);
 
@@ -45,15 +47,27 @@ const CopyableField: React.FC<CopyableFieldProps> = ({
     ) : (
         truncateString(displayValue??value, mdLength)
     );
-    const clickable = (
+    const fieldClassName = `max-w-fit inline-block bg-transparent border-0 p-0 m-0 text-left ${small ? "text-xs" : "text-sm"} ${copyable ? "cursor-pointer hover:underline" : ""} ${className}`;
+
+    const fieldContent = (
+        <>
+            <span className="md:hidden  font-mono">{displayText}</span>
+            <span className="hidden md:inline break-words whitespace-pre-wrap font-mono">{displayTextMd}</span>
+        </>
+    );
+
+    const clickable = copyable ? (
         <button
             type="button"
             onClick={copyToClipboard}
-            className={`max-w-fit inline-block cursor-pointer bg-transparent border-0 p-0 m-0 text-left ${small ? "text-xs" : "text-sm"} hover:underline ${className}`}
+            className={fieldClassName}
         >
-            <span className="md:hidden  font-mono">{displayText}</span>
-            <span className="hidden md:inline break-words whitespace-pre-wrap font-mono">{displayTextMd}</span>
+            {fieldContent}
         </button>
+    ) : (
+        <span className={fieldClassName}>
+            {fieldContent}
+        </span>
     );
 
     const fullDisplay = displayValue ?? value;

@@ -77,12 +77,24 @@ function contractIdToEvmAddress(contractId: string): `0x${string}` {
   return `0x${ContractId.fromString(contractId).toSolidityAddress()}` as `0x${string}`;
 }
 
-export async function getHcsTopicId(network?: NetworkId): Promise<string> {
+function normalizeEvmAddress(address: string): `0x${string}` {
+  return (address.startsWith("0x") ? address : `0x${address}`) as `0x${string}`;
+}
+
+export function getContractEvmAddress(network?: NetworkId): `0x${string}` {
   const config = getNetworkConfig(network);
+  if (config.contractEvmAddress) {
+    return normalizeEvmAddress(config.contractEvmAddress);
+  }
+
+  return contractIdToEvmAddress(config.contractAddress);
+}
+
+export async function getHcsTopicId(network?: NetworkId): Promise<string> {
   const {publicClient} = getHederaClient(network);
 
   return await publicClient.readContract({
-    address: contractIdToEvmAddress(config.contractAddress),
+    address: getContractEvmAddress(network),
     abi: MerxetAbi.abi,
     functionName: "hcsTopicId",
   }) as string;

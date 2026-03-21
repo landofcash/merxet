@@ -10,7 +10,7 @@ import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
 import {decodeHcsEnvelope, encodeHcsReferenceEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
 import {loadEncryptedPayloadFromHfs, loadEncryptedPayloadFromHfsWithWallet, uploadEncryptedPayloadToHfs} from "@/lib/hedera/hfsStorage.ts";
 // @ts-ignore
-import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar, TokenId, ContractId} from "@hiero-ledger/sdk";
+import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar, TokenId} from "@hiero-ledger/sdk";
 import {ethers} from "ethers";
 // @ts-ignore
 import MerxetAbi from "@/contracts/Merxet.json";
@@ -79,14 +79,6 @@ function tokenIdToContractAddress(tokenId: string): string {
   }
 
   return "0x" + TokenId.fromString(tokenId).toSolidityAddress();
-}
-
-function contractIdToEvmAddress(contractId: string): string {
-  if (ethers.isAddress(contractId)) {
-    return contractId;
-  }
-
-  return "0x" + ContractId.fromString(contractId).toSolidityAddress();
 }
 
 function contractAddressToTokenId(tokenAddress: string): string {
@@ -508,6 +500,7 @@ export const hederaAdapter: ChainAdapter = {
     const tokenId = tokenIds[0] || "0.0.0";
     const amount = tokenTotals[tokenId] ?? 0n;
     const tokenAddress = tokenIdToContractAddress(tokenId);
+    const contractEvmAddress = hederaUtils.getContractEvmAddress();
     const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedData);
 
     const batch: TransactionPayload[] = [
@@ -532,7 +525,7 @@ export const hederaAdapter: ChainAdapter = {
           contractId: tokenAddress,
           function: "approve",
           arguments: [
-            addressArg(contractIdToEvmAddress(config.contractAddress)),
+            addressArg(contractEvmAddress),
             uint256Arg(amount)
           ]
         }
@@ -657,7 +650,7 @@ export const hederaAdapter: ChainAdapter = {
 
     try {
       const provider = new ethers.JsonRpcProvider(config.hedera.rpcUrl);
-      const contract = new ethers.Contract(contractIdToEvmAddress(config.contractAddress), MerxetAbi.abi, provider);
+      const contract = new ethers.Contract(hederaUtils.getContractEvmAddress(), MerxetAbi.abi, provider);
       const catalog = await contract.catalogs(seedBytes);
 
       if (catalog.seller === ethers.ZeroAddress) {
@@ -709,7 +702,7 @@ async function viewOrder(seed: string): Promise<any> {
   const config = getCurrentConfig();
     const seedBytes = seedToBytes32(seed);
   const provider = new ethers.JsonRpcProvider(config.hedera.rpcUrl);
-  const contract = new ethers.Contract(contractIdToEvmAddress(config.contractAddress), MerxetAbi.abi, provider);
+  const contract = new ethers.Contract(hederaUtils.getContractEvmAddress(), MerxetAbi.abi, provider);
   return await contract.orders(seedBytes);
 }
 

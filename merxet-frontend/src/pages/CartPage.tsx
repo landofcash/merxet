@@ -194,7 +194,7 @@ function CartPage() {
                       <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-lg">
                           <Store className="h-5 w-5 text-primary"/>
-                          <AddressDisplay value={shopWallet} length={20}/>
+                          <AddressDisplay value={shopWallet} length={20} preferAccountId />
                           <ApprovedShopBadge walletAddress={shopWallet}/>
                         </CardTitle>
                       </CardHeader>
@@ -272,7 +272,7 @@ function CartPage() {
                           <Button size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white"
                                   onClick={() => handleOrderFromShop(items)}>
                             <ShoppingCart className="mr-2 h-5 w-5"/>
-                            Order from <AddressDisplay value={shopWallet} length={8} className="ml-1"/>
+                            Order from <AddressDisplay value={shopWallet} length={20} className="ml-1" copyable={false} preferAccountId />
                             <ApprovedShopBadge walletAddress={shopWallet} className="ml-1"/>
                           </Button>
                         </div>

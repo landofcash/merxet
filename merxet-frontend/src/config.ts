@@ -32,6 +32,7 @@ export interface NetworkConfig {
   cdnBasePath: string;
   name: NetworkId;
   contractAddress: string;
+  contractEvmAddress?: `0x${string}`;
   apiUrl: string;
   fileApiUrl:string;
   hedera: HederaEndpoints;
@@ -44,6 +45,7 @@ const configs: Record<NetworkId, NetworkConfig> = {
   testnet: {
     name: 'testnet',
     contractAddress: '0.0.7565091',
+    contractEvmAddress: '0x01b6d4a28bf0300ce1dbe039a762bf28278f199b',
     //apiUrl: 'http://localhost:3000/api/v1/t',
     //fileApiUrl: 'http://localhost:3000/api/cdn',
     apiUrl: 'https://sync.merxet.com/api/v1/t',
