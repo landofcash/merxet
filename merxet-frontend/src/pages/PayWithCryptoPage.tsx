@@ -5,6 +5,7 @@ import {Link, Navigate, useNavigate} from 'react-router-dom'
 import {useState} from 'react'
 import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
+import AppShellCard from '@/components/AppShellCard'
 import {useWallet} from '@/context/WalletContext'
 import {explorerTxUrl} from '@/config'
 import {formatCryptoError} from '@/lib/cryptoFormat'
@@ -220,8 +221,8 @@ function PayWithCryptoPage() {
   const hasMultipleTokens = tokenEntries.length > 1
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-md">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-md">
         <CardHeader className="flex flex-row items-center gap-4">
           {/* Only show the order link when payment is not successful */}
           {paymentStatus !== 'success' && (
@@ -243,7 +244,7 @@ function PayWithCryptoPage() {
                   <div>
                     <p className="font-medium">Multiple Token Types Detected</p>
                     <p className="text-sm">This payment method currently supports only one token type per transaction.
-                      Please pay for each token separately or use credit card payment.</p>
+                      Please pay for each token separately.</p>
                   </div>
                 </div>
               </CardContent>
@@ -576,7 +577,7 @@ function PayWithCryptoPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   )
 }

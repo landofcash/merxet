@@ -5,6 +5,7 @@ import {Link, Navigate, useNavigate} from 'react-router-dom'
 import {useState} from 'react'
 import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens, getTokenByType } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
+import AppShellCard from '@/components/AppShellCard'
 import {encodeBase64Uuid} from "@/lib/uuidUtils.ts";
 import {signPrefix} from "@/config.ts";
 import {useWallet} from "@/context/WalletContext.tsx";
@@ -242,8 +243,8 @@ function PayWithCreditCardPage() {
   }, 0)
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-md">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-md">
         <CardHeader className="flex flex-row items-center gap-4">
           {/* Only show the order link when payment is not successful */}
           {paymentStatus !== 'success' && (
@@ -532,7 +533,7 @@ function PayWithCreditCardPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   )
 }

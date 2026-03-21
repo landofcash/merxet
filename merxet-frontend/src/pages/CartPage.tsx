@@ -1,6 +1,6 @@
 import {ArrowLeft, Trash2, Store, QrCode, ShoppingCart, AlertTriangle} from 'lucide-react'
 import {Button} from '@/components/ui/button'
-import {Card, CardContent, CardHeader, CardSlim, CardTitle} from '@/components/ui/card'
+import {CardContent, CardHeader, CardSlim, CardTitle} from '@/components/ui/card'
 import {Link, useLocation, useNavigate} from 'react-router-dom'
 import {useEffect, useMemo, useState} from 'react'
 import {type CartItem, getCartItems, clearCart, saveCartItems} from '@/lib/cartStorage'
@@ -8,6 +8,7 @@ import {priceToDisplayString, getSupportedTokens} from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import AddressDisplay from '@/components/AddressDisplay'
 import ApprovedShopBadge from '@/components/ApprovedShopBadge'
+import AppShellCard from '@/components/AppShellCard'
 import {useOrder} from '@/context/OrderContext'
 import {useWallet} from '@/context/WalletContext'
 
@@ -154,8 +155,8 @@ function CartPage() {
   }, [visibleItems])
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-md">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-md">
         <CardHeader className="flex flex-row items-center gap-4">
           <Link to="/">
             <Button variant="ghost" size="icon">
@@ -321,7 +322,7 @@ function CartPage() {
             </>
           )}
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   )
 }

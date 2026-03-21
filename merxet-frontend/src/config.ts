@@ -5,6 +5,7 @@ declare const __APP_VERSION__: string;
 export const APP_VERSION = __APP_VERSION__
 export const APP_NAME='Merxet'
 export const BASE_URL='https://merxet.com'
+export const CREDIT_CARD_PAYMENTS_ENABLED = false
 
 // Sign prefix for encryption seed generation
 export const signPrefix = "merxet-";
@@ -126,4 +127,3 @@ export function isMobileWeb(): boolean {
   const { any } = isMobile(navigator.userAgent || '');
   return any;
 }
-

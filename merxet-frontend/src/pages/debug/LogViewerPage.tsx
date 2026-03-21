@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getLogs, clearLogs, type LogEntry } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AppShellCard from '@/components/AppShellCard';
 import { ArrowLeft } from 'lucide-react';
 
 export default function LogViewerPage() {
@@ -12,8 +13,8 @@ export default function LogViewerPage() {
   const logs = useMemo<LogEntry[]>(() => getLogs(category), [category, version]);
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-2xl">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-2xl">
         <CardHeader className="flex flex-row items-center gap-4">
           <Link to="/settings">
             <Button variant="ghost" size="icon">
@@ -39,7 +40,7 @@ export default function LogViewerPage() {
             {logs.map(l => `${new Date(l.ts).toISOString()} | ${l.message}`).join('\n')}
           </pre>
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import {useEffect, useRef, useState, useCallback} from 'react'
 import {BrowserMultiFormatReader} from '@zxing/browser'
 import {Button} from '@/components/ui/button'
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
+import {CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {ArrowLeft, Camera} from 'lucide-react'
 import {Link, useNavigate} from 'react-router-dom'
+import AppShellCard from '@/components/AppShellCard'
 import {decodeConcatenatedIDs} from '@/lib/qrCodeUtils'
 
 /**
@@ -103,8 +104,8 @@ function QrScanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-md">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-md">
         <CardHeader className="flex flex-row items-center gap-4">
           <Link to="/">
             <Button variant="ghost" size="icon">
@@ -137,7 +138,7 @@ function QrScanPage() {
             <p>📱 Supports Merxet QR codes</p>
           </div>
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   )
 }

@@ -19,8 +19,9 @@ import {
 } from "lucide-react";
 import {Link, useSearchParams} from "react-router-dom";
 import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
+import AppShellCard from "@/components/AppShellCard";
 import CopyableField from "@/components/CopyableField";
 import TokenIcon from "@/components/TokenIcon";
 import {explorerAccountUrl, getAvailableNetworkIds, getConfig} from "@/config";
@@ -229,8 +230,8 @@ function WalletPage() {
   const showSavedWallets = internalWallets.length > 0;
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-lg">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-lg">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <Link to={safeReturnTo}>
@@ -740,7 +741,7 @@ function WalletPage() {
             </div>
           ) : null}
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   );
 }

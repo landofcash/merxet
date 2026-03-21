@@ -122,9 +122,7 @@ export default function MerxetHero({ onStartSelling }: MerxetHeroProps) {
           </div>
 
           <div className="mt-8 space-y-2 text-sm font-medium text-slate-800 sm:text-base">
-            <p>Better than Shopify</p>
-            <p>
-              Built for the{" "}
+            <p>Better than Shopify. Built for the{" "}
               <span className="relative inline-flex font-semibold text-black">
                 <span className="absolute inset-x-0 bottom-0 h-2 rounded-full bg-[#0031FF]/16" aria-hidden />
                 <span className="relative">Hedera ecosystem</span>

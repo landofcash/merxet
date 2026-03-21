@@ -1,4 +1,4 @@
-import {ArrowLeft, Wallet, CreditCard, Store, AlertTriangle, CheckCircle} from 'lucide-react'
+import {ArrowLeft, Wallet, Store, AlertTriangle, CheckCircle} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, useNavigate, Navigate} from 'react-router-dom'
@@ -6,8 +6,9 @@ import {useState} from 'react'
 import {DeliveryInfoForm, type DeliveryInfo} from '@/components/DeliveryInfoForm'
 import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
+import AppShellCard from '@/components/AppShellCard'
 import {useOrder} from "@/context/OrderContext.tsx";
-import {getCurrentConfig} from '@/config'
+import {CREDIT_CARD_PAYMENTS_ENABLED, getCurrentConfig} from '@/config'
 import AddressDisplay from '@/components/AddressDisplay'
 import ApprovedShopBadge from '@/components/ApprovedShopBadge'
 
@@ -65,10 +66,6 @@ function OrderPage() {
     navigate('/pay-crypto')
   }
 
-  const handlePayWithCreditCard = () => {
-    navigate('/pay-credit-card')
-  }
-
   const isFormValid = () => {
     if (deliveryInfo.noPhysicalDelivery) {
       // For digital delivery, only email is optional
@@ -87,8 +84,8 @@ function OrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-md">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-md">
         <CardHeader className="flex flex-row items-center gap-4">
           <Link to="/cart">
             <Button variant="ghost" size="icon">
@@ -186,11 +183,12 @@ function OrderPage() {
                 <Wallet className="mr-2 h-5 w-5"/>
                 Pay with Crypto
               </Button>
-              <Button variant="outline" className="w-full" size="lg" onClick={handlePayWithCreditCard}
-                      disabled={!isFormValid()}>
-                <CreditCard className="mr-2 h-5 w-5"/>
-                Pay with Credit Card
-              </Button>
+              {CREDIT_CARD_PAYMENTS_ENABLED && (
+                <Button variant="outline" className="w-full" size="lg" onClick={() => navigate('/pay-credit-card')}
+                        disabled={!isFormValid()}>
+                  Pay with Credit Card
+                </Button>
+              )}
               {!isFormValid() && (
                 <p className="text-xs text-muted-foreground text-center">
                   Please complete all required fields to proceed
@@ -199,7 +197,7 @@ function OrderPage() {
             </CardContent>
           </Card>
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   )
 }

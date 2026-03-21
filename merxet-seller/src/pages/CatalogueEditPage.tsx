@@ -37,6 +37,30 @@ interface Product {
 // Character limits
 const NAME_MAX_LENGTH = 60;
 const DESCRIPTION_MAX_LENGTH = 320;
+const HEIC_EXTENSIONS = new Set(['heic', 'heif']);
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif']);
+
+function getFileExtension(filename: string): string {
+  return filename.split('.').pop()?.toLowerCase() ?? '';
+}
+
+function isHeicFile(file?: File): boolean {
+  if (!file) {
+    return false;
+  }
+
+  const mimeType = file.type.toLowerCase();
+  return HEIC_EXTENSIONS.has(getFileExtension(file.name))
+    || mimeType === 'image/heic'
+    || mimeType === 'image/heif'
+    || mimeType === 'image/heic-sequence'
+    || mimeType === 'image/heif-sequence';
+}
+
+function isSupportedImageFile(file: File): boolean {
+  return file.type.toLowerCase().startsWith('image/')
+    || SUPPORTED_IMAGE_EXTENSIONS.has(getFileExtension(file.name));
+}
 
 type EditableProduct = {
   Name: string;
@@ -66,6 +90,7 @@ function CatalogueEditPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [newProductPreviewUrl, setNewProductPreviewUrl] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [lastSelectedTokenType, setLastSelectedTokenType] = useState<string>(supportedTokens[0]?.tokenId ?? '');
   const [newProduct, setNewProduct] = useState<EditableProduct>({
@@ -90,12 +115,26 @@ function CatalogueEditPage() {
   useEffect(() => {
     const urls: Record<string, string> = {};
     products.forEach(p => {
-      if (p.LocalFile) urls[p.ProductId] = URL.createObjectURL(p.LocalFile);
+      if (p.LocalFile && !isHeicFile(p.LocalFile)) {
+        urls[p.ProductId] = URL.createObjectURL(p.LocalFile);
+      }
     });
     setPreviews(urls);
     // cleanup on unmount or change:
     return () => Object.values(urls).forEach(URL.revokeObjectURL);
   }, [products]);
+
+  useEffect(() => {
+    if (!newProduct.LocalFile || isHeicFile(newProduct.LocalFile)) {
+      setNewProductPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(newProduct.LocalFile);
+    setNewProductPreviewUrl(url);
+
+    return () => URL.revokeObjectURL(url);
+  }, [newProduct.LocalFile]);
 
   useEffect(() => {
     if (editingId) {
@@ -106,19 +145,27 @@ function CatalogueEditPage() {
     }
   }, [editingId, products, supportedTokens]);
 
+  const selectImageFile = (file?: File) => {
+    if (!file) {
+      return;
+    }
+
+    if (!isSupportedImageFile(file)) {
+      toast.error('Please select a supported image file (JPG, PNG, GIF, HEIC, or HEIF).');
+      return;
+    }
+
+    setNewProduct((prev) => ({...prev, LocalFile: file}));
+  };
+
   const handleImageDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      setNewProduct((prev) => ({...prev, LocalFile: file}));
-    }
+    selectImageFile(e.dataTransfer.files?.[0]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      setNewProduct((prev) => ({...prev, LocalFile: file}));
-    }
+    selectImageFile(e.target.files?.[0]);
+    e.target.value = '';
   };
 
   const handleAddOrUpdateProduct = () => {
@@ -134,7 +181,7 @@ function CatalogueEditPage() {
       });
       return;
     }
-    const ext = LocalFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const ext = getFileExtension(LocalFile.name) || (isHeicFile(LocalFile) ? 'heic' : 'jpg');
     const imageId = encodeBase64Uuid(crypto.randomUUID());
     const filename = `${cdnPath}.${imageId}.${ext}`;
     const imageUrl = `${config.cdnBasePath}/${filename}`;
@@ -295,8 +342,16 @@ function CatalogueEditPage() {
               return (
                 <div key={product.ProductId}
                      className="border rounded-md p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                  <img src={previews[product.ProductId]} alt={product.Name}
-                       className="w-20 h-20 object-cover rounded self-center sm:self-auto"/>
+                  {previews[product.ProductId] ? (
+                    <img src={previews[product.ProductId]} alt={product.Name}
+                         className="w-20 h-20 object-cover rounded self-center sm:self-auto"/>
+                  ) : (
+                    <div
+                      className="w-20 h-20 rounded border bg-muted/40 self-center sm:self-auto flex flex-col items-center justify-center text-[10px] text-muted-foreground">
+                      <FileImage className="w-5 h-5 mb-1"/>
+                      <span>{product.LocalFile && isHeicFile(product.LocalFile) ? 'HEIC' : 'Image'}</span>
+                    </div>
+                  )}
 
                   <div className="flex-1">
                     <div className="font-bold text-lg">{product.Name}</div>
@@ -484,7 +539,7 @@ function CatalogueEditPage() {
                   <Label>Product Image</Label>
 
                   {/* Hidden file input */}
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect}
+                  <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" onChange={handleFileSelect}
                          className="hidden"/>
 
                   {/* Drag and drop area */}
@@ -493,8 +548,23 @@ function CatalogueEditPage() {
                        onClick={() => fileInputRef.current?.click()}>
                     {newProduct.LocalFile ? (
                       <div className="space-y-3">
-                        <img src={URL.createObjectURL(newProduct.LocalFile)}
-                             className="max-w-full max-h-32 object-contain rounded" alt="Preview"/>
+                        {newProductPreviewUrl ? (
+                          <img src={newProductPreviewUrl}
+                               className="max-w-full max-h-32 object-contain rounded" alt="Preview"/>
+                        ) : (
+                          <div
+                            className="mx-auto flex max-w-full max-h-32 min-h-32 w-full flex-col items-center justify-center rounded border border-dashed bg-muted/40 px-4 text-center">
+                            <FileImage className="h-8 w-8 text-muted-foreground"/>
+                            <p className="mt-2 text-sm font-medium">
+                              {isHeicFile(newProduct.LocalFile) ? 'HEIC image selected' : 'Preview unavailable'}
+                            </p>
+                            {isHeicFile(newProduct.LocalFile) && (
+                              <p className="text-xs text-muted-foreground">
+                                This file will still upload normally.
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <p className="text-sm text-muted-foreground">
                           {newProduct.LocalFile.name}
                         </p>
@@ -507,7 +577,7 @@ function CatalogueEditPage() {
                         <div className="space-y-1">
                           <p className="text-sm font-medium">Drop image here</p>
                           <p className="text-xs text-muted-foreground">
-                            Supports <br/>JPG, PNG, GIF up to 10MB </p>
+                            Supports <br/>JPG, PNG, GIF, HEIC, HEIF up to 10MB </p>
                         </div>
                         <Button type="button" variant="outline" size="sm" onClick={(e) => {
                           e.stopPropagation();

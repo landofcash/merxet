@@ -1,6 +1,6 @@
 import {StrictMode} from 'react'
 import {createRoot} from 'react-dom/client'
-import {BrowserRouter, Routes, Route} from 'react-router-dom'
+import {BrowserRouter, Routes, Route, Navigate} from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import CartPage from './pages/CartPage.tsx'
@@ -19,6 +19,7 @@ import {WalletProvider} from './context/WalletContext.tsx'
 import Layout from './components/Layout.tsx'
 import UrlParserAndRedirector from './components/UrlParserAndRedirector.tsx'
 import {OrderProvider} from './context/OrderContext.tsx'
+import {CREDIT_CARD_PAYMENTS_ENABLED} from './config.ts'
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
@@ -37,7 +38,10 @@ createRoot(document.getElementById('root')!).render(
                             <Route path="/order" element={<OrderPage/>}/>
                             <Route path="/orders" element={<OrderHistoryPage/>}/>
                             <Route path="/pay-crypto" element={<PayWithCryptoPage/>}/>
-                            <Route path="/pay-credit-card" element={<PayWithCreditCardPage/>}/>
+                            <Route
+                                path="/pay-credit-card"
+                                element={CREDIT_CARD_PAYMENTS_ENABLED ? <PayWithCreditCardPage/> : <Navigate to="/order" replace />}
+                            />
                             <Route path="/debug/encrypt" element={<TestEncryptionPage/>}/>
                             <Route path="/debug/decrypt" element={<TestDecryptionPage/>}/>
                             <Route path="/debug/logs/:category" element={<LogViewerPage/>}/>

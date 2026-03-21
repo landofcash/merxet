@@ -1,8 +1,9 @@
 import React, {useState} from "react";
 import {ArrowLeft, Unlock, ArrowLeft as ArrowLeftIcon} from "lucide-react";
 import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Link} from "react-router-dom";
+import AppShellCard from "@/components/AppShellCard";
 import {useWallet} from "@/context/WalletContext";
 import {generateKeyPairFromB64} from "@/utils/keygen";
 import {decryptAES, decryptWithECIES} from "@/utils/encryption";
@@ -51,8 +52,8 @@ const TestDecryptionPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center px-4 py-8 sm:py-16">
-      <Card className="w-full max-w-md">
+    <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
+      <AppShellCard className="w-full max-w-md">
         <CardHeader className="flex flex-row items-center gap-4">
           <Link to="/">
             <Button variant="ghost" size="icon">
@@ -141,7 +142,7 @@ const TestDecryptionPage: React.FC = () => {
             </Link>
           </div>
         </CardContent>
-      </Card>
+      </AppShellCard>
     </div>
   );
 };
