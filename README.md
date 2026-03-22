@@ -1,5 +1,5 @@
 <div align="center">
-<img src="/merxet-seller/public/logo-64x64.png" alt="Merxet banner"  />
+<img src=https://merxet.com/logo-64x64.png alt="Merxet banner"  />
 
 # Merxet
 
