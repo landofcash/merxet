@@ -1,7 +1,7 @@
 import React from 'react'
 import {CheckCircle} from 'lucide-react'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
-import {getCurrentConfig} from '@/config'
+import {useApprovedShopStatus} from '@/lib/approvedShop'
 
 interface ApprovedShopBadgeProps {
   walletAddress: string
@@ -9,8 +9,7 @@ interface ApprovedShopBadgeProps {
 }
 
 const ApprovedShopBadge: React.FC<ApprovedShopBadgeProps> = ({walletAddress, className = ''}) => {
-  const config = getCurrentConfig()
-  const isApproved = config.approvedShopWallets.includes(walletAddress)
+  const isApproved = useApprovedShopStatus(walletAddress)
 
   if (!isApproved) {
     return null

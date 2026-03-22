@@ -1,4 +1,4 @@
-import {ArrowLeft, Wallet, Store, AlertTriangle, CheckCircle} from 'lucide-react'
+import {ArrowLeft, Wallet, Store} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, useNavigate, Navigate} from 'react-router-dom'
@@ -8,9 +8,10 @@ import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUti
 import TokenIcon from '@/components/TokenIcon'
 import AppShellCard from '@/components/AppShellCard'
 import {useOrder} from "@/context/OrderContext.tsx";
-import {CREDIT_CARD_PAYMENTS_ENABLED, getCurrentConfig} from '@/config'
+import {CREDIT_CARD_PAYMENTS_ENABLED} from '@/config'
 import AddressDisplay from '@/components/AddressDisplay'
 import ApprovedShopBadge from '@/components/ApprovedShopBadge'
+import ShopVerificationMessage from '@/components/ShopVerificationMessage'
 
 type GroupedCartItems = {
   [shopWallet: string]: import('@/lib/cartStorage').CartItem[]
@@ -57,10 +58,7 @@ function OrderPage() {
     return groups
   }, {} as GroupedCartItems)
 
-  // Check if the shop is approved
   const shopWallet = cartItems.length > 0 ? cartItems[0].shopWallet : ''
-  const config = getCurrentConfig()
-  const isApprovedShop = config.approvedShopWallets.includes(shopWallet)
 
   const handlePayWithCrypto = () => {
     navigate('/pay-crypto')
@@ -161,23 +159,7 @@ function OrderPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Conditional Warning Message */}
-              {isApprovedShop ? (
-                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-blue-800">
-                    <strong>Verified Shop:</strong> This is a verified merchant.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-amber-800">
-                    <strong>Important:</strong> Delivery and refunds are handled by the shop, not Merxet.
-                    Merxet is not responsible for order fulfillment or customer service.
-                    Payments are final and can't be reversed by Merxet.
-                  </p>
-                </div>
-              )}
+              <ShopVerificationMessage shopWallet={shopWallet}/>
 
               <Button className="w-full" size="lg" onClick={handlePayWithCrypto} disabled={!isFormValid()}>
                 <Wallet className="mr-2 h-5 w-5"/>

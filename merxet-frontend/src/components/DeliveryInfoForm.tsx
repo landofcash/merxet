@@ -70,7 +70,9 @@ export function DeliveryInfoForm({onDeliveryInfoChange, deliveryInfo}: DeliveryI
           <Switch id="no-physical-delivery" checked={deliveryInfo.noPhysicalDelivery}
                   onCheckedChange={(checked) => handleInputChange('noPhysicalDelivery', checked)}/>
         </div>
-
+        <Button variant="outline" size="sm" onClick={handleAutoFill} className="w-full">
+          🔧 Auto-fill with test data
+        </Button>
         <div className="grid grid-cols-1 gap-4">
           {/* Physical delivery fields - only show when physical delivery is required */}
           {!deliveryInfo.noPhysicalDelivery && (
@@ -199,10 +201,6 @@ export function DeliveryInfoForm({onDeliveryInfoChange, deliveryInfo}: DeliveryI
             </p>
           </div>
         </div>
-
-        <Button variant="outline" size="sm" onClick={handleAutoFill} className="w-full">
-          Auto-fill with test data
-        </Button>
       </CardContent>
     </Card>
   )

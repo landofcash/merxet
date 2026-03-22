@@ -1,6 +1,6 @@
 import React from 'react'
 import {AlertTriangle, CheckCircle} from 'lucide-react'
-import {getCurrentConfig} from '@/config'
+import {useApprovedShopStatus} from '@/lib/approvedShop'
 
 interface ShopVerificationMessageProps {
   shopWallet: string
@@ -11,8 +11,7 @@ const ShopVerificationMessage: React.FC<ShopVerificationMessageProps> = ({
                                                                            shopWallet,
                                                                            className = ''
                                                                          }) => {
-  const config = getCurrentConfig()
-  const isApprovedShop = config.approvedShopWallets.includes(shopWallet)
+  const isApprovedShop = useApprovedShopStatus(shopWallet)
 
   if (isApprovedShop) {
     return (
