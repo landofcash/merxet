@@ -1,2 +1,2 @@
-export type ChainId = 'aptos' | string;
-export type NetworkId = 'mainnet' | 'testnet' | 'devnet' | 'local' | string;
+export type ChainId = 'hedera' | string;
+export type NetworkId = 'mainnet' | 'testnet' | 'previewnet' | 'local' | string;

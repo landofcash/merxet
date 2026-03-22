@@ -1,20 +1,39 @@
 import {getCurrentConfig, type TokenConfig} from "@/config.ts";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 export function getSupportedTokens() {
   return getCurrentConfig().supportedTokens;
 }
 
-// Resolver that accepts only coinType string (no backward compatibility)
-export function getTokenByType(coinType: string): TokenConfig {
+function normalizeTokenType(tokenType: string): string {
+  const key = tokenType.trim();
+
+  if (!key) {
+    return key;
+  }
+
+  if (key === "0" || key === "0.0.0" || key.toUpperCase() === "HBAR" || key.toLowerCase() === ZERO_ADDRESS) {
+    return "0.0.0";
+  }
+
+  if (/^0x[0-9a-fA-F]{40}$/.test(key)) {
+    return key.toLowerCase();
+  }
+
+  return key;
+}
+
+export function getTokenByType(tokenType: string): TokenConfig {
   const tokens = getSupportedTokens();
-  const key = coinType.trim();
-  const byType = tokens.find(t => t.coinType === key);
+  const key = normalizeTokenType(tokenType);
+  const byType = tokens.find(t => normalizeTokenType(t.tokenId) === key);
   if (!byType) throw new Error('Token not found');
   return byType;
 }
 
-export function getTokenName(coinType: string) {
-  return getTokenByType(coinType).name;
+export function getTokenName(tokenType: string) {
+  return getTokenByType(tokenType).name;
 }
 
 export function priceFromBaseUnits(tokenType: string, price: number | bigint): number {
@@ -47,10 +66,10 @@ export function priceToDisplayString(tokenType: string, price: number | bigint, 
   return res;
 }
 
-export function tryGetTokenByType(coinType: string) {
+export function tryGetTokenByType(tokenType: string) {
   const tokens = getSupportedTokens()
-  const key = coinType.trim()
-  return tokens.find(t => t.coinType === key) ?? null
+  const key = normalizeTokenType(tokenType)
+  return tokens.find(t => normalizeTokenType(t.tokenId) === key) ?? null
 }
 
 export function safePriceToDisplayString(tokenType: string, price: number | bigint, displayName: boolean = true): string {
@@ -58,7 +77,7 @@ export function safePriceToDisplayString(tokenType: string, price: number | bigi
     return priceToDisplayString(tokenType, price, displayName)
   } catch {
     const priceNum = typeof price === 'bigint' ? Number(price) : price
-    const formatted = priceNum.toLocaleString(undefined, { maximumFractionDigits: 8 })
+    const formatted = priceNum.toLocaleString(undefined, {maximumFractionDigits: 8})
     return displayName ? `${formatted}` : formatted
   }
 }

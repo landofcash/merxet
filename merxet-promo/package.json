@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aptos-labs/ts-sdk": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.524.0",
@@ -18,8 +17,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-pageflip": "^2.0.3",
-    "react-qr-code": "^2.0.16",
     "react-router-dom": "^7.6.3",
+    "swiper": "^12.1.2",
     "tailwind-merge": "^3.3.1",
     "zod": "^4.1.11"
   },

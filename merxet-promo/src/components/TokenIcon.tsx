@@ -10,7 +10,7 @@ interface TokenIconProps {
 
 const TokenIcon: React.FC<TokenIconProps> = ({assetId, size = 20, alt = '', className = ''}) => {
   const token = tryGetTokenByType(String(assetId));
-  // Use token.id for the fallback icon filename to support coinType-based lookups
+  // Use token.id for the fallback icon filename to support tokenId-based lookups
   const [imgSrc] = React.useState(token?.img ?? `/tokens/${token?.id ?? '0'}-icon.png`);
   const [showFallback, setShowFallback] = React.useState(false);
 

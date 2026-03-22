@@ -1,49 +1,61 @@
 import HTMLFlipBook from 'react-pageflip'
 import {useEffect, useState} from "react";
 import {useLocation, useParams} from 'react-router-dom';
+import {Swiper, SwiperSlide} from 'swiper/react';
+import {Pagination} from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/pagination';
 import CoverPage from '@/components/CoverPage';
-import ProductPage from "@/components/ProductPage.tsx";
+import ProductPageDesktop from "@/components/ProductPageDesktop.tsx";
+import ProductPageMobile from "@/components/ProductPageMobile.tsx";
 import FinalPage from '@/components/FinalPage';
 import {type Product, ProductCatalogueSchema} from "@/lib/productSchemas.ts";
-import {getCurrentConfig} from '@/config.ts';
-import {getAptosClient} from "@/lib/aptos/aptosClient.ts";
+import {DEFAULT_CATALOG_SEED, DEFAULT_NETWORK, isNetworkId, setCurrentNetwork} from '@/config.ts';
+import type {NetworkId} from "@/context/wallet/types.ts";
+import {fetchProductBySeed} from "@/lib/syncService.ts";
+import {isApprovedShopWallet} from "@/lib/approvedShop.ts";
 
-export default function App() {
+interface ProductRaw {
+  ProductId: string;
+  PriceToken: string;
+  Price: number | string | bigint;
+  Name: string;
+  Description: string;
+  Image: string;
+}
+
+function normalizePrice(value: number | string | bigint): bigint {
+  if (typeof value === "bigint") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return BigInt(value);
+  }
+
+  return BigInt(value);
+}
+
+function resolveNetworkId(searchParams: URLSearchParams): NetworkId {
+  const queryNetwork = searchParams.get("network") ?? searchParams.get("n");
+  if (isNetworkId(queryNetwork)) {
+    return queryNetwork;
+  }
+
+  return DEFAULT_NETWORK;
+}
+
+export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [catalogueSeed, setCatalogueSeed] = useState<string>('');
-  const [shopWallet, setShopWallet] = useState<string>('');
+  const [activeNetwork, setActiveNetwork] = useState<NetworkId>(DEFAULT_NETWORK);
+  const [isApprovedWallet, setIsApprovedWallet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   const location = useLocation();
   const params = useParams();
-
-  // Helper: call Aptos view to fetch the Product
-  const getProductFromChain = async (seed: string) => {
-    const cfg = getCurrentConfig();
-    const aptos = getAptosClient();
-    const result = await aptos.view({
-      payload: {
-        function: `${cfg.account}::products::get_product`,
-        typeArguments: [],
-        functionArguments: [seed], // vector<u8>
-      },
-    });
-
-    // get_product returns option::Option<Product>.
-    // On REST/ts-sdk JSON, Option<T> is represented as { vec: [] } for None or { vec: [T] } for Some(T)
-    const opt = result?.[0] as any;
-    if (!opt || !('vec' in opt)) {
-      throw new Error('Unexpected response from Aptos view function');
-    }
-    const hasValue = Array.isArray(opt.vec) && opt.vec.length > 0;
-    if (!hasValue) return null;
-
-    // Product shape from Move:
-    // { version: number, shop: string (hex addr), seller_pubkey: string|hex|bytes, products_url: string }
-    return opt.vec[0] as { products_url: string; shop: string };
-  };
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
@@ -53,44 +65,67 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadCatalogue = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Extract seed from URL - first try path parameter, then query parameter
         const pathSeed = params.seed as string | undefined;
         const searchParams = new URLSearchParams(location.search);
         const querySeed = searchParams.get('seed') || undefined;
-        const seedParam = pathSeed || querySeed || "Lr_bx92gSbCqEzaMWgZGag"; // default sample seed
+        const requestedNetwork = resolveNetworkId(searchParams);
+        const seedParam = pathSeed || querySeed || DEFAULT_CATALOG_SEED;
 
+        setActiveNetwork(requestedNetwork);
+        setCurrentNetwork(requestedNetwork);
         setCatalogueSeed(seedParam);
+        setProducts([]);
+        setIsApprovedWallet(false);
 
-        // NEW: Fetch Product from Aptos instead of Aptos box
-        const onchainProduct = await getProductFromChain(seedParam);
-        if (!onchainProduct) {
+        const productData = await fetchProductBySeed(seedParam, requestedNetwork);
+        if (cancelled) return;
+
+        if (!productData) {
           throw new Error('Catalogue not found for the provided seed');
         }
 
-        setShopWallet(onchainProduct.shop);
+        setIsApprovedWallet(await isApprovedShopWallet(productData.shopWallet, requestedNetwork));
+        if (cancelled) return;
 
-        // Load the JSON catalogue pointed by products_url
-        const response = await fetch(onchainProduct.products_url);
+        const response = await fetch(productData.productsUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch catalogue: ${response.status}`);
         }
-        const data = await response.json();
-        const parsedProducts = ProductCatalogueSchema.parse(data);
+
+        const data = await response.json() as ProductRaw[];
+        const parsedProducts = ProductCatalogueSchema.parse(
+          data.map((product) => ({
+            ...product,
+            Price: normalizePrice(product.Price),
+          })),
+        );
+        if (cancelled) return;
+
         setProducts(parsedProducts);
       } catch (err) {
         console.error('Error loading catalogue:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load catalogue');
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load catalogue');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    loadCatalogue();
+    void loadCatalogue();
+
+    return () => {
+      cancelled = true;
+    };
   }, [location.search, params.seed]);
 
   if (loading) {
@@ -111,8 +146,9 @@ export default function App() {
           <p className="text-sm">{error}</p>
           <div className="text-xs text-gray-500 mt-4 space-y-1">
             <p>Try using one of these URL formats:</p>
-            <p>• Path: /your-seed-here</p>
-            <p>• Query: ?seed=your-seed-here</p>
+            <p>- Path: /your-seed-here</p>
+            <p>- Query: ?seed=your-seed-here</p>
+            <p>- Optional network override: ?network=testnet</p>
           </div>
         </div>
       </main>
@@ -123,39 +159,82 @@ export default function App() {
     <main className="flex items-center justify-center min-h-screen px-4 py-6">
       <div key="header" className="h-full overflow-hidden drop-shadow-[0_20px_60px_rgba(0,0,0,0.35)] w-full max-w-[1200px]">
         {products.length > 0 ? (
-          <HTMLFlipBook
-            width={isMobile ? 320 : 600}
-            height={isMobile ? 700 : 600}
-            size="fixed"
-            minWidth={315}
-            maxWidth={1000}
-            minHeight={400}
-            maxHeight={700}
-            maxShadowOpacity={0.5}
-            showCover={false}
-            drawShadow={true}
-            mobileScrollSupport={true}
-            usePortrait={isMobile}
-            className="w-[90vw] h-[80vh] max-w-[1000px] max-h-[700px]"
-          >
-            <div key="cover" className="w-full h-full">
-              <CoverPage key="cover" shopWallet={shopWallet} />
-            </div>
-            {products.map((p, i) => (
-              <div key={i} className="w-full h-full">
-                <ProductPage
-                  catalogueSeed={catalogueSeed}
-                  key={`p${i}`}
-                  product={p}
-                  pageNumber={i + 1}
-                  shopWallet={shopWallet}
-                />
+          isMobile ? (
+            <Swiper
+              modules={[Pagination]}
+              pagination={{clickable: true}}
+              spaceBetween={12}
+              slidesPerView={1}
+              className="promo-catalogue h-[620px] w-full max-w-[400px]"
+            >
+              <SwiperSlide key="cover">
+                <div className="w-full h-full">
+                  <CoverPage isApprovedWallet={isApprovedWallet} network={activeNetwork}/>
+                </div>
+              </SwiperSlide>
+              {products.map((product) => (
+                <SwiperSlide key={product.ProductId}>
+                  <div className="w-full h-full">
+                    <ProductPageMobile
+                      catalogueSeed={catalogueSeed}
+                      product={product}
+                      isApprovedWallet={isApprovedWallet}
+                      network={activeNetwork}
+                    />
+                  </div>
+                </SwiperSlide>
+              ))}
+              <SwiperSlide key="footer">
+                <div className="w-full h-full">
+                  <FinalPage/>
+                </div>
+              </SwiperSlide>
+            </Swiper>
+          ) : (
+            <HTMLFlipBook
+              width={550}
+              height={600}
+              size="fixed"
+              minWidth={315}
+              maxWidth={1000}
+              minHeight={400}
+              maxHeight={700}
+              maxShadowOpacity={0.3}
+              showCover={false}
+              drawShadow={true}
+              mobileScrollSupport={true}
+              usePortrait={false}
+              className="promo-catalogue"
+              style={{}}
+              startPage={0}
+              flippingTime={1000}
+              useMouseEvents={true}
+              clickEventForward={true}
+              showPageCorners={true}
+              disableFlipByClick={false}
+              startZIndex={0}
+              autoSize={false}
+              swipeDistance={0}
+            >
+              <div key="cover" className="w-full h-full">
+                <CoverPage isApprovedWallet={isApprovedWallet} network={activeNetwork}/>
               </div>
-            ))}
-            <div key="footer" className="w-full h-full">
-              <FinalPage key="final" />
-            </div>
-          </HTMLFlipBook>
+              {products.map((product, index) => (
+                <div key={product.ProductId} className="w-full h-full">
+                  <ProductPageDesktop
+                    catalogueSeed={catalogueSeed}
+                    product={product}
+                    pageNumber={index + 1}
+                    isApprovedWallet={isApprovedWallet}
+                    network={activeNetwork}
+                  />
+                </div>
+              ))}
+              <div key="footer" className="w-full h-full">
+                <FinalPage/>
+              </div>
+            </HTMLFlipBook>
+          )
         ) : (
           <div className="text-center py-20 text-muted-foreground text-lg">
             No products found in this catalogue.
