@@ -58,7 +58,7 @@ const configs: Record<NetworkId, NetworkConfig> = {
     },
     explorerBaseUrl: HEDERA_EXPLORER_BASE,
     approvedShopWallets: [
-      '0.0.123456', // Placeholder
+      '0.0.8305575', '0.0.8321009'
     ],
     supportedTokens: [
       { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: '0.0.0' },
