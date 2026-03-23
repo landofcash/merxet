@@ -1,0 +1,3 @@
+# Canonical domain redirect for hosts that support _redirects files.
+http://www.merxet.com/* https://merxet.com/:splat 301!
+https://www.merxet.com/* https://merxet.com/:splat 301!
