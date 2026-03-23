@@ -82,7 +82,7 @@ The buyer decrypts the seller's delivery update and confirms receipt. The smart 
 | **Consensus Service (HCS)** | Buyer and seller publish compact message envelopes per order | Gives Merxet a tamper-evident coordination layer without running its own messaging backend |
 | **File Service (HFS)** | Stores encrypted order and delivery payloads, with hash-verified retrieval | Keeps private data off the contract while still using Hedera infrastructure |
 | **Mirror Node + JSON-RPC** | Reads contract state, topic messages, balances, and event logs | Powers searchable history and responsive UX in the apps |
-| **Wallet ecosystem** | HashPack/WalletConnect and a built-in encrypted wallet | Lowers onboarding friction and makes Hedera usable for non-expert users |
+| **Wallet ecosystem** | HIP-551 & built-in encrypted wallet | Lowers onboarding complexity and makes Hedera more accessible to non-expert users. |
 
 ## Why This Is Innovative
 
