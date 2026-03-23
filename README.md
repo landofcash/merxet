@@ -5,41 +5,69 @@
 
 **END-TO-END ENCRYPTED RETAIL PROTOCOL ON HEDERA**
 
-**A point-of-sale experience without traditional hardware, apps, or merchant accounts.**
+**Sell products with just a QR code -- no POS, no apps, no merchant account.**
 
 [Seller Portal](https://merxet.com) | [Promo Catalog](https://promo.merxet.com) | [Pitch Deck](https://merxet.com/merxet-pitch-deck-final.pdf) | [Demo Video](https://youtu.be/H70hg3E135g)
 
 **Status:** Live hackathon MVP on **Hedera Testnet**
 </div>
 
+
+## How it works (TL;DR)
+
+**Merxet turns any physical location, flyer, or product into an instant crypto checkout point.**
+
+1. Seller creates a catalog → gets a QR code
+2. Buyer scans → shops → pays in crypto
+3. Funds are escrowed → seller fulfills → gets paid
+
+> **No centralized storage for sensitive data - orders, payments, and messaging are handled via Hedera services with end-to-end encryption.**
+
 ## What is Merxet 
-Merxet is a **decentralized, end-to-end encrypted retail protocol and checkout stack built on Hedera**. It lets merchants publish product catalogs, accept crypto payments, and manage fulfillment without traditional POS hardware, while buyers get a fast "scan, shop, pay" experience from a phone.
+Merxet lets merchants sell products through a simple QR-code checkout -- while keeping payments, messaging, and order data secured on Hedera with end-to-end encryption.
 
+Under the hood, it is a decentralized retail protocol built on Hedera that combines:
 
+* a **seller portal** for publishing catalogs, generating checkout QR codes, and managing orders
+* a **mobile buyer app** for scanning, shopping, and paying with HBAR or supported tokens
+* a **smart-contract escrow layer** for order lifecycle and settlement
+* an **end-to-end encrypted data flow** so only buyer and seller can read order details
 
-In practical terms, Merxet combines four things into one product:
+## The Problem
 
-- a **seller portal** for publishing catalogs and generating checkout QR codes and links
-- a **mobile buyer app** for scanning, shopping, and paying with HBAR or supported Hedera tokens
-- a **smart-contract escrow layer** that manages order state and settlement on Hedera
-- an **end-to-end encrypted data flow** so private order details are only readable by buyer and seller
+* POS systems are expensive, fragmented, and hardware-dependent
+* Crypto checkout is still too complex for everyday users
+* Order and delivery data is typically centralized and exposed
 
+**Merxet fixes this by combining checkout, escrow, and private messaging into one simple flow.**
 
-
+---
 <div align="center">
   <img src="https://merxet.com/merxet-order-flow.png" alt="Merxet protocol diagram" />
 </div>
 
-## What The MVP Already Does
+## What the MVP Already Does
 
-- Seller portal to create and update product catalogs, publish catalog URLs, and generate QR codes for real checkout entry points.
-- Buyer web app to scan QR codes, browse products, build a cart, and pay with HBAR or USDC on Hedera testnet.
-- Hedera smart contract for catalog registry, order lifecycle, escrow, cancellation, refund handling, timeout rules, and payout settlement.
-- End-to-end encrypted order payloads so delivery details and seller responses stay private between buyer and seller.
-- Hedera File Service storage for encrypted payloads and Hedera Consensus Service references for lightweight message transport.
-- Mirror-node-backed sync API that indexes contract events and topic messages into a fast cache for responsive UX.
-- Hedera built-in encrypted browser wallet to simplify onboarding.
-- Public demo surfaces for merchant, buyer, and promo/catalog discovery flows.
+### Commerce
+
+* Seller portal to create catalogs, generate QR-based checkout, and handle order fulfillment
+* Buyer app to scan QR codes, browse products, build a cart, and pay with HBAR or USDC
+* Real checkout flows on testnet
+
+### Privacy
+
+* End-to-end encrypted order payloads
+* Private delivery updates between buyer and seller
+* Hedera's built-in encrypted browser wallet to simplify onboarding.
+
+### Infrastructure
+
+* Smart contract for escrow, lifecycle, refunds, and settlement
+* Hedera File Service (HFS) for encrypted payload storage
+* Hedera Consensus Service (HCS) for message coordination
+* Mirror-node-backed sync API for fast UX
+
+---
 
 <div align="center">
   <img src="https://merxet.com/merxet-encryption-flow-creation-final.png" alt="Merxet encryption flow diagram" />
@@ -86,7 +114,7 @@ The buyer decrypts the seller's delivery update and confirms receipt. The smart 
 
 ## Why This Is Innovative
 
-- Merxet is not another generic storefront. It is a **end-to-end encrypted retail protocol** for physical-world checkout.
+- Merxet is not another generic storefront. It is an **end-to-end encrypted retail protocol** for physical-world checkout.
 - It combines **escrow + encrypted private order data + seller fulfillment messaging** in one Hedera-native flow.
 - It uses **HCS + HFS + smart contracts together**, rather than using Hedera only for payments.
 - It reduces one of the biggest Web3 UX barriers by supporting a **built-in encrypted wallet**.
@@ -101,12 +129,13 @@ The buyer decrypts the seller's delivery update and confirms receipt. The smart 
 - **Separate protocol-critical data from convenience data.** Catalog content can live off-chain, but the trust-critical commerce state and private message references live on Hedera.
 - **Prioritize onboarding.** The built-in wallet exists because real retail adoption will fail if every buyer must already be a power user.
 
-## Try it now!
+## Try it in 2 minutes
 
 ### Buyer experience
-1. Open  [Promo Catalog](https://promo.merxet.com)  and scan QR-codes with your phone
-2. Create a Hedera wallet right in the app, fill it with test hbar and checkout.
-3. Check your order status in the app
+1. Open [Promo Catalog](https://promo.merxet.com)
+2. Scan a QR code
+3. Create a wallet → pay with test HBAR
+
 
 <div align="center">
   <img src="https://merxet.com/slides/slide-2.jpg" alt="Merxet encryption flow diagram" />
@@ -114,11 +143,9 @@ The buyer decrypts the seller's delivery update and confirms receipt. The smart 
 
 ### Seller experience, full order flow
 
-1. Open the [Seller Portal](https://merxet.com) and create a Hedera wallet, fund it with test HBAR.
-2. Publish a product catalog and generate a QR code.
-3. As a buyer, scan the QR code with the phone, add items to cart, and check out with test HBAR or USDC (create another wallet in the app and fund it with test HBAR).
-4. Return to the seller portal to view the order, decrypt the private payload, and mark delivery or refusal.
-5. Confirm the order in the buyer app and watch escrow finalize on Hedera.
+1. Open [Seller Portal](https://merxet.com)
+2. Create a catalog → generate QR code
+3. Complete a full order flow (buyer + seller sides)
 
 <div align="center">
   <img src="https://merxet.com/slides/slide-3.jpg" alt="Merxet encryption flow diagram" />
@@ -199,7 +226,20 @@ npm run dev
 
 ## Why Merxet Matters For Hedera
 
-Merxet showcases Hedera as more than a settlement layer. It demonstrates how Hedera can power real-world commerce flows where payment, messaging, state, and sensitive data handling all matter at the same time. If crypto is going to reach everyday retail, it needs to be simpler, faster, and more privacy-aware than today's checkout stack. That is the problem Merxet is built to solve.
+Merxet shows that Hedera can power full retail flows -- not just payments.
+
+It combines:
+
+* payments
+* messaging
+* state
+* privacy
+
+…into a single real-world commerce protocol.
+
+If crypto is going to reach everyday retail, checkout must be simpler, faster, and more private than today’s systems.
+
+**That’s what Merxet is built to do.**
 
 ---
 
@@ -208,4 +248,6 @@ Merxet showcases Hedera as more than a settlement layer. It demonstrates how Hed
 [Seller Portal](https://merxet.com) | [Promo Catalog](https://promo.merxet.com) | [Pitch Deck](https://merxet.com/merxet-pitch-deck-final.pdf) | [Demo Video](https://youtu.be/H70hg3E135g)
 
 **Status:** Live hackathon MVP on **Hedera Testnet**
+
+**Built during Hedera hackathon • Fully functional end-to-end flow**
 </div>
