@@ -7,13 +7,18 @@ import AppShellCard from '@/components/AppShellCard'
 import {useWallet} from '@/context/WalletContext'
 import {getAvailableNetworkIds} from '@/config'
 import {getHcsTopicId} from '@/lib/hedera/hederaUtils'
+import {getTrustedMerxetProfile, quoteKeyFingerprint, resetTrustedMerxetProfile, saveTrustedMerxetProfile} from '@/lib/agentOrders/trustedProfile'
 
 function SettingsPage() {
-  const {network, switchNetwork} = useWallet()
+  const {network, switchNetwork, walletKind, walletLocked, unlockInternalWallet} = useWallet()
   const availableNetworks = getAvailableNetworkIds()
   const [topicId, setTopicId] = useState<string | null>(null)
   const [topicError, setTopicError] = useState<string | null>(null)
   const [topicLoading, setTopicLoading] = useState(true)
+  const [profileText, setProfileText] = useState(() => JSON.stringify(getTrustedMerxetProfile(), null, 2))
+  const [profilePassword, setProfilePassword] = useState('')
+  const [profileMessage, setProfileMessage] = useState('')
+  const [fingerprints, setFingerprints] = useState<string[]>([])
 
   const labelFor = (id: string) => id.charAt(0).toUpperCase() + id.slice(1)
 
@@ -48,6 +53,39 @@ function SettingsPage() {
       cancelled = true
     }
   }, [network])
+
+  useEffect(() => {
+    void Promise.all(getTrustedMerxetProfile().trustedQuoteKeys.map(key => quoteKeyFingerprint(key.publicKey)))
+      .then(setFingerprints)
+  }, [profileMessage])
+
+  const updateTrustedProfile = async () => {
+    setProfileMessage('')
+    try {
+      if (walletKind !== 'internal') throw new Error('Connect an internal wallet before changing the trust profile.')
+      if (walletLocked) await unlockInternalWallet(profilePassword)
+      const saved = saveTrustedMerxetProfile(JSON.parse(profileText))
+      setProfileText(JSON.stringify(saved, null, 2))
+      setProfilePassword('')
+      setProfileMessage('Trusted profile saved. Pending approvals were invalidated.')
+    } catch (error) {
+      setProfileMessage(error instanceof Error ? error.message : 'Unable to save trusted profile.')
+    }
+  }
+
+  const restoreTrustedProfile = async () => {
+    setProfileMessage('')
+    try {
+      if (walletKind !== 'internal') throw new Error('Connect an internal wallet before changing the trust profile.')
+      if (walletLocked) await unlockInternalWallet(profilePassword)
+      const value = resetTrustedMerxetProfile()
+      setProfileText(JSON.stringify(value, null, 2))
+      setProfilePassword('')
+      setProfileMessage('Built-in profile restored. Pending approvals were invalidated.')
+    } catch (error) {
+      setProfileMessage(error instanceof Error ? error.message : 'Unable to restore the trusted profile.')
+    }
+  }
 
   return (
     <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
@@ -86,6 +124,26 @@ function SettingsPage() {
                 {topicLoading ? 'Loading…' : topicId?.trim() ? topicId : (topicError ?? 'Not set on-chain')}
               </div>
             </div>
+          </div>
+
+          <div className="pt-4 border-t space-y-3">
+            <div className="text-sm font-medium">Agent-order trust profile</div>
+            <p className="text-xs text-destructive">
+              High risk: these origins, contract, topic, and quote keys decide which agent orders this wallet may execute.
+            </p>
+            <div className="text-xs text-muted-foreground">
+              Key fingerprints: {fingerprints.join(', ') || 'Loading…'}
+            </div>
+            <textarea className="min-h-48 w-full rounded-md border bg-background p-2 font-mono text-xs"
+                      value={profileText} onChange={event => setProfileText(event.target.value)}/>
+            {walletLocked && <input type="password" className="w-full rounded-md border px-3 py-2 text-sm"
+                                    placeholder="Wallet passphrase required to save"
+                                    value={profilePassword} onChange={event => setProfilePassword(event.target.value)}/>}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => void updateTrustedProfile()}>Unlock and save</Button>
+              <Button size="sm" variant="outline" onClick={() => void restoreTrustedProfile()}>Restore built-in</Button>
+            </div>
+            {profileMessage && <p className="text-xs text-muted-foreground">{profileMessage}</p>}
           </div>
 
           {/* Debug Section */}

@@ -8,9 +8,11 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
-    "test": "npm run build && node --test --test-isolation=none dist/__tests__/seed.test.js dist/__tests__/merxetRowMapping.test.js dist/__tests__/walletIdentity.test.js"
+    "test": "npm run build && node --test --test-isolation=none dist/__tests__/seed.test.js dist/__tests__/merxetRowMapping.test.js dist/__tests__/walletIdentity.test.js dist/__tests__/x402Evidence.test.js"
   },
   "dependencies": {
+    "@merxet/order-protocol": "file:../merxet-order-protocol",
+    "@merxet/order-protocol": "file:../merxet-order-protocol",
     "@circle-fin/user-controlled-wallets": "^8.0.0",
     "axios": "^1.12.0",
     "cors": "^2.8.5",

@@ -1,7 +1,7 @@
 import { config } from './config';
 import { appDb } from './cache';
 import type { HederaNetworkConfig } from './hederaConfig';
-import { fetchLogs, fetchTopicMessages, getMerxetContract, getMerxetInterface, getProvider, type MirrorTopicMessageEntry } from './hedera';
+import { fetchLogs, fetchTopicMessages, getMerxetContract, getMerxetInterface, getProvider, resolveAtomicBatchEvidence, type MirrorTopicMessageEntry } from './hedera';
 import { bytes32ToSeedString } from './seed';
 import { bytes32ToHex } from './encoding';
 import { mapCatalogRowToCacheEntry, mapOrderRowToCacheEntry } from './merxetRowMapping';
@@ -119,6 +119,25 @@ async function handleLog(net: HederaNetworkConfig, log: any): Promise<void> {
       console.warn(`[handleLog] Order not found on contract for seed ${seed} on ${net.network}`);
       return;
     }
+    order.sourceNetwork = net.network;
+    order.sourceContractId = net.contractId;
+    order.sourceContractEvmAddress = net.contractAddress.toLowerCase();
+    const cached = await appDb.findOrderBySeed(net.network, seed);
+    if (cached) {
+      order.messages = cached.messages;
+      for (const field of [
+        'innerTransactionId', 'innerTransactionHash', 'outerTransactionId', 'outerTransactionHash',
+        'outerConsensusTimestamp', 'outerPayerAccountId', 'outerTransactionType', 'outerResult',
+      ] as const) {
+        if (cached[field] !== undefined) (order as any)[field] = cached[field];
+      }
+    }
+    if ((eventName === 'OrderCreated' || eventName === 'OrderPaid') && log.transactionHash) {
+      const payerAliases = await resolveWalletAliases(net, order.payer || order.buyer);
+      const expectedPayer = payerAliases.find(alias => /^\d+\.\d+\.\d+$/.test(alias));
+      const evidence = await resolveAtomicBatchEvidence(net, log.transactionHash, expectedPayer);
+      if (evidence) Object.assign(order, evidence);
+    }
     await appDb.upsertOrders(order.buyerWallet, net.network, [order]);
     return;
   }
@@ -193,7 +212,7 @@ async function syncTopicMessages(net: HederaNetworkConfig): Promise<void> {
   }
 }
 
-async function readTopicId(net: HederaNetworkConfig): Promise<string> {
+export async function readTopicId(net: HederaNetworkConfig): Promise<string> {
   const contract = getMerxetContract(net);
   const topicId = String(await contract.hcsTopicId());
   return topicId.trim();

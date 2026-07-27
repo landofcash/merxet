@@ -20,6 +20,7 @@ import Layout from './components/Layout.tsx'
 import UrlParserAndRedirector from './components/UrlParserAndRedirector.tsx'
 import {OrderProvider} from './context/OrderContext.tsx'
 import {CREDIT_CARD_PAYMENTS_ENABLED} from './config.ts'
+import AgentOrderApprovalPage from './pages/AgentOrderApprovalPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
                             <Route path="/order" element={<OrderPage/>}/>
                             <Route path="/orders" element={<OrderHistoryPage/>}/>
                             <Route path="/pay-crypto" element={<PayWithCryptoPage/>}/>
+                            <Route path="/agent-orders/approve" element={<AgentOrderApprovalPage/>}/>
                             <Route
                                 path="/pay-credit-card"
                                 element={CREDIT_CARD_PAYMENTS_ENABLED ? <PayWithCreditCardPage/> : <Navigate to="/order" replace />}
