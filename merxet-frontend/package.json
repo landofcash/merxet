@@ -11,7 +11,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@merxet/order-protocol": "file:../merxet-order-protocol",
+    "@merxet/order-protocol": "1.0.0",
     "@hiero-ledger/sdk": "^2.78.0",
     "@radix-ui/react-popover": "^1.1.14",
     "@radix-ui/react-slot": "^1.2.4",

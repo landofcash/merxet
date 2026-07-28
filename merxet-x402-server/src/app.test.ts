@@ -64,6 +64,21 @@ const htsProducts = async () => [{
 }];
 
 describe("x402 quote and confirmation", () => {
+  it("reports readiness only while the quote store is available", async () => {
+    const store = new InMemoryQuoteStore(config.now);
+    const app = await createApp({ config, store, sync: sync() as never, fetchCatalog: products as never });
+    const ready = await request(app).get("/healthz");
+    expect(ready.status).toBe(200);
+    expect(ready.headers["cache-control"]).toBe("no-store");
+    expect(ready.body).toEqual({ status: "ok" });
+
+    store.ping = async () => { throw new Error("unavailable"); };
+    const unavailable = await request(app).get("/healthz");
+    expect(unavailable.status).toBe(503);
+    expect(unavailable.headers["retry-after"]).toBe("2");
+    expect(unavailable.body.error).toBe("redis_unavailable");
+  });
+
   it("creates immutable zero-delivery quote and resolves without secrets", async () => {
     const app = await createApp({ config, store: new InMemoryQuoteStore(config.now),
       sync: sync() as never, fetchCatalog: products as never });

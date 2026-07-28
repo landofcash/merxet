@@ -73,6 +73,12 @@ export async function createApp(dependencies: Dependencies) {
   }));
   app.use(express.json({ limit: 131_072, strict: true }));
 
+  app.get("/healthz", asyncRoute(async (_req, res) => {
+    try { await store.ping(); }
+    catch { throw new HttpError(503, "redis_unavailable", undefined, config.retrySeconds); }
+    res.set("Cache-Control", "no-store").json({ status: "ok" });
+  }));
+
   app.post("/api/v1/testnet/order-quotes", asyncRoute(async (req, res) => {
     const request = MerxetOrderQuoteRequestV1Schema.parse(req.body);
     let existingOrder: unknown;

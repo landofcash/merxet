@@ -5,7 +5,7 @@ import { z } from "zod";
 const schema = z.object({
   MERXET_X402_ORIGIN: z.string().url().default("https://x402.merxet.com"),
   MERXET_SYNC_ORIGIN: z.string().url().default("https://sync.merxet.com"),
-  MERXET_FRONTEND_ORIGIN: z.string().url().default("https://merxet.com"),
+  MERXET_FRONTEND_ORIGIN: z.string().url().default("https://app.merxet.com"),
   MERXET_MCP_DATA_DIR: z.string().optional(),
 }).passthrough();
 

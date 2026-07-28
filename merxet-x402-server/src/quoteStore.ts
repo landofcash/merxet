@@ -24,6 +24,7 @@ export type QuoteRecord = z.infer<typeof QuoteRecordSchema>;
 export interface QuoteStore {
   create(network: string, seed: string, record: QuoteRecord, ttlSeconds: number): Promise<boolean>;
   get(network: string, seed: string): Promise<QuoteRecord | null>;
+  ping(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -44,6 +45,7 @@ export class InMemoryQuoteStore implements QuoteStore {
     if (value.expires <= this.now()) { this.records.delete(name); return null; }
     return QuoteRecordSchema.parse(structuredClone(value.record));
   }
+  async ping() {}
   async close() {}
 }
 
@@ -63,5 +65,6 @@ export class RedisQuoteStore implements QuoteStore {
     const raw = await this.client.get(key(network, seed));
     return raw ? QuoteRecordSchema.parse(JSON.parse(raw)) : null;
   }
+  async ping() { await this.client.ping(); }
   async close() { await this.client.quit(); }
 }
