@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {consumeApprovalFragment} from './approvalHandoff'
+import {clearApprovalFragment, consumeApprovalFragment, parseApprovalFragment} from './approvalHandoff'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -23,5 +23,22 @@ describe('agent-order approval handoff', () => {
       search: '',
       hash: '#v=1&network=testnet&orderSeed=AAAAAAAAAAAAAAAAAAAAAA&deliveryKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&origin=https://evil.test',
     } as Location)).toThrow('Invalid approval link')
+  })
+
+  it('can retain the parsed handoff before clearing the fragment', () => {
+    const replaceState = vi.fn()
+    const location = {
+      pathname: '/agent-orders/approve',
+      search: '?source=qr',
+      hash: '#v=1&network=testnet&orderSeed=AAAAAAAAAAAAAAAAAAAAAA&deliveryKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    } as Location
+    const navigationHistory = {state: null, replaceState} as unknown as History
+
+    const handoff = parseApprovalFragment(location)
+    expect(handoff.deliveryKey).toBe('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+    expect(replaceState).not.toHaveBeenCalled()
+
+    clearApprovalFragment(location, navigationHistory)
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/agent-orders/approve?source=qr')
   })
 })

@@ -15,6 +15,8 @@ import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@merx
 import type { McpConfig } from "./config.js";
 import { PendingIntentStore, type PendingIntent } from "./intentStore.js";
 
+const LEGACY_INTENT_RECOVERY_SECONDS = 86_400;
+
 export type CreateOrderInput = {
   catalogSeed: string;
   items: Array<{ productId: string; quantity: number }>;
@@ -76,7 +78,8 @@ export class MerxetOrderFlow {
       requestHash: resolved.quote.requestHash,
       requirements: required.accepts[0], resource: required.resource, confirmationUrl: required.resource.url,
       quoteDigest: resolved.quoteDigest, quoteJws: resolved.quoteJws, encryptedDelivery,
-      expiresAt: resolved.quote.expiresAt, createdAt: this.now(), status: "awaiting_settlement",
+      expiresAt: resolved.quote.expiresAt, recoverUntil: resolved.recoverUntil,
+      createdAt: this.now(), status: "awaiting_settlement",
     };
     await this.store.save(intent);
     const qrDataUrl = await QRCode.toDataURL(approvalUrl.toString(), { errorCorrectionLevel: "M", margin: 1 });
@@ -92,6 +95,11 @@ export class MerxetOrderFlow {
     if (!intent) return { status: "failed" as const, orderSeed: intentId, code: "intent_not_found", message: "Intent not found." };
     if (intent.status === "confirmed") return { status: "confirmed" as const, orderSeed: intent.orderSeed, order: intent.order };
     if (intent.status === "failed" || intent.status === "expired") return { status: intent.status, orderSeed: intent.orderSeed, ...intent.failure };
+    const recoverUntil = intent.recoverUntil ?? intent.expiresAt + LEGACY_INTENT_RECOVERY_SECONDS;
+    if (this.now() >= recoverUntil) {
+      intent.status = "expired"; await this.store.save(intent);
+      return { status: "expired" as const, orderSeed: intent.orderSeed };
+    }
 
     const evidenceResponse = await this.fetcher(
       `${this.config.syncOrigin}/api/v1/testnet/orders/${encodeURIComponent(intent.orderSeed)}/x402-evidence`,
@@ -106,9 +114,13 @@ export class MerxetOrderFlow {
         intent.status = "proof_pending"; await this.store.save(intent);
         return { status: "proof_pending" as const, orderSeed: intent.orderSeed };
       }
+      if (orderResponse.status !== 404) {
+        intent.status = "proof_pending"; await this.store.save(intent);
+        return { status: "proof_pending" as const, orderSeed: intent.orderSeed };
+      }
       if (this.now() >= intent.expiresAt) {
-        intent.status = "expired"; await this.store.save(intent);
-        return { status: "expired" as const, orderSeed: intent.orderSeed };
+        intent.status = "proof_pending"; await this.store.save(intent);
+        return { status: "proof_pending" as const, orderSeed: intent.orderSeed };
       }
       return { status: "awaiting_settlement" as const, orderSeed: intent.orderSeed };
     }

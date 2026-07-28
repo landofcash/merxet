@@ -75,6 +75,7 @@ describe("x402 quote and confirmation", () => {
     const resolved = await request(app).post("/api/v1/testnet/order-quotes/resolve").send({ orderSeed });
     expect(resolved.status).toBe(200);
     expect(resolved.body.quote.delivery.amount).toBe("0");
+    expect(resolved.body.recoverUntil).toBe(1_700_087_000);
     expect(JSON.stringify(resolved.body)).not.toContain("deliveryKey");
     expect(JSON.stringify(resolved.body)).not.toContain("fullName");
 

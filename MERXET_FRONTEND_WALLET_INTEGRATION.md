@@ -190,7 +190,9 @@ frontend MUST hold the validated browser intent and delivery key in volatile
 session state and immediately remove the fragment from the visible URL with
 `history.replaceState` before fetching the quote or asking for a wallet
 password. A reload before approval may require reopening the URL/QR. The
-handoff MUST NOT contain the full quote,
+volatile handoff and in-flight resolution MUST survive React StrictMode's
+development effect replay so the replay does not parse the already-cleared
+fragment. The handoff MUST NOT contain the full quote,
 `PaymentRequired`, plaintext delivery details, ciphertext, wallet private key,
 signature, vault key, or transaction bytes.
 
@@ -318,7 +320,10 @@ After Hedera consensus:
 6. The x402 server confirms the order and returns the public order response.
 
 The frontend MAY show success as soon as consensus is confirmed. MCP recovery
-continues independently using `orderSeed`.
+continues independently using `orderSeed`. MCP persists the quote server's
+authoritative `recoverUntil`, keeps post-expiry missing evidence in
+`proof_pending`, and stops only when confirmation succeeds or that recovery
+deadline is reached.
 
 ## Planned Frontend Modules
 

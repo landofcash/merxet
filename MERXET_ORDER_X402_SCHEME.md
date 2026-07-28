@@ -494,6 +494,7 @@ Response:
   "quote": {},
   "quoteDigest": "base64url-sha256",
   "quoteJws": "protected..signature",
+  "recoverUntil": 1700087000,
   "encryptedDelivery": {
     "version": 1,
     "algorithm": "A256GCM",
@@ -503,6 +504,12 @@ Response:
   }
 }
 ```
+
+`recoverUntil` is the server's Unix-seconds deadline for submitting proof of a
+transaction that reached consensus within the signed quote window. It MUST be
+later than `quote.expiresAt`. MCP MUST persist this returned value with the
+intent rather than independently duplicating the server recovery
+configuration.
 
 The response MUST NOT contain `deliveryKey` or plaintext delivery fields. The
 quote response MUST be immutable and use:
@@ -661,6 +668,11 @@ reload MAY require reopening the URL/QR. If crash recovery after approval
 still requires the handoff key, it MUST be moved into the encrypted wallet
 execution record; it MUST NOT be persisted as plaintext in IndexedDB or local
 storage.
+
+Development-mode effect replay MUST reuse the same volatile parsed handoff.
+The frontend MUST retain the parsed handoff in component memory before
+clearing the fragment and MUST NOT attempt to parse the already-cleared URL
+during a React StrictMode effect replay.
 
 Cancel is local in version 1. It abandons the browser approval/execution
 record but does not revoke the server quote or bearer handoff; they remain
@@ -947,6 +959,10 @@ Therefore:
 - MCP MUST recover the same public proof from `merxet-sync` and call the
   keyless confirmation resource with the originally selected requirements
   instead of initiating another approval.
+- If both public order and evidence lookups are still missing after
+  `quote.expiresAt`, MCP MUST retain `proof_pending` and continue checking
+  until the server-provided `recoverUntil`. It marks the intent `expired` only
+  at that recovery deadline.
 
 Version 1 does not promise confirmation or replay after the order has been
 deleted, after its quote/recovery record has expired, or after the seed has

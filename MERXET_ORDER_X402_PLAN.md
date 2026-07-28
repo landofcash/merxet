@@ -137,9 +137,10 @@ Content-Type: application/json
 ```
 
 The quote endpoint returns the complete immutable `PaymentRequired`, full
-quote, its SHA-256 digest, detached Ed25519 JWS, and encrypted delivery
-envelope. It never returns the delivery key or plaintext delivery fields. The
-random `orderSeed` is also the quote identifier. Responses use
+quote, its SHA-256 digest, detached Ed25519 JWS, encrypted delivery envelope,
+and the authoritative `recoverUntil` deadline. It never returns the delivery
+key or plaintext delivery fields. The random `orderSeed` is also the quote
+identifier. Responses use
 `Cache-Control: private, no-store`. The wallet verifies the JWS with a trusted
 public key installed in its active Merxet profile, verifies the complete
 requirements and ciphertext commitment, and decrypts with the fragment key.
@@ -538,12 +539,14 @@ The MCP process:
   frontend approval route and MAY generate a QR code of the exact same URL.
 - Returns that approval URL without opening or approving it for the user.
 - Persists only the public request, selected requirements, order seed, quote
-  reference, encrypted envelope, and intent status needed for
-  confirmation/recovery.
+  reference, encrypted envelope, server-provided `recoverUntil`, and intent
+  status needed for confirmation/recovery.
   It does not persist the raw delivery key and therefore cannot regenerate a
   lost approval URL after restart. It discards its separate plaintext
   delivery-details object immediately after encryption.
 - Polls `merxet-sync` by `orderSeed` after browser settlement.
+- Retains `proof_pending` after quote expiry while public evidence may still
+  be indexed, and marks the intent expired only at `recoverUntil`.
 - Constructs the complete `PaymentPayload` from the originally selected
   requirements, authoritative outer batch ID, and indexed public order.
 - Encodes that payload as `PAYMENT-SIGNATURE` and calls the exact keyless

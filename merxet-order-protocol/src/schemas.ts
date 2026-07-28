@@ -267,7 +267,12 @@ export const QuoteResolutionSchema = z.object({
   quoteDigest: decodedLength(32),
   quoteJws: z.string(),
   encryptedDelivery: MerxetEncryptedDeliveryV1Schema,
-}).strict();
+  recoverUntil: z.number().int().positive(),
+}).strict().superRefine((resolution, context) => {
+  if (resolution.recoverUntil <= resolution.quote.expiresAt) {
+    context.addIssue({ code: "custom", message: "recovery deadline must be after quote expiry" });
+  }
+});
 
 export type MerxetDeliveryDetailsV1 = z.infer<typeof MerxetDeliveryDetailsV1Schema>;
 export type MerxetEncryptedDeliveryV1 = z.infer<typeof MerxetEncryptedDeliveryV1Schema>;

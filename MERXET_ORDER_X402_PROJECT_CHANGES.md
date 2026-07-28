@@ -197,9 +197,9 @@ merxet-x402-server/
 - Sign quote digests using a maintained JOSE library, the configured Ed25519
   key, and the normative detached-JWS signing input.
 - Expose `POST /api/v1/testnet/order-quotes/resolve`.
-- Return the complete immutable `PaymentRequired`, signed quote, and encrypted
-  delivery envelope by `orderSeed`, without returning the delivery key or
-  plaintext.
+- Return the complete immutable `PaymentRequired`, signed quote, encrypted
+  delivery envelope, and authoritative `recoverUntil` deadline by
+  `orderSeed`, without returning the delivery key or plaintext.
 - Return complete x402 v2 `PAYMENT-REQUIRED`.
 - Validate paid confirmations without accepting `deliveryKey` or the original
   commerce request body.
@@ -397,12 +397,15 @@ public evidence appears.
   route and optionally render a QR code for the exact same URL.
 - Return the approval URL without opening or approving it.
 - Persist only the request commitment, selected requirements, quote reference,
-  encrypted envelope, order seed, and confirmation status. Do not persist the
-  raw delivery key; after restart MCP can confirm settlement while Redis
-  retains the quote, but it cannot regenerate a lost approval URL.
+  encrypted envelope, order seed, authoritative `recoverUntil`, and
+  confirmation status. Do not persist the raw delivery key; after restart MCP
+  can confirm settlement while Redis retains the quote, but it cannot
+  regenerate a lost approval URL.
 - Discard its separate plaintext delivery-details object immediately after
   encryption.
 - Poll `merxet-sync` for authoritative order and transaction evidence.
+- Keep an expired quote in `proof_pending` while evidence may still be indexed
+  and transition to `expired` only at the persisted `recoverUntil` deadline.
 - Construct `PaymentPayload` from the originally selected requirements and
   indexed public buyer/outer-batch evidence.
 - Call the exact keyless confirmation resource with `PAYMENT-SIGNATURE`.

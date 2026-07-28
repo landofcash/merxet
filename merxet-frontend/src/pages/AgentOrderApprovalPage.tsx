@@ -1,8 +1,8 @@
-import {useEffect, useMemo, useState} from 'react'
+import {useEffect, useMemo, useRef, useState} from 'react'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Button} from '@/components/ui/button'
 import {useWallet} from '@/context/WalletContext'
-import {consumeApprovalFragment} from '@/lib/agentOrders/approvalHandoff'
+import {clearApprovalFragment, parseApprovalFragment} from '@/lib/agentOrders/approvalHandoff'
 import {resolveAndValidateAgentOrder, type ValidatedAgentOrder} from '@/lib/agentOrders/quoteClient'
 import {executeQuotedMerxetOrder} from '@/lib/agentOrders/agentOrderExecutor'
 import {getTrustedMerxetProfile, getTrustedProfileRevision} from '@/lib/agentOrders/trustedProfile'
@@ -23,12 +23,29 @@ export default function AgentOrderApprovalPage() {
   const [state, setState] = useState<State>('loading')
   const [message, setMessage] = useState('Resolving and verifying signed quote…')
   const [transactionId, setTransactionId] = useState('')
+  const handoffSessionRef = useRef<{
+    handoff: ReturnType<typeof parseApprovalFragment>
+    fragmentCleared: boolean
+  } | null>(null)
+  const resolutionRef = useRef<Promise<ValidatedAgentOrder> | null>(null)
 
   useEffect(() => {
     let cancelled = false
     try {
-      const handoff = consumeApprovalFragment()
-      void resolveAndValidateAgentOrder(handoff, profile).then(value => {
+      if (!handoffSessionRef.current) {
+        handoffSessionRef.current = {
+          handoff: parseApprovalFragment(),
+          fragmentCleared: false,
+        }
+      }
+      if (!handoffSessionRef.current.fragmentCleared) {
+        clearApprovalFragment()
+        handoffSessionRef.current.fragmentCleared = true
+      }
+      if (!resolutionRef.current) {
+        resolutionRef.current = resolveAndValidateAgentOrder(handoffSessionRef.current.handoff, profile)
+      }
+      void resolutionRef.current.then(value => {
         if (!cancelled) { setIntent(value); setState('ready'); setMessage('') }
       }).catch(error => {
         if (!cancelled) { setState('error'); setMessage(error instanceof Error ? error.message : 'Quote validation failed.') }

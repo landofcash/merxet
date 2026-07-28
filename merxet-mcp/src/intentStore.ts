@@ -21,11 +21,16 @@ export const PendingIntentSchema = z.object({
   quoteJws: z.string(),
   encryptedDelivery: MerxetEncryptedDeliveryV1Schema,
   expiresAt: z.number().int(),
+  recoverUntil: z.number().int().optional(),
   createdAt: z.number().int(),
   status: z.enum(["awaiting_settlement", "proof_pending", "confirmed", "expired", "failed"]),
   order: z.record(z.string(), z.unknown()).optional(),
   failure: z.object({ code: z.string(), message: z.string() }).optional(),
-}).strict();
+}).strict().superRefine((intent, context) => {
+  if (intent.recoverUntil !== undefined && intent.recoverUntil <= intent.expiresAt) {
+    context.addIssue({ code: "custom", message: "recovery deadline must be after quote expiry" });
+  }
+});
 export type PendingIntent = z.infer<typeof PendingIntentSchema>;
 
 export class PendingIntentStore {

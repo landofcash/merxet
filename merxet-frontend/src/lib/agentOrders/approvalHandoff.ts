@@ -1,6 +1,6 @@
 import {MerxetFrontendApprovalHandoffV1Schema} from '@merxet/order-protocol'
 
-export function consumeApprovalFragment(location: Location = window.location) {
+export function parseApprovalFragment(location: Location = window.location) {
   const params = new URLSearchParams(location.hash.replace(/^#/, ''))
   const allowed = new Set(['v', 'network', 'orderSeed', 'deliveryKey'])
   if ([...params.keys()].some(key => !allowed.has(key)) ||
@@ -13,6 +13,22 @@ export function consumeApprovalFragment(location: Location = window.location) {
     orderSeed: params.get('orderSeed'),
     deliveryKey: params.get('deliveryKey'),
   })
-  history.replaceState(history.state, '', `${location.pathname}${location.search}`)
+  return handoff
+}
+
+export function clearApprovalFragment(
+  location: Location = window.location,
+  navigationHistory: History = history,
+) {
+  navigationHistory.replaceState(
+    navigationHistory.state,
+    '',
+    `${location.pathname}${location.search}`,
+  )
+}
+
+export function consumeApprovalFragment(location: Location = window.location) {
+  const handoff = parseApprovalFragment(location)
+  clearApprovalFragment(location)
   return handoff
 }

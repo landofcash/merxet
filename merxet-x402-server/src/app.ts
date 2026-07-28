@@ -165,6 +165,7 @@ export async function createApp(dependencies: Dependencies) {
     res.set("Cache-Control", "private, no-store").json(QuoteResolutionSchema.parse({
       paymentRequired: record.paymentRequired, quote: record.quote, quoteDigest: record.quoteDigest,
       quoteJws: record.quoteJws, encryptedDelivery: record.encryptedDelivery,
+      recoverUntil: record.recoverUntil,
     }));
   }));
 
