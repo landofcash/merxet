@@ -12,6 +12,7 @@ import {
   canonicalHash,
   decryptDelivery,
   importQuotePublicKey,
+  normalizeSolidityAddress,
   signQuoteDigest,
   verifyQuoteDigestJws,
   type MerxetOrderQuoteV1,
@@ -203,7 +204,7 @@ export async function createApp(dependencies: Dependencies) {
       consensus >= record.quote.issuedAt && consensus <= record.quote.expiresAt &&
       order.seed === seed && order.catalogSeed === record.quote.catalog.seed &&
       String(order.amount ?? order.price) === record.quote.payment.amount &&
-      String(order.priceToken) === (record.quote.payment.asset === "0.0.0"
+      normalizeSolidityAddress(String(order.priceToken)) === (record.quote.payment.asset === "0.0.0"
         ? "0x0000000000000000000000000000000000000000" : record.quote.payment.tokenEvmAddress) &&
       String(order.seller).toLowerCase() === record.quote.catalog.sellerEvmAddress &&
       String(order.sellerPubKey) === record.quote.catalog.sellerPublicKey &&

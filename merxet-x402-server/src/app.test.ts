@@ -59,6 +59,10 @@ const products = async () => [{
   ProductId: "sku-1", PriceToken: "0.0.0", Price: "50", Name: "Pilot item",
 }];
 
+const htsProducts = async () => [{
+  ProductId: "sku-1", PriceToken: "0.0.429274", Price: "50", Name: "Pilot item",
+}];
+
 describe("x402 quote and confirmation", () => {
   it("creates immutable zero-delivery quote and resolves without secrets", async () => {
     const app = await createApp({ config, store: new InMemoryQuoteStore(config.now),
@@ -123,5 +127,37 @@ describe("x402 quote and confirmation", () => {
     expect(result.status).toBe(200);
     expect(result.headers["payment-response"]).toBeTruthy();
     expect(result.body.orderSeed).toBe(orderSeed);
+  });
+
+  it("settles HTS evidence when ethers returns a checksummed token address", async () => {
+    const evidence = {
+      orderSeed, network: "testnet", contractId: "0.0.7565091",
+      contractEvmAddress: "0x01b6d4a28bf0300ce1dbe039a762bf28278f199b",
+      order: {
+        seed: orderSeed, catalogSeed, amount: "100",
+        priceToken: "0x0000000000000000000000000000000000068cDa",
+        seller: "0x00000000000000000000000000000000000003e9", sellerPubKey: sellerKey,
+        buyer: "0x00000000000000000000000000000000000003e9",
+        payer: "0x00000000000000000000000000000000000003e9", status: "2",
+      },
+      outerTransactionId: "0.0.1001@1700000001.000000000",
+      paymentConsensusTimestamp: "1700000001.000000000", payerAccountId: "0.0.1001",
+      outerTransactionType: "ATOMICBATCH", outerResult: "SUCCESS",
+    };
+    const store = new InMemoryQuoteStore(config.now);
+    const app = await createApp({ config, store, sync: sync(evidence) as never, fetchCatalog: htsProducts as never });
+    const created = await request(app).post("/api/v1/testnet/order-quotes").send((await quoteBody()).body);
+    expect(created.body.paymentRequired.accepts[0].asset).toBe("0.0.429274");
+
+    const required = created.body.paymentRequired;
+    const payload: PaymentPayload = {
+      x402Version: 2, resource: required.resource, accepted: required.accepts[0],
+      payload: { transactionId: evidence.outerTransactionId, buyerAccountId: evidence.payerAccountId },
+      extensions: {},
+    };
+    const result = await request(app).post(`/api/v1/testnet/orders/${orderSeed}/confirm`)
+      .set("PAYMENT-SIGNATURE", encodePaymentSignatureHeader(payload));
+    expect(result.status).toBe(200);
+    expect(result.headers["payment-response"]).toBeTruthy();
   });
 });

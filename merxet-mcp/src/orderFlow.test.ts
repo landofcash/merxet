@@ -32,7 +32,7 @@ function input() {
 }
 
 describe("Merxet MCP order flow", () => {
-  it("returns URL/QR, persists no plaintext or delivery key, and recovers confirmation", async () => {
+  it("returns URL/QR and confirms checksummed HTS evidence without persisting secrets", async () => {
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), "merxet-mcp-"));
     const store = new PendingIntentStore(directory);
     let seed = "";
@@ -51,7 +51,7 @@ describe("Merxet MCP order flow", () => {
           x402Version: 2, error: "PAYMENT-SIGNATURE header is required",
           resource: { url: `${config.x402Origin}/api/v1/testnet/orders/${seed}/confirm`,
             description: "Create and pay for a Merxet order", mimeType: "application/json", serviceName: "Merxet" },
-          accepts: [{ scheme: "merxet-order", network: "hedera:testnet", amount: "10", asset: "0.0.0",
+          accepts: [{ scheme: "merxet-order", network: "hedera:testnet", amount: "10", asset: "0.0.429274",
             payTo: "0.0.7565091", maxTimeoutSeconds: 600,
             extra: { schemeVersion: 1, orderSeed: seed, quoteDigest: digest,
               quotePath: "/api/v1/testnet/order-quotes/resolve", quoteJws: jws } }],
@@ -73,8 +73,9 @@ describe("Merxet MCP order flow", () => {
           items: [{ productId: "sku", name: "Item", unitAmount: "10", quantity: 1, lineAmount: "10" }],
           delivery: { required: true, optionId: "pilot-seller-arranged", optionName: "Seller-arranged delivery",
             amount: "0", deliveryDetailsHash: "A".repeat(43), encryptedDeliveryHash: "A".repeat(43) },
-          payment: { symbol: "HBAR", name: "HBAR", amount: "10", payTo: "0.0.7565091",
-            assetType: "hbar", asset: "0.0.0", tokenEvmAddress: null, decimals: 8 },
+          payment: { symbol: "USDC", name: "USD Coin", amount: "10", payTo: "0.0.7565091",
+            assetType: "hts", asset: "0.0.429274",
+            tokenEvmAddress: "0x0000000000000000000000000000000000068cda", decimals: 6 },
           merxet: { contractId: "0.0.7565091", contractEvmAddress: "0x01b6d4a28bf0300ce1dbe039a762bf28278f199b",
             hcsTopicId: "0.0.2" },
           issuedAt: 1_700_000_000, expiresAt: 1_700_000_600,
@@ -86,7 +87,7 @@ describe("Merxet MCP order flow", () => {
         orderSeed: seed, network: "testnet", contractId: "0.0.7565091",
         order: {
           seed, catalogSeed: input().catalogSeed, amount: "10",
-          priceToken: "0x0000000000000000000000000000000000000000",
+          priceToken: "0x0000000000000000000000000000000000068cDa",
           buyer: "0x0000000000000000000000000000000000000001",
           payer: "0x0000000000000000000000000000000000000001",
         },

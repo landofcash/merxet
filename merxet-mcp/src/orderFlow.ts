@@ -9,6 +9,7 @@ import {
   encryptDelivery,
   type MerxetDeliveryDetailsV1,
   type PaymentPayload,
+  solidityEntityAddressToId,
 } from "@merxet/order-protocol";
 import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@merxet/order-protocol/http";
 import type { McpConfig } from "./config.js";
@@ -155,10 +156,4 @@ export class MerxetOrderFlow {
     intent.status = "confirmed"; intent.order = result.order; await this.store.save(intent);
     return { status: "confirmed" as const, orderSeed: intent.orderSeed, order: intent.order };
   }
-}
-
-function solidityEntityAddressToId(address: string): string {
-  if (!/^0x[0-9a-f]{40}$/.test(address)) return "";
-  const bytes = address.slice(2);
-  return `${BigInt(`0x${bytes.slice(0, 8)}`)}.${BigInt(`0x${bytes.slice(8, 24)}`)}.${BigInt(`0x${bytes.slice(24)}`)}`;
 }

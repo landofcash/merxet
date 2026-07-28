@@ -6,3 +6,4 @@ export * from "./delivery.js";
 export * from "./jws.js";
 export * from "./hcs.js";
 export * from "./abi.js";
+export * from "./hederaAddress.js";

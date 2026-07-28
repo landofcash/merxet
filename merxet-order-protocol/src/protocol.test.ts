@@ -9,6 +9,8 @@ import {
   decodeHcsEnvelope,
   encodeHcsReferenceEnvelope,
   encryptDelivery,
+  normalizeSolidityAddress,
+  solidityEntityAddressToId,
 } from "./index.js";
 import {decodePaymentRequiredHeader, encodePaymentRequiredHeader} from "./http.js";
 import hbarRequiredFixture from "../fixtures/x402/hbar-payment-required.json";
@@ -40,6 +42,14 @@ describe("merxet-order protocol", () => {
     const key = Buffer.concat([Buffer.from([2]), Buffer.alloc(32)]).toString("base64");
     expect(SellerPublicKeySchema.parse(key)).toBe(key);
     expect(SellerPublicKeySchema.safeParse(`${key}=`).success).toBe(false);
+  });
+
+  it("normalizes checksum addresses and converts long-zero entity addresses", () => {
+    const checksummedUsdc = "0x0000000000000000000000000000000000068cDa";
+    expect(normalizeSolidityAddress(checksummedUsdc))
+      .toBe("0x0000000000000000000000000000000000068cda");
+    expect(solidityEntityAddressToId(checksummedUsdc)).toBe("0.0.429274");
+    expect(solidityEntityAddressToId("not-an-address")).toBeNull();
   });
 
   it("round-trips frontend-compatible HCS v2 while preserving v1 decoding", () => {
