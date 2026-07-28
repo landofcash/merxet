@@ -99,7 +99,7 @@ describe("x402 quote and confirmation", () => {
     expect(result.body.error).toBe("proof_pending");
   });
 
-  it("settles read-only with matching authoritative evidence", async () => {
+  it("settles matching authoritative evidence after quote expiry", async () => {
     const evidence = {
       orderSeed, network: "testnet", contractId: "0.0.7565091",
       contractEvmAddress: "0x01b6d4a28bf0300ce1dbe039a762bf28278f199b",
@@ -110,14 +110,22 @@ describe("x402 quote and confirmation", () => {
         buyer: "0x00000000000000000000000000000000000003e9",
         payer: "0x00000000000000000000000000000000000003e9", status: "2",
       },
-      outerTransactionId: "0.0.1001@1700000001.000000000",
-      paymentConsensusTimestamp: "1700000001.000000000", payerAccountId: "0.0.1001",
+      outerTransactionId: "0.0.1001@1700000601.000000000",
+      paymentConsensusTimestamp: "1700000601.000000000", payerAccountId: "0.0.1001",
       outerTransactionType: "ATOMICBATCH", outerResult: "SUCCESS",
     };
-    const store = new InMemoryQuoteStore(config.now);
-    const app = await createApp({ config, store, sync: sync(evidence) as never, fetchCatalog: products as never });
+    let currentTime = 1_700_000_000;
+    const recoveryConfig = { ...config, now: () => currentTime };
+    const store = new InMemoryQuoteStore(recoveryConfig.now);
+    const app = await createApp({
+      config: recoveryConfig,
+      store,
+      sync: sync(evidence) as never,
+      fetchCatalog: products as never,
+    });
     const created = await request(app).post("/api/v1/testnet/order-quotes").send((await quoteBody()).body);
     const required = created.body.paymentRequired;
+    currentTime = 1_700_000_601;
     const payload: PaymentPayload = {
       x402Version: 2, resource: required.resource, accepted: required.accepts[0],
       payload: { transactionId: evidence.outerTransactionId, buyerAccountId: evidence.payerAccountId },

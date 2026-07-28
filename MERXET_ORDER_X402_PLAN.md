@@ -360,11 +360,12 @@ request hash, resource method/path, network, asset, amount, delivery price and
 commitments, contract, topic, and expiry independently of MCP.
 
 The keyless confirmation call must match the signed quote and original
-quote-request commitment retained in Redis. The outer batch must reach
-consensus between `issuedAt` and `expiresAt`. The proof may arrive during the
-bounded 24-hour Redis recovery period after expiry, but expiry must never
-authorize or construct another execution. No permanent quote tombstone is
-required.
+quote-request commitment retained in Redis. The outer batch must not predate
+`issuedAt`. The proof may arrive during the bounded 24-hour Redis recovery
+period after expiry. Expiry prevents the normal wallet flow from initiating
+another execution, but it does not hide an exact matching paid order whose
+funds are already escrowed; seller acceptance or refusal remains a later order
+lifecycle decision. No permanent quote tombstone is required.
 
 ### Client-settled proof
 

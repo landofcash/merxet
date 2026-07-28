@@ -202,7 +202,7 @@ export async function createApp(dependencies: Dependencies) {
     const valid = evidence.outerTransactionId === payload.payload.transactionId &&
       evidence.payerAccountId === payload.payload.buyerAccountId &&
       evidence.contractId === record.quote.merxet.contractId &&
-      consensus >= record.quote.issuedAt && consensus <= record.quote.expiresAt &&
+      consensus >= record.quote.issuedAt &&
       order.seed === seed && order.catalogSeed === record.quote.catalog.seed &&
       String(order.amount ?? order.price) === record.quote.payment.amount &&
       normalizeSolidityAddress(String(order.priceToken)) === (record.quote.payment.asset === "0.0.0"

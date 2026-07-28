@@ -505,11 +505,10 @@ Response:
 }
 ```
 
-`recoverUntil` is the server's Unix-seconds deadline for submitting proof of a
-transaction that reached consensus within the signed quote window. It MUST be
-later than `quote.expiresAt`. MCP MUST persist this returned value with the
-intent rather than independently duplicating the server recovery
-configuration.
+`recoverUntil` is the server's Unix-seconds deadline for submitting proof of an
+exact matching paid order. It MUST be later than `quote.expiresAt`. MCP MUST
+persist this returned value with the intent rather than independently
+duplicating the server recovery configuration.
 
 The response MUST NOT contain `deliveryKey` or plaintext delivery fields. The
 quote response MUST be immutable and use:
@@ -566,11 +565,13 @@ private key. Redis is not the authoritative order store and is not a durable
 
 Quote retrieval MUST remain available until `expiresAt` while Redis is
 available and retains the key. A proof MAY arrive during the recovery period
-only when `merxet-sync` proves that the outer batch reached consensus during
-the signed quote window. Proofs received after the recovery period are
-rejected. A missing or expired quote returns the missing-quote outcome. A
-Redis outage returns the temporary-unavailability outcome and MUST NOT fall
-back to an independent process-local cache in a deployed environment.
+when `merxet-sync` proves that the successful outer batch created the exact
+paid order committed by the signed quote. Confirmation recognizes escrowed
+payment; it does not mean that the seller accepted the order. Proofs received
+after the recovery period are rejected. A missing or expired quote returns the
+missing-quote outcome. A Redis outage returns the temporary-unavailability
+outcome and MUST NOT fall back to an independent process-local cache in a
+deployed environment.
 
 If the quote is missing and no order was submitted, the client creates a new
 quote with a new `orderSeed`. If the order was already submitted, its public
@@ -835,8 +836,13 @@ The verifier MUST:
 12. Require:
 
 ```text
-quote.issuedAt <= outerBatch.consensusTimestamp <= quote.expiresAt
+quote.issuedAt <= outerBatch.consensusTimestamp
 ```
+
+`quote.expiresAt` prevents the normal wallet flow from initiating a new
+execution. It does not cause confirmation to deny an exact matching order
+whose funds are already escrowed on-chain; the seller still decides whether
+to process or refuse that paid order.
 
 13. Require the public order seller address and normalized seller encryption
     public key to equal the signed quote.
