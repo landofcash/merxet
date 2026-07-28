@@ -1,5 +1,9 @@
 # Scheme traceability
 
+The branch-level runtime flow, configuration, project ownership, and current
+pilot limitations are documented in
+[`../MERXET_ORDER_X402_IMPLEMENTATION.md`](../MERXET_ORDER_X402_IMPLEMENTATION.md).
+
 | Scheme section | Package/module | Automated coverage |
 | --- | --- | --- |
 | 2-3 identity/assets | `constants.ts`, `schemas.ts` | `protocol.test.ts` |

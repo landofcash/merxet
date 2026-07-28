@@ -1044,7 +1044,7 @@ Fixture JSON MUST contain no production URLs, accounts, keys, or secrets.
 
 The pilot implementation maps this specification to
 `merxet-order-protocol/TRACEABILITY.md` and the expanded conformance table in
-`MERXET_ORDER_X402_PLAN.md`. Machine-readable normative examples live under
-`merxet-order-protocol/fixtures/`; automated protocol, sync, server, frontend,
-and MCP validation consumes the same exported schemas and codecs rather than
-maintaining application-local wire definitions.
+`MERXET_ORDER_X402_IMPLEMENTATION.md`. Machine-readable normative examples
+live under `merxet-order-protocol/fixtures/`; automated protocol, sync, server,
+frontend, and MCP validation consumes the same exported schemas and codecs
+rather than maintaining application-local wire definitions.
