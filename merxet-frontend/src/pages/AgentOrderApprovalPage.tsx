@@ -7,6 +7,11 @@ import {resolveAndValidateAgentOrder, type ValidatedAgentOrder} from '@/lib/agen
 import {executeQuotedMerxetOrder} from '@/lib/agentOrders/agentOrderExecutor'
 import {getTrustedMerxetProfile, getTrustedProfileRevision} from '@/lib/agentOrders/trustedProfile'
 import {explorerTxUrl} from '@/config'
+import {
+  QUOTE_NOT_EXECUTABLE_MESSAGE,
+  assertQuoteExecutable,
+  quoteExecutionDeadlineMilliseconds,
+} from '@/lib/agentOrders/quoteExpiry'
 
 type State = 'loading' | 'ready' | 'submitting' | 'success' | 'error'
 
@@ -34,8 +39,30 @@ export default function AgentOrderApprovalPage() {
     return () => { cancelled = true }
   }, [profile])
 
+  useEffect(() => {
+    if (!intent || state !== 'ready') return
+    const expire = () => {
+      setState('error')
+      setMessage(QUOTE_NOT_EXECUTABLE_MESSAGE)
+    }
+    const remaining = quoteExecutionDeadlineMilliseconds(intent.quote) - Date.now()
+    if (remaining <= 0) {
+      expire()
+      return
+    }
+    const timeout = window.setTimeout(expire, remaining)
+    return () => window.clearTimeout(timeout)
+  }, [intent, state])
+
   const approve = async () => {
     if (!intent || !walletAdapter) return
+    try {
+      assertQuoteExecutable(intent.quote)
+    } catch (error) {
+      setState('error')
+      setMessage(error instanceof Error ? error.message : QUOTE_NOT_EXECUTABLE_MESSAGE)
+      return
+    }
     if (getTrustedProfileRevision() !== profileRevision) {
       setState('error'); setMessage('The trusted Merxet profile changed. Reopen the approval link.'); return
     }

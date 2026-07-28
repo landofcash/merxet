@@ -6,6 +6,7 @@ import {getChainAdapter} from '@/lib/crypto/cryptoUtils'
 import {generateKeyPairFromB64} from '@/utils/keygen'
 import {generateAESKey, encryptAES, encryptWithECIES} from '@/utils/encryption'
 import {b64FromBytes, hashCryptoKeyToB64, sha256} from '@/utils/encoding'
+import {assertQuoteExecutable} from '@/lib/agentOrders/quoteExpiry'
 
 export type AgentOrderExecutionInput = {
   quote: MerxetOrderQuoteV1
@@ -16,6 +17,7 @@ export type AgentOrderExecutionInput = {
 
 export async function executeQuotedMerxetOrder(input: AgentOrderExecutionInput): Promise<string> {
   const {quote, delivery, walletAdapter, signMessage} = input
+  assertQuoteExecutable(quote)
   const config = getCurrentConfig()
   const currentTopic = await getHcsTopicId('testnet')
   if (config.name !== 'testnet' || config.contractAddress !== quote.merxet.contractId ||
@@ -23,7 +25,9 @@ export async function executeQuotedMerxetOrder(input: AgentOrderExecutionInput):
       currentTopic.trim() !== quote.merxet.hcsTopicId) {
     throw new Error('The active wallet contract or topic no longer matches the approved quote.')
   }
+  assertQuoteExecutable(quote)
   const signed = await signMessage(`${signPrefix}${quote.orderSeed}`, 'Approve this Merxet agent order')
+  assertQuoteExecutable(quote)
   const signedBase64 = btoa(String.fromCharCode(...new Uint8Array(signed)))
   const keyPair = await generateKeyPairFromB64(signedBase64)
   const aesKey = await generateAESKey()
@@ -45,6 +49,7 @@ export async function executeQuotedMerxetOrder(input: AgentOrderExecutionInput):
     quantity: item.quantity, image: 'https://merxet.com/logo.svg', shopWallet: quote.catalog.sellerEvmAddress,
     sellerPubKey: quote.catalog.sellerPublicKey, seed: quote.catalog.seed, network: 'testnet',
   }))
+  assertQuoteExecutable(quote)
   return getChainAdapter().createOrderPaidOnBlockchain(
     walletAdapter,
     {[quote.payment.asset]: BigInt(quote.payment.amount)},
