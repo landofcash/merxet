@@ -1,7 +1,7 @@
 export const MERXET_ABI = [
-  "function createOrderPaid(bytes32 seed,bytes32 catalogSeed,uint256 price,address priceToken,bytes buyerPubKey,bytes sellerPubKey,bytes encryptedSymKeyBuyer,bytes encryptedSymKeySeller,bytes32 symKeyHash,bytes32 payloadHashBuyer)",
-  "function catalogs(bytes32 seed) view returns (uint256 version,address seller,string catalogUrl,bytes sellerPubKey)",
-  "function orders(bytes32 seed) view returns (uint256 version,address buyer,address seller,uint256 amount,uint8 status,bytes32 catalogSeed,uint256 price,address priceToken,address payer,bytes buyerPubKey,bytes sellerPubKey,bytes encryptedSymKeyBuyer,bytes encryptedSymKeySeller,bytes32 symKeyHash,bytes32 payloadHashBuyer,bytes32 payloadHashSeller,uint256 createdDate,uint256 updatedDate)",
+  "function createOrderPaid(bytes32 seed,bytes32 catalogSeed,uint256 priceAmount,address priceToken,bytes buyerPubKey,bytes encKeyBuyer,bytes encKeySeller,bytes32 symKeyHash,bytes32 payloadHashBuyer) payable",
+  "function catalogs(bytes32 seed) view returns (uint8 version,address seller,bytes sellerPubKey,string catalogUrl)",
+  "function orders(bytes32 seed) view returns (uint8 version,bytes32 catalogSeed,uint8 status,uint256 priceAmount,address priceToken,address seller,address buyer,address payer,bytes buyerPubKey,bytes sellerPubKey,bytes encSymKeyBuyer,bytes encSymKeySeller,bytes32 symKeyHash,bytes32 payloadHashBuyer,bytes32 payloadHashSeller,uint64 createdTs,uint64 updatedTs)",
 ] as const;
 
 export const HTS_APPROVE_ABI = [
