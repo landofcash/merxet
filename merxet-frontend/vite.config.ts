@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      'buffer': path.resolve(__dirname, 'node_modules/buffer/index.js'),
     },
   },
   define: {
@@ -28,7 +29,11 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    nodePolyfills(),
+    nodePolyfills({
+      overrides: {
+        buffer: path.resolve(__dirname, 'node_modules/vite-plugin-node-polyfills/shims/buffer'),
+      },
+    }),
     visualizer({filename: "stats.html"}),
     VitePWA({
       registerType: 'autoUpdate',

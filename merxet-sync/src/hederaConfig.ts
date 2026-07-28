@@ -9,6 +9,7 @@ export interface HederaNetworkConfig {
   rpcUrl: string;
   mirrorNodeUrl: string;
   contractAddress: string;
+  contractId?: string;
   startBlock: number;
   blockBatchSize: number;
 }
@@ -32,6 +33,7 @@ export class HederaConfigManager {
       rpcUrl: process.env.HEDERA_TESTNET_RPC_URL || 'https://testnet.hashio.io/api',
       mirrorNodeUrl: process.env.HEDERA_TESTNET_MIRROR_NODE_URL || 'https://testnet.mirrornode.hedera.com',
       contractAddress: process.env.HEDERA_TESTNET_CONTRACT_ADDRESS || '0x',
+      contractId: process.env.HEDERA_TESTNET_CONTRACT_ID || '0.0.7565091',
       startBlock: Number(process.env.HEDERA_TESTNET_START_BLOCK || 0),
       blockBatchSize,
     };
@@ -41,6 +43,7 @@ export class HederaConfigManager {
       rpcUrl: process.env.HEDERA_MAINNET_RPC_URL || 'https://mainnet.hashio.io/api',
       mirrorNodeUrl: process.env.HEDERA_MAINNET_MIRROR_NODE_URL || 'https://mainnet-public.mirrornode.hedera.com',
       contractAddress: process.env.HEDERA_MAINNET_CONTRACT_ADDRESS || '0x',
+      contractId: process.env.HEDERA_MAINNET_CONTRACT_ID || '0.0.0',
       startBlock: Number(process.env.HEDERA_MAINNET_START_BLOCK || 0),
       blockBatchSize,
     };

@@ -159,3 +159,89 @@ export async function fetchTopicMessages(
 
   return messages;
 }
+
+type MirrorContractResult = {
+  transaction_id?: string;
+  hash?: string;
+  timestamp?: string;
+};
+
+type MirrorTransaction = {
+  transaction_id?: string;
+  transaction_hash?: string;
+  consensus_timestamp?: string;
+  parent_consensus_timestamp?: string | null;
+  charged_tx_fee?: number;
+  name?: string;
+  result?: string;
+  payer_account_id?: string;
+};
+
+export type AtomicBatchEvidence = {
+  innerTransactionId: string;
+  innerTransactionHash: string;
+  outerTransactionId: string;
+  outerTransactionHash?: string;
+  outerConsensusTimestamp: string;
+  outerPayerAccountId: string;
+  outerTransactionType: 'ATOMICBATCH';
+  outerResult: 'SUCCESS';
+};
+
+function canonicalTransactionId(value: string): string {
+  return value.replace(/-(\d+)-(\d{9})$/, '@$1.$2');
+}
+
+async function fetchMirrorJson<T>(net: HederaNetworkConfig, path: string): Promise<T | null> {
+  const response = await fetch(`${net.mirrorNodeUrl.replace(/\/$/, '')}${path}`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Mirror node request failed with status ${response.status}`);
+  return await response.json() as T;
+}
+
+export async function resolveAtomicBatchEvidence(
+  net: HederaNetworkConfig,
+  contractResultHash: string,
+  expectedPayerAccountId?: string,
+): Promise<AtomicBatchEvidence | null> {
+  const result = await fetchMirrorJson<MirrorContractResult>(
+    net,
+    `/api/v1/contracts/results/${encodeURIComponent(contractResultHash)}`,
+  );
+  if (!result?.transaction_id) return null;
+
+  const innerId = canonicalTransactionId(result.transaction_id);
+  const innerResponse = await fetchMirrorJson<{ transactions?: MirrorTransaction[] }>(
+    net,
+    `/api/v1/transactions/${encodeURIComponent(innerId)}`,
+  );
+  const inner = innerResponse?.transactions?.find(entry =>
+    canonicalTransactionId(entry.transaction_id ?? '') === innerId && entry.parent_consensus_timestamp,
+  );
+  if (!inner?.parent_consensus_timestamp) return null;
+
+  const parentResponse = await fetchMirrorJson<{ transactions?: MirrorTransaction[] }>(
+    net,
+    `/api/v1/transactions?timestamp=eq:${encodeURIComponent(inner.parent_consensus_timestamp)}`,
+  );
+  const outer = parentResponse?.transactions?.find(entry =>
+    entry.consensus_timestamp === inner.parent_consensus_timestamp && entry.name === 'ATOMICBATCH',
+  );
+  if (!outer?.transaction_id || !outer.payer_account_id || outer.result !== 'SUCCESS') return null;
+  if (expectedPayerAccountId && outer.payer_account_id !== expectedPayerAccountId) return null;
+
+  return {
+    innerTransactionId: innerId,
+    innerTransactionHash: contractResultHash.toLowerCase(),
+    outerTransactionId: canonicalTransactionId(outer.transaction_id),
+    outerTransactionHash: outer.transaction_hash
+      ? (/^0x[0-9a-f]{96}$/i.test(outer.transaction_hash)
+        ? outer.transaction_hash.toLowerCase()
+        : Buffer.from(outer.transaction_hash, 'base64').toString('base64url'))
+      : undefined,
+    outerConsensusTimestamp: outer.consensus_timestamp!,
+    outerPayerAccountId: outer.payer_account_id,
+    outerTransactionType: 'ATOMICBATCH',
+    outerResult: 'SUCCESS',
+  };
+}

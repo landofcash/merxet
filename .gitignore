@@ -8,4 +8,12 @@ build/
 /merxet-smartcontract/artifacts
 /merxet-smartcontract/node_modules
 /merxet-sync/dist
+/merxet-order-protocol/node_modules
+/merxet-order-protocol/dist
+/merxet-x402-server/node_modules
+/merxet-x402-server/dist
+/merxet-mcp/node_modules
+/merxet-mcp/dist
+/merxet-frontend/node_modules
+/merxet-frontend/dist
 /merxet-smartcontract/cache

@@ -1,5 +1,6 @@
 import type {NetworkId} from "@/context/wallet/types.ts";
 import isMobile from 'ismobilejs';
+import type {TrustedMerxetProfileV1} from '@merxet/order-protocol';
 
 declare const __APP_VERSION__: string;
 export const APP_VERSION = __APP_VERSION__
@@ -39,6 +40,7 @@ export interface NetworkConfig {
   explorerBaseUrl: string;
   approvedShopWallets: string[];
   supportedTokens: TokenConfig[];
+  trustedMerxetProfile?: TrustedMerxetProfileV1;
 }
 
 const configs: Record<NetworkId, NetworkConfig> = {
@@ -64,6 +66,24 @@ const configs: Record<NetworkId, NetworkConfig> = {
       { id: 0, name: 'HBAR', decimals: 8, img:null, tokenId: '0.0.0' },
       { id: 1, name: 'USDC', decimals: 6, img:null, tokenId: '0.0.429274' }
     ],
+    trustedMerxetProfile: {
+      version: 1,
+      profileId: 'merxet-testnet-v1',
+      quoteOrigin: import.meta.env.VITE_MERXET_QUOTE_ORIGIN || 'https://x402.merxet.com',
+      quoteResolutionPath: '/api/v1/testnet/order-quotes/resolve',
+      resourceOrigin: import.meta.env.VITE_MERXET_RESOURCE_ORIGIN || 'https://x402.merxet.com',
+      confirmationPathTemplate: '/api/v1/testnet/orders/{orderSeed}/confirm',
+      network: 'hedera:testnet',
+      contractId: '0.0.7565091',
+      contractEvmAddress: '0x01b6d4a28bf0300ce1dbe039a762bf28278f199b',
+      hcsTopicId: import.meta.env.VITE_MERXET_HCS_TOPIC_ID || '0.0.0',
+      trustedQuoteKeys: [{
+        kid: import.meta.env.VITE_MERXET_QUOTE_KEY_ID || 'configure-before-agent-orders',
+        algorithm: 'EdDSA',
+        publicKeyEncoding: 'base64url-ed25519',
+        publicKey: import.meta.env.VITE_MERXET_QUOTE_PUBLIC_KEY || 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      }],
+    },
   },
 
   mainnet: {

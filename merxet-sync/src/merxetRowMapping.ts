@@ -1,6 +1,7 @@
 import {CatalogCacheEntry, OrderCacheEntry} from "./types/types";
 import {bytes32ToHex, bytesToBase64, isZeroAddress} from "./encoding";
 import {bytes32ToSeedString} from "./seed";
+import {normalizeSolidityAddress} from "@merxet/order-protocol";
 
 export function mapCatalogRowToCacheEntry(seedBytes32: string, row: any): CatalogCacheEntry | null {
   const seller = String(row?.seller ?? '');
@@ -34,7 +35,8 @@ export function mapOrderRowToCacheEntry(seedBytes32: string, row: any): OrderCac
 
   const catalogSeedBytes32 = String(row?.catalogSeed ?? '0x');
   const priceAmount = BigInt(String(row?.priceAmount ?? 0));
-  const priceToken = String(row?.priceToken ?? '');
+  const rawPriceToken = String(row?.priceToken ?? '');
+  const priceToken = normalizeSolidityAddress(rawPriceToken) ?? rawPriceToken;
 
   return {
     version,

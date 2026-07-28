@@ -48,7 +48,7 @@ test('mapOrderRowToCacheEntry maps named ABI fields and normalizes payer when ze
     catalogSeed: catalogSeedBytes32,
     status: 2,
     priceAmount: 123n,
-    priceToken: '0x2222222222222222222222222222222222222222',
+    priceToken: '0x0000000000000000000000000000000000068cDa',
     seller: '0x3333333333333333333333333333333333333333',
     buyer: '0x4444444444444444444444444444444444444444',
     payer: ZERO_ADDR,
@@ -69,7 +69,7 @@ test('mapOrderRowToCacheEntry maps named ABI fields and normalizes payer when ze
   assert.equal(mapped.buyerWallet, row.buyer);
   assert.equal(mapped.sellerWallet, row.seller);
   assert.equal(mapped.catalogSeed, 'cat-seed');
-  assert.equal(mapped.priceToken, row.priceToken);
+  assert.equal(mapped.priceToken, '0x0000000000000000000000000000000000068cda');
   assert.equal(mapped.price, 123n);
   assert.equal(mapped.amount, 123n);
   assert.equal(mapped.payer, '');

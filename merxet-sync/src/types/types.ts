@@ -48,6 +48,17 @@ export interface OrderCacheEntry {
   createdDate: bigint;
   updatedDate: bigint;
   messages: OrderMessageRef[];
+  sourceNetwork?: string;
+  sourceContractId?: string;
+  sourceContractEvmAddress?: string;
+  innerTransactionId?: string;
+  innerTransactionHash?: string;
+  outerTransactionId?: string;
+  outerTransactionHash?: string;
+  outerConsensusTimestamp?: string;
+  outerPayerAccountId?: string;
+  outerTransactionType?: 'ATOMICBATCH';
+  outerResult?: 'SUCCESS';
 }
 
 export interface OrderMessageRef {

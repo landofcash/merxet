@@ -217,6 +217,16 @@ class AppDatabase {
     return null;
   }
 
+  async findCatalogBySeed(networkName: string, seed: string): Promise<CatalogCacheEntry | null> {
+    await this.ensureInitialized();
+    const stores = this.catalogs.find({ networkName });
+    for (const store of stores) {
+      const match = store.catalogs.find(catalog => catalog.seed === seed);
+      if (match) return match;
+    }
+    return null;
+  }
+
   async appendOrderMessageRef(networkName: string, seed: string, ref: OrderMessageRef): Promise<void> {
     await this.ensureInitialized();
     const stores = this.orders.find({ networkName });
