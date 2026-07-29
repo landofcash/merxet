@@ -1,6 +1,10 @@
 import {Card, CardContent} from "@/components/ui/card";
 
-export default function FinalPage() {
+interface Props {
+  agentCatalogUrl: string;
+}
+
+export default function FinalPage({agentCatalogUrl}: Props) {
   return (
     <Card
       className="h-full flex items-center justify-center bg-gradient-to-tl from-neutral-100 to-white text-neutral-900 shadow-inner border border-neutral-100">
@@ -18,6 +22,17 @@ export default function FinalPage() {
             <span className="text-slate-900 text-lg font-semibold">Merxet.</span>
           </p>
         </div>
+        {agentCatalogUrl && (
+          <a
+            href={agentCatalogUrl}
+            type="application/json"
+            target="_blank"
+            rel="alternate noopener noreferrer"
+            className="text-xs text-slate-500 underline underline-offset-4 transition-colors hover:text-slate-800"
+          >
+            For AI agents
+          </a>
+        )}
       </CardContent>
     </Card>
   );

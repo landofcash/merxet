@@ -13,7 +13,7 @@
   },
   "engines": { "node": ">=22.0.0" },
   "dependencies": {
-    "@merxet/order-protocol": "1.0.0",
+    "@merxet/order-protocol": "1.0.2",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "jose": "^6.1.3",

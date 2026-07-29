@@ -1,14 +1,27 @@
 import {CatalogCacheEntry, OrderCacheEntry} from "./types/types";
 import {bytes32ToHex, bytesToBase64, isZeroAddress} from "./encoding";
 import {bytes32ToSeedString} from "./seed";
-import {normalizeSolidityAddress} from "@merxet/order-protocol";
+import {
+  hexToBytes,
+  normalizeSolidityAddress,
+  publicKeyBase64FromContractBytes,
+} from "@merxet/order-protocol";
+
+function contractPublicKeyToBase64(value: Uint8Array | string): string {
+  try {
+    const bytes = typeof value === "string" ? hexToBytes(value) : value;
+    return publicKeyBase64FromContractBytes(bytes);
+  } catch {
+    return "";
+  }
+}
 
 export function mapCatalogRowToCacheEntry(seedBytes32: string, row: any): CatalogCacheEntry | null {
   const seller = String(row?.seller ?? '');
   if (!seller || isZeroAddress(seller)) return null;
 
   const version = Number(row?.version ?? 1);
-  const sellerPubKey = bytesToBase64(row?.sellerPubKey ?? '0x');
+  const sellerPubKey = contractPublicKeyToBase64(row?.sellerPubKey ?? '0x');
   const catalogUrl = String(row?.catalogUrl ?? '');
 
   return {
@@ -51,8 +64,8 @@ export function mapOrderRowToCacheEntry(seedBytes32: string, row: any): OrderCac
     seller,
     buyer,
     payer,
-    buyerPubKey: bytesToBase64(row?.buyerPubKey ?? '0x'),
-    sellerPubKey: bytesToBase64(row?.sellerPubKey ?? '0x'),
+    buyerPubKey: contractPublicKeyToBase64(row?.buyerPubKey ?? '0x'),
+    sellerPubKey: contractPublicKeyToBase64(row?.sellerPubKey ?? '0x'),
     encryptedSymKeyBuyer: bytesToBase64(row?.encSymKeyBuyer ?? '0x'),
     encryptedSymKeySeller: bytesToBase64(row?.encSymKeySeller ?? '0x'),
     symKeyHash: bytes32ToHex(String(row?.symKeyHash ?? '0x')),

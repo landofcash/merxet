@@ -9,6 +9,22 @@ The promo app renders a printable or browsable Merxet catalogue and generates QR
 - QR payloads follow the same 45-character seed/item/network format used by the main app.
 - Token and network handling follow the current Hedera-based storefront conventions.
 
+## AI Agent Discovery
+
+Each loaded catalogue exposes a small **For AI agents** link to its machine-readable
+Merxet Sync descriptor:
+
+```text
+https://sync.merxet.com/api/v1/{network}/catalogs/seed/{catalogSeed}
+```
+
+The same descriptor is linked from the document metadata with
+`rel="alternate"` and `type="application/json"`. The page also publishes one
+catalogue-level Schema.org `ItemList` containing the displayed products and
+their Merxet identifiers. Agents use the descriptor to locate the registered
+catalogue JSON; the Merxet quote flow remains authoritative for order pricing
+and payment details.
+
 ## Local Development
 
 ```bash

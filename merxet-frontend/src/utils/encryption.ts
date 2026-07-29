@@ -1,15 +1,6 @@
 import {decrypt, encrypt} from "eciesjs";
 import {b64ToBytes} from "@/utils/encoding.ts";
-
-function isValidSecp256k1PublicKey(bytes: Uint8Array): boolean {
-    if (bytes.length === 33) {
-        return bytes[0] === 0x02 || bytes[0] === 0x03;
-    }
-    if (bytes.length === 65) {
-        return bytes[0] === 0x04;
-    }
-    return false;
-}
+import {CompressedSecp256k1PublicKeySchema} from "@merxet/order-protocol";
 
 function tryDecodeBase64(value: string): Uint8Array | null {
     try {
@@ -26,16 +17,17 @@ export function normalizePublicKeyBase64(publicKeyBase64: string): string {
         throw new Error("Seller public key is missing.");
     }
 
-    const decodedBytes = tryDecodeBase64(trimmed);
-    if (decodedBytes && isValidSecp256k1PublicKey(decodedBytes)) {
-        return trimmed;
+    const canonical = CompressedSecp256k1PublicKeySchema.safeParse(trimmed);
+    if (canonical.success) {
+        return canonical.data;
     }
 
+    const decodedBytes = tryDecodeBase64(trimmed);
     if (decodedBytes) {
         const nested = new TextDecoder().decode(decodedBytes).trim();
-        const nestedBytes = tryDecodeBase64(nested);
-        if (nestedBytes && isValidSecp256k1PublicKey(nestedBytes)) {
-            return nested;
+        const legacy = CompressedSecp256k1PublicKeySchema.safeParse(nested);
+        if (legacy.success) {
+            return legacy.data;
         }
     }
 

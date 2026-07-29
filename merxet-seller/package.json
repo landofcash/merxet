@@ -18,6 +18,7 @@
     "@hashgraph/hedera-wallet-connect": "^2.0.4",
     "@hashgraph/proto": "^2.25.0",
     "@hiero-ledger/sdk": "^2.78.0",
+    "@merxet/order-protocol": "1.0.2",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-popover": "^1.0.7",
     "@radix-ui/react-slot": "^1.2.3",

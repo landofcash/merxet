@@ -12,8 +12,9 @@ import FinalPage from '@/components/FinalPage';
 import {type Product, ProductCatalogueSchema} from "@/lib/productSchemas.ts";
 import {DEFAULT_CATALOG_SEED, DEFAULT_NETWORK, isNetworkId, setCurrentNetwork} from '@/config.ts';
 import type {NetworkId} from "@/context/wallet/types.ts";
-import {fetchProductBySeed} from "@/lib/syncService.ts";
+import {fetchProductBySeed, getCatalogMetadataUrl} from "@/lib/syncService.ts";
 import {isApprovedShopWallet} from "@/lib/approvedShop.ts";
+import {createCatalogStructuredData} from "@/lib/agentCatalog.ts";
 
 interface ProductRaw {
   ProductId: string;
@@ -56,6 +57,9 @@ export default function HomePage() {
 
   const location = useLocation();
   const params = useParams();
+  const agentCatalogUrl = catalogueSeed
+    ? getCatalogMetadataUrl(catalogueSeed, activeNetwork)
+    : "";
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
@@ -128,6 +132,46 @@ export default function HomePage() {
     };
   }, [location.search, params.seed]);
 
+  useEffect(() => {
+    if (!agentCatalogUrl) {
+      return;
+    }
+
+    const alternateLink = document.createElement("link");
+    alternateLink.id = "merxet-agent-catalog";
+    alternateLink.rel = "alternate";
+    alternateLink.type = "application/json";
+    alternateLink.title = "Merxet catalog data for AI agents";
+    alternateLink.href = agentCatalogUrl;
+    document.head.appendChild(alternateLink);
+
+    return () => {
+      alternateLink.remove();
+    };
+  }, [agentCatalogUrl]);
+
+  useEffect(() => {
+    if (!catalogueSeed || products.length === 0) {
+      return;
+    }
+
+    const structuredData = createCatalogStructuredData(
+      catalogueSeed,
+      activeNetwork,
+      products,
+      window.location.href,
+    );
+    const structuredDataScript = document.createElement("script");
+    structuredDataScript.id = "merxet-catalog-structured-data";
+    structuredDataScript.type = "application/ld+json";
+    structuredDataScript.textContent = JSON.stringify(structuredData);
+    document.head.appendChild(structuredDataScript);
+
+    return () => {
+      structuredDataScript.remove();
+    };
+  }, [activeNetwork, catalogueSeed, products]);
+
   if (loading) {
     return (
       <main className="flex items-center justify-center min-h-screen px-4 py-6">
@@ -186,7 +230,7 @@ export default function HomePage() {
               ))}
               <SwiperSlide key="footer">
                 <div className="w-full h-full">
-                  <FinalPage/>
+                  <FinalPage agentCatalogUrl={agentCatalogUrl}/>
                 </div>
               </SwiperSlide>
             </Swiper>
@@ -231,7 +275,7 @@ export default function HomePage() {
                 </div>
               ))}
               <div key="footer" className="w-full h-full">
-                <FinalPage/>
+                <FinalPage agentCatalogUrl={agentCatalogUrl}/>
               </div>
             </HTMLFlipBook>
           )

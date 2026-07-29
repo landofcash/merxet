@@ -17,6 +17,10 @@ import {getHederaClient} from "@/lib/hedera/hederaClient.ts";
 import {decodeHcsEnvelope, encodeHcsReferenceEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
 import {loadEncryptedPayloadFromHfs, loadEncryptedPayloadFromHfsWithWallet, uploadEncryptedPayloadToHfs} from "@/lib/hedera/hfsStorage.ts";
 import {ContractId, TokenId} from "@hiero-ledger/sdk";
+import {
+  publicKeyBase64FromContractBytes,
+  publicKeyBase64ToContractBytes,
+} from "@merxet/order-protocol";
 
 function seedToBytes32(seed: string): Uint8Array {
   return hexToBytes(toHex(new TextEncoder().encode(seed), {size: 32}));
@@ -308,7 +312,7 @@ export const hederaAdapter: ChainAdapter = {
       function: "createCatalog",
       arguments: [
         bytes32Arg(seedToBytes32(seed)),
-        bytesArg(new TextEncoder().encode(sellerPubKey)),
+        bytesArg(publicKeyBase64ToContractBytes(sellerPubKey)),
         stringArg(catalogueUrl),
       ],
     });
@@ -460,7 +464,7 @@ export const hederaAdapter: ChainAdapter = {
       }
 
       const sellerPubKey = sellerPubKeyHex && sellerPubKeyHex !== "0x"
-          ? String.fromCharCode(...hexToBytes(sellerPubKeyHex))
+          ? publicKeyBase64FromContractBytes(hexToBytes(sellerPubKeyHex))
           : "";
 
       return {

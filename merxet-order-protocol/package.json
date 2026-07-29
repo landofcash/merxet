@@ -1,6 +1,6 @@
 {
   "name": "@merxet/order-protocol",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Shared merxet-order x402 v1 protocol schemas and codecs",
   "type": "module",
   "main": "./dist/index.js",

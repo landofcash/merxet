@@ -4,11 +4,15 @@ import {getCurrentConfig} from "@/config";
 import type {OrderMessageRef, ProductData} from "@/lib/syncService.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
 import type {CartItem} from "@/lib/cartStorage.ts";
-import {hexToBytes, b64FromBytes, b64ToBytes} from "@/utils/encoding.ts";
+import {hexToBytes, b64ToBytes} from "@/utils/encoding.ts";
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
 import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
 import {decodeHcsEnvelope, encodeHcsReferenceEnvelope, HCS_MESSAGE_ROLE, HCS_MESSAGE_TYPE} from "@/lib/hedera/hcsEnvelope.ts";
 import {loadEncryptedPayloadFromHfs, loadEncryptedPayloadFromHfsWithWallet, uploadEncryptedPayloadToHfs} from "@/lib/hedera/hfsStorage.ts";
+import {
+  publicKeyBase64FromContractBytes,
+  publicKeyBase64ToContractBytes,
+} from "@merxet/order-protocol";
 // @ts-ignore
 import {Client, AccountId, PrivateKey, AccountCreateTransaction, Hbar, TokenId} from "@hiero-ledger/sdk";
 import {ethers} from "ethers";
@@ -34,11 +38,6 @@ function hashToBytes32(hash: string): Uint8Array {
     throw new Error("Hash must decode to exactly 32 bytes.");
   }
   return bytes;
-}
-
-// Helper to convert string to bytes (Uint8Array)
-function stringToBytes(str: string): Uint8Array {
-  return new TextEncoder().encode(str);
 }
 
 function base64ToBytes(value: string): Uint8Array {
@@ -393,7 +392,7 @@ export const hederaAdapter: ChainAdapter = {
       function: "createCatalog",
       arguments: [
         bytes32Arg(seedBytes),
-        bytesArg(stringToBytes(sellerPubKey)),
+        bytesArg(publicKeyBase64ToContractBytes(sellerPubKey)),
         stringArg(catalogUrl)
       ]
     };
@@ -465,7 +464,7 @@ export const hederaAdapter: ChainAdapter = {
             bytes32Arg(seedToBytes32(first.seed)),
             uint256Arg(amount),
             addressArg(tokenAddress),
-            bytesArg(stringToBytes(buyerPubKey)),
+            bytesArg(publicKeyBase64ToContractBytes(buyerPubKey)),
             bytesArg(base64ToBytes(encryptedSymKeyBuyer)),
             bytesArg(base64ToBytes(encryptedSymKeySeller)),
             bytes32Arg(hashToBytes32(symKeyHash)),
@@ -542,7 +541,7 @@ export const hederaAdapter: ChainAdapter = {
           bytes32Arg(seedToBytes32(first.seed)),
           uint256Arg(amount),
           addressArg(tokenAddress),
-          bytesArg(stringToBytes(buyerPubKey)),
+          bytesArg(publicKeyBase64ToContractBytes(buyerPubKey)),
           bytesArg(base64ToBytes(encryptedSymKeyBuyer)),
           bytesArg(base64ToBytes(encryptedSymKeySeller)),
           bytes32Arg(hashToBytes32(symKeyHash)),
@@ -706,7 +705,7 @@ export const hederaAdapter: ChainAdapter = {
         version: Number(catalog.version),
         seed: seed,
         shopWallet: catalog.seller,
-        sellerPubKey: b64FromBytes(hexToBytes(catalog.sellerPubKey)),
+        sellerPubKey: publicKeyBase64FromContractBytes(hexToBytes(catalog.sellerPubKey)),
         productsUrl: catalog.catalogUrl
       };
     } catch (error) {

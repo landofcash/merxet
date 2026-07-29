@@ -5,13 +5,15 @@ import { seedStringToBytes32 } from '../seed.js';
 import { mapCatalogRowToCacheEntry, mapOrderRowToCacheEntry } from '../merxetRowMapping.js';
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+const PUBLIC_KEY = Buffer.concat([Buffer.from([2]), Buffer.alloc(32, 7)]).toString('base64');
+const PUBLIC_KEY_CONTRACT_BYTES = `0x${Buffer.from(PUBLIC_KEY, 'utf8').toString('hex')}`;
 
 test('mapCatalogRowToCacheEntry maps named ABI fields and does not require tuple indices', () => {
   const seedBytes32 = seedStringToBytes32('catalog-1');
   const row = {
     version: 1,
     seller: '0x1111111111111111111111111111111111111111',
-    sellerPubKey: '0x1234',
+    sellerPubKey: PUBLIC_KEY_CONTRACT_BYTES,
     catalogUrl: 'ipfs://example',
   };
 
@@ -21,7 +23,7 @@ test('mapCatalogRowToCacheEntry maps named ABI fields and does not require tuple
   assert.equal(mapped.version, 1);
   assert.equal(mapped.sellerWallet, row.seller);
   assert.equal(mapped.catalogUrl, row.catalogUrl);
-  assert.equal(mapped.sellerPubKey, Buffer.from('1234', 'hex').toString('base64'));
+  assert.equal(mapped.sellerPubKey, PUBLIC_KEY);
 });
 
 test('mapCatalogRowToCacheEntry returns null when seller is missing/zero', () => {
@@ -40,6 +42,19 @@ test('mapCatalogRowToCacheEntry does not accept legacy field names (shop/catalog
   assert.equal(mapCatalogRowToCacheEntry(seedBytes32, legacyRow), null);
 });
 
+test('mapCatalogRowToCacheEntry keeps a catalog with an invalid public key for API validation', () => {
+  const seedBytes32 = seedStringToBytes32('catalog-invalid-key');
+  const mapped = mapCatalogRowToCacheEntry(seedBytes32, {
+    version: 1,
+    seller: '0x1111111111111111111111111111111111111111',
+    sellerPubKey: '0x1234',
+    catalogUrl: 'https://example.test/catalog.json',
+  });
+
+  assert.ok(mapped);
+  assert.equal(mapped.sellerPubKey, '');
+});
+
 test('mapOrderRowToCacheEntry maps named ABI fields and normalizes payer when zero', () => {
   const orderSeedBytes32 = seedStringToBytes32('order-1');
   const catalogSeedBytes32 = seedStringToBytes32('cat-seed');
@@ -52,10 +67,10 @@ test('mapOrderRowToCacheEntry maps named ABI fields and normalizes payer when ze
     seller: '0x3333333333333333333333333333333333333333',
     buyer: '0x4444444444444444444444444444444444444444',
     payer: ZERO_ADDR,
-    buyerPubKey: '0x',
-    sellerPubKey: '0x',
-    encSymKeyBuyer: '0x',
-    encSymKeySeller: '0x',
+    buyerPubKey: PUBLIC_KEY_CONTRACT_BYTES,
+    sellerPubKey: PUBLIC_KEY_CONTRACT_BYTES,
+    encSymKeyBuyer: '0x010203',
+    encSymKeySeller: '0x040506',
     symKeyHash: '0x' + '00'.repeat(32),
     payloadHashBuyer: '0x' + '11'.repeat(32),
     payloadHashSeller: '0x' + '22'.repeat(32),
@@ -73,6 +88,10 @@ test('mapOrderRowToCacheEntry maps named ABI fields and normalizes payer when ze
   assert.equal(mapped.price, 123n);
   assert.equal(mapped.amount, 123n);
   assert.equal(mapped.payer, '');
+  assert.equal(mapped.buyerPubKey, PUBLIC_KEY);
+  assert.equal(mapped.sellerPubKey, PUBLIC_KEY);
+  assert.equal(mapped.encryptedSymKeyBuyer, 'AQID');
+  assert.equal(mapped.encryptedSymKeySeller, 'BAUG');
   assert.equal(mapped.createdDate, 10n);
   assert.equal(mapped.updatedDate, 20n);
 });

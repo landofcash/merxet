@@ -40,11 +40,12 @@ export const HederaTransactionIdSchema = z.string().regex(
 );
 export const HederaTransactionHashSchema = z.string().regex(/^(?:0x[0-9a-f]{96}|[A-Za-z0-9_-]{64})$/);
 export const SolidityAddressSchema = z.string().regex(/^0x[0-9a-f]{40}$/);
-export const SellerPublicKeySchema = z.string().refine(value => {
+export const CompressedSecp256k1PublicKeySchema = z.string().refine(value => {
   if (!/^[A-Za-z0-9+/]{44}$/.test(value)) return false;
   const bytes = base64ToBytes(value);
   return bytes.length === 33 && (bytes[0] === 2 || bytes[0] === 3) && bytesToBase64(bytes) === value;
 }, "must be padded standard Base64 for a 33-byte compressed secp256k1 key");
+export const SellerPublicKeySchema = CompressedSecp256k1PublicKeySchema;
 export const AmountSchema = z.string().regex(/^(0|[1-9]\d*)$/);
 
 export const MerxetDeliveryDetailsV1Schema = z.object({

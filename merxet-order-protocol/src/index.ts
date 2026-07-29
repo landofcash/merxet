@@ -1,5 +1,6 @@
 export * from "./constants.js";
 export * from "./binary.js";
+export * from "./publicKey.js";
 export * from "./schemas.js";
 export * from "./canonical.js";
 export * from "./delivery.js";

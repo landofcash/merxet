@@ -37,7 +37,7 @@ export async function getCatalogBySeed(req: Request, res: Response) {
   const parsed = OrderSeedSchema.safeParse(req.params.catalogSeed);
   if (!parsed.success) return sendJson(res, { success: false, error: 'Malformed catalog seed' }, 400);
   const catalog = await appDb.findCatalogBySeed(req.network!, parsed.data);
-  if (!catalog || !catalog.catalogUrl || !catalog.sellerPubKey) {
+  if (!catalog || !catalog.catalogUrl) {
     return sendJson(res, { success: false, error: 'Catalog not indexed' }, 404);
   }
   const net = config.hedera(req.network!);
@@ -46,7 +46,7 @@ export async function getCatalogBySeed(req: Request, res: Response) {
   const sellerAccountId = aliases.find(alias => /^\d+\.\d+\.\d+$/.test(alias));
   const sellerEvmAddress = aliases.find(alias => SolidityAddressSchema.safeParse(alias).success) ??
     catalog.sellerWallet.toLowerCase();
-  const sellerPublicKey = Buffer.from(catalog.sellerPubKey, 'base64').toString('base64');
+  const sellerPublicKey = catalog.sellerPubKey;
   if (!sellerAccountId || !SolidityAddressSchema.safeParse(sellerEvmAddress).success ||
       !SellerPublicKeySchema.safeParse(sellerPublicKey).success) {
     return sendJson(res, { success: false, error: 'Catalog identity is incomplete' }, 409);
