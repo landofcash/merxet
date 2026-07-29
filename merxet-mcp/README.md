@@ -5,7 +5,7 @@ Node 22+ local STDIO MCP server for testnet Merxet orders. It exposes only
 transaction signing remain in the official Merxet frontend.
 
 ```powershell
-codex mcp add merxet -- npx -y @merxet/mcp@1.0.0
+codex mcp add merxet -- npx -y @merxet/mcp@1.0.1
 ```
 
 Configuration: `MERXET_X402_ORIGIN`, `MERXET_SYNC_ORIGIN`,

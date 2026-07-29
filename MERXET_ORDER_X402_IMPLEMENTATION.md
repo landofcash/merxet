@@ -416,7 +416,7 @@ Origins must be bare HTTPS origins.
 Install the published package in Codex with:
 
 ```powershell
-codex mcp add merxet -- npx -y @merxet/mcp@1.0.0
+codex mcp add merxet -- npx -y @merxet/mcp@1.0.1
 ```
 
 No `.exe`, native wallet application, browser extension, VPS wallet, or 2FA

@@ -10,7 +10,7 @@ import { MerxetOrderFlow } from "./orderFlow.js";
 const config = loadConfig();
 const flow = new MerxetOrderFlow(config, new PendingIntentStore(config.dataDir));
 const server = new McpServer(
-  { name: "merxet", version: "1.0.0" },
+  { name: "merxet", version: "1.0.1" },
   {
     instructions: [
       "For every approval_required Merxet order, present approvalUrl as a clickable link and show the returned QR image when the client exposes it.",

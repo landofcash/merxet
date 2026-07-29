@@ -26,7 +26,7 @@ implement mainnet indexing.
 
 The visible **Order with your AI assistant** disclosure is written for the
 shopper and links to `/setup-codex.html`. That page explains how to connect the
-local `@merxet/mcp@1.0.0` integration, restart Codex, and use a short example
+local `@merxet/mcp@1.0.1` integration, restart Codex, and use a short example
 request. The integration prepares and tracks the order while browser-wallet
 approval remains with the user. Agent-assisted ordering is an MVP pilot for
 Hedera testnet testing only.
