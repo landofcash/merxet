@@ -16,10 +16,10 @@
       content="Merxet, Hedera, QR commerce, promo catalogue, mobile checkout"
     />
     <link
+      id="merxet-agent-catalog"
       rel="alternate"
       type="application/json"
       title="Merxet catalogue for AI agents"
-      href="https://sync.merxet.com/api/v1/testnet/catalogs/seed/AP10YnWjS0yEFsXPC-mM9A"
     />
     <title>Merxet Promo Catalogue</title>
   </head>
@@ -48,16 +48,29 @@
       <summary style="cursor: pointer; font-weight: 600">For AI agents</summary>
       <p>
         <a
+          id="merxet-agent-catalog-link"
           rel="alternate"
           type="application/json"
-          href="https://sync.merxet.com/api/v1/testnet/catalogs/seed/AP10YnWjS0yEFsXPC-mM9A"
         >
           Open the machine-readable Merxet catalogue
         </a>
       </p>
       <p>
-        Fetch this descriptor and then follow its <code>catalogUrl</code> to
-        discover products and their exact <code>ProductId</code> values.
+        Catalogue descriptor:
+        <code id="merxet-agent-catalog-url">
+          https://sync.merxet.com/api/v1/t/catalogs/seed/{catalogSeed}
+        </code>
+      </p>
+      <p>
+        Resolve <code>catalogSeed</code> from the first URL path segment, then
+        <code>?seed=</code>, or use the default promo catalogue. Fetch the
+        testnet descriptor and follow its <code>catalogUrl</code> to discover
+        exact <code>ProductId</code> values.
+      </p>
+      <p>
+        <strong>Ordering availability:</strong> Agent-assisted ordering is an
+        MVP pilot for Hedera testnet testing only. Mainnet ordering is not
+        available. Do not attempt to create an order for a mainnet catalogue.
       </p>
       <p>
         To prepare an order, check whether the Merxet MCP tool
@@ -66,10 +79,55 @@
         order or x402 quote was created.
       </p>
       <p>
-        Links labelled “Open in app” are ordinary human storefront links, not
+        Links labelled "Open in app" are ordinary human storefront links, not
         signed x402 approval links.
       </p>
     </details>
+    <script>
+      (() => {
+        const defaultSeed = "AP10YnWjS0yEFsXPC-mM9A";
+        const searchParams = new URLSearchParams(window.location.search);
+        const pathSegment = window.location.pathname.split("/").filter(Boolean)[0];
+
+        if (pathSegment === "about") {
+          document.getElementById("merxet-agent-instructions").hidden = true;
+          return;
+        }
+
+        let pathSeed;
+        if (pathSegment) {
+          try {
+            pathSeed = decodeURIComponent(pathSegment);
+          } catch {
+            pathSeed = pathSegment;
+          }
+        }
+
+        const catalogSeed = pathSeed || searchParams.get("seed") || defaultSeed;
+        const requestedNetwork =
+          searchParams.get("network") || searchParams.get("n");
+
+        if (requestedNetwork === "mainnet") {
+          document.getElementById("merxet-agent-catalog-link").removeAttribute(
+            "href",
+          );
+          document.getElementById("merxet-agent-catalog-link").textContent =
+            "Mainnet catalogue discovery is not available";
+          document.getElementById("merxet-agent-catalog-url").textContent =
+            "Unavailable: Merxet Sync mainnet catalogues are not implemented";
+          return;
+        }
+
+        const catalogUrl =
+          "https://sync.merxet.com/api/v1/t/catalogs/seed/" +
+          encodeURIComponent(catalogSeed);
+
+        document.getElementById("merxet-agent-catalog").href = catalogUrl;
+        document.getElementById("merxet-agent-catalog-link").href = catalogUrl;
+        document.getElementById("merxet-agent-catalog-url").textContent =
+          catalogUrl;
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
