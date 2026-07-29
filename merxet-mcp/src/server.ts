@@ -9,10 +9,23 @@ import { MerxetOrderFlow } from "./orderFlow.js";
 
 const config = loadConfig();
 const flow = new MerxetOrderFlow(config, new PendingIntentStore(config.dataDir));
-const server = new McpServer({ name: "merxet", version: "1.0.0" });
+const server = new McpServer(
+  { name: "merxet", version: "1.0.0" },
+  {
+    instructions: [
+      "For every approval_required Merxet order, present approvalUrl as a clickable link and show the returned QR image when the client exposes it.",
+      "If the client does not expose the image, generate a QR locally from the exact approvalUrl, including its fragment.",
+      "Never create another order merely to regenerate a missing QR, and never use an external QR-generation service.",
+    ].join(" "),
+  },
+);
 
 server.registerTool("create_merxet_order", {
-  description: "Create a testnet Merxet quote and return a browser-wallet approval URL. This tool cannot sign or submit transactions.",
+  description: [
+    "Create a testnet Merxet quote and return a browser-wallet approval URL plus QR image.",
+    "Present the clickable URL and QR; if the image is unavailable, locally render the exact URL without calling this tool again or using an external QR service.",
+    "This tool cannot sign or submit transactions.",
+  ].join(" "),
   inputSchema: {
     catalogSeed: OrderSeedSchema,
     items: z.array(z.object({
