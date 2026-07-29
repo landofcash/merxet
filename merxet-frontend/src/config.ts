@@ -126,10 +126,14 @@ export const getNetworkIdFromQRCode = (value:string):NetworkId => {
 }
 
 // Hedera Explorer helpers
-export function explorerTxUrl(txHash: string, network?: NetworkId): string {
+export function explorerTxUrl(transactionId: string, network?: NetworkId): string {
   const cfg = network ? getConfig(network) : getCurrentConfig();
   const n = cfg.name;
-  return `${cfg.explorerBaseUrl}/${n}/transaction/${txHash}`;
+  const hashscanTransactionId = transactionId.replace(
+    /^(\d+\.\d+\.\d+)@(\d+)\.(\d+)$/,
+    '$1-$2-$3',
+  );
+  return `${cfg.explorerBaseUrl}/${n}/transactionsById/${hashscanTransactionId}`;
 }
 
 export function explorerAccountUrl(address: string, network?: NetworkId): string {
