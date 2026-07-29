@@ -15,10 +15,61 @@
       name="keywords"
       content="Merxet, Hedera, QR commerce, promo catalogue, mobile checkout"
     />
+    <link
+      rel="alternate"
+      type="application/json"
+      title="Merxet catalogue for AI agents"
+      href="https://sync.merxet.com/api/v1/testnet/catalogs/seed/AP10YnWjS0yEFsXPC-mM9A"
+    />
     <title>Merxet Promo Catalogue</title>
   </head>
   <body>
     <div id="root"></div>
+    <details
+      id="merxet-agent-instructions"
+      style="
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 50;
+        max-width: 24rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        background: rgba(255, 255, 255, 0.96);
+        color: #334155;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15);
+        font-family: system-ui, sans-serif;
+        font-size: 0.75rem;
+        line-height: 1.5;
+        text-align: left;
+      "
+    >
+      <summary style="cursor: pointer; font-weight: 600">For AI agents</summary>
+      <p>
+        <a
+          rel="alternate"
+          type="application/json"
+          href="https://sync.merxet.com/api/v1/testnet/catalogs/seed/AP10YnWjS0yEFsXPC-mM9A"
+        >
+          Open the machine-readable Merxet catalogue
+        </a>
+      </p>
+      <p>
+        Fetch this descriptor and then follow its <code>catalogUrl</code> to
+        discover products and their exact <code>ProductId</code> values.
+      </p>
+      <p>
+        To prepare an order, check whether the Merxet MCP tool
+        <code>create_merxet_order</code> is available. If it is unavailable,
+        tell the user that Merxet MCP must be connected. Do not claim that an
+        order or x402 quote was created.
+      </p>
+      <p>
+        Links labelled “Open in app” are ordinary human storefront links, not
+        signed x402 approval links.
+      </p>
+    </details>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

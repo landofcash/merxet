@@ -11,19 +11,19 @@ The promo app renders a printable or browsable Merxet catalogue and generates QR
 
 ## AI Agent Discovery
 
-Each loaded catalogue exposes a small **For AI agents** link to its machine-readable
-Merxet Sync descriptor:
+The initial HTML for the default promo catalogue links directly to its
+machine-readable Merxet Sync descriptor:
 
 ```text
-https://sync.merxet.com/api/v1/{network}/catalogs/seed/{catalogSeed}
+https://sync.merxet.com/api/v1/testnet/catalogs/seed/AP10YnWjS0yEFsXPC-mM9A
 ```
 
-The same descriptor is linked from the document metadata with
-`rel="alternate"` and `type="application/json"`. The page also publishes one
-catalogue-level Schema.org `ItemList` containing the displayed products and
-their Merxet identifiers. Agents use the descriptor to locate the registered
-catalogue JSON; the Merxet quote flow remains authoritative for order pricing
-and payment details.
+The descriptor is linked in the document metadata and in a visible
+**For AI agents** section. Agents follow its `catalogUrl` to locate the
+registered catalogue JSON. The HTML also explains that agent order preparation
+requires the `create_merxet_order` MCP tool and that ordinary **Open in app**
+links are human storefront links, not signed x402 approvals. The Merxet quote
+flow remains authoritative for order pricing and payment details.
 
 ## Local Development
 
