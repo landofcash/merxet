@@ -9,7 +9,7 @@ The promo app renders a printable or browsable Merxet catalogue and generates QR
 - QR payloads follow the same 45-character seed/item/network format used by the main app.
 - Token and network handling follow the current Hedera-based storefront conventions.
 
-## Catalogue Discovery and Codex Setup
+## Catalogue Discovery and AI Setup
 
 The initial HTML contains a neutral Merxet Sync descriptor link. It resolves
 the matching machine-readable catalogue from the current promo URL:
@@ -25,11 +25,21 @@ Mainnet catalogue discovery is disabled because Merxet Sync does not currently
 implement mainnet indexing.
 
 The visible **Order with your AI assistant** disclosure is written for the
-shopper and links to `/setup-codex.html`. That page explains how to connect the
-local `@merxet/mcp@1.0.0` integration, restart Codex, and use a short example
-request. The integration prepares and tracks the order while browser-wallet
-approval remains with the user. Agent-assisted ordering is an MVP pilot for
-Hedera testnet testing only.
+shopper and links to `/setup-ai.html`. That page provides the Windows Claude
+Desktop MCP Bundle download, the Codex setup command, generic local STDIO
+configuration, and a short example request.
+
+The integration prepares and tracks the order while browser-wallet approval
+remains with the user. Agent-assisted ordering is an MVP pilot for Hedera
+testnet testing only. The Claude bundle is generated from `merxet-mcp` with:
+
+```bash
+npm run bundle:mcpb
+```
+
+The generated versioned bundle and SHA-256 checksum are placed in
+`public/downloads/`. The public pilot privacy notice is available at
+`/privacy.html`.
 
 ## Local Development
 

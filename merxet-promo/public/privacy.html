@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Privacy notice for the Merxet AI-assisted Hedera testnet ordering pilot."
+    />
+    <title>Merxet testnet ordering privacy notice</title>
+    <style>
+      :root {
+        color: #1e293b;
+        background: #f8fafc;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem 1rem;
+      }
+
+      main {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 2rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: white;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      h2 {
+        margin-top: 2rem;
+      }
+
+      li {
+        margin: 0.75rem 0;
+      }
+
+      .notice {
+        padding: 1rem;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.5rem;
+        background: #eff6ff;
+      }
+
+      a {
+        color: #047857;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Merxet testnet ordering privacy notice</h1>
+
+      <p><strong>Last updated:</strong> July 29, 2026</p>
+
+      <p class="notice">
+        This notice covers the Merxet AI-assisted ordering MVP pilot on Hedera
+        testnet. Mainnet ordering is not available through this integration.
+      </p>
+
+      <h2>Information used for an order</h2>
+
+      <p>
+        When you ask a connected AI application to prepare an order, the local
+        Merxet integration processes:
+      </p>
+
+      <ul>
+        <li>The catalogue seed, selected product identifiers, and quantities.</li>
+        <li>
+          Delivery information you provide, such as your name, delivery
+          address, contact details, and delivery comments.
+        </li>
+        <li>
+          Quote metadata, testnet payment requirements, approval status, and
+          public testnet order evidence.
+        </li>
+      </ul>
+
+      <h2>Delivery-information protection</h2>
+
+      <p>
+        The local integration encrypts delivery information before retaining
+        the pending intent. The Merxet testnet quote service processes the
+        delivery information transiently to validate the request and construct
+        the quote. Its quote record retains the encrypted delivery envelope,
+        not the plaintext delivery information or delivery key.
+      </p>
+
+      <p>
+        If you approve and complete the order, the encrypted delivery
+        information is associated with the testnet order so the selected seller
+        can fulfil it. Do not use real delivery information unless you intend
+        to share it with that seller for the pilot.
+      </p>
+
+      <h2>Local and testnet records</h2>
+
+      <p>
+        Pending intent files are stored on your computer. On Windows, the
+        default location is <code>%LOCALAPPDATA%\Merxet\mcp</code>. These files
+        contain encrypted delivery information and quote or status metadata;
+        they do not retain plaintext delivery information or the delivery key.
+        They remain until you remove the local Merxet MCP data.
+      </p>
+
+      <p>
+        Server-side testnet quote data is retained only through its configured
+        quote and recovery period. Hedera testnet transactions and associated
+        public order evidence are public ledger records and cannot be deleted
+        by Merxet.
+      </p>
+
+      <h2>Wallet boundary</h2>
+
+      <p>
+        The Merxet MCP integration cannot read private keys or mnemonics,
+        unlock a wallet, sign a transaction, or approve payment. It returns an
+        official Merxet browser link. You decide whether to connect a wallet
+        and approve the testnet transaction there.
+      </p>
+
+      <h2>Contact</h2>
+
+      <p>
+        Questions or pilot privacy requests can be submitted through
+        <a href="https://github.com/landofcash/merxet/issues">
+          the Merxet GitHub issue tracker</a
+        >. Do not include delivery information, wallet details, or other
+        sensitive information in a public issue.
+      </p>
+
+      <p>
+        <a href="/setup-ai.html">AI assistant setup</a>
+        &middot;
+        <a href="/">Return to the Merxet promo catalogue</a>
+      </p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Connect the official Merxet integration to Claude Desktop, Codex, or another local MCP-compatible AI application."
+    />
+    <title>Set up Merxet for your AI assistant</title>
+    <style>
+      :root {
+        color: #1e293b;
+        background: #f8fafc;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem 1rem;
+      }
+
+      main {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 2rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: white;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      h2 {
+        margin-top: 2rem;
+      }
+
+      li {
+        margin: 0.75rem 0;
+      }
+
+      pre {
+        overflow-x: auto;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+
+      blockquote,
+      .notice {
+        margin: 1rem 0;
+        padding: 1rem;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.5rem;
+        background: #eff6ff;
+      }
+
+      .warning {
+        border-color: #fde68a;
+        background: #fffbeb;
+      }
+
+      .download {
+        display: inline-block;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        background: #047857;
+        color: white;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      a {
+        color: #047857;
+      }
+
+      .download:hover,
+      .download:focus {
+        background: #065f46;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Set up Merxet for your AI assistant</h1>
+
+      <p class="notice">
+        Merxet AI-assisted ordering is an MVP pilot for Hedera testnet testing.
+        Mainnet ordering is not available.
+      </p>
+
+      <p>
+        The official Merxet integration runs locally. It can prepare and track
+        an order, but it cannot access your wallet or approve payment. You
+        always review and approve the transaction in the official Merxet app.
+      </p>
+
+      <h2>Claude Desktop for Windows</h2>
+
+      <p class="warning">
+        This first pilot bundle is unsigned and has been prepared for Windows.
+        Claude Desktop may show a warning during installation. Only install a
+        bundle downloaded from this Merxet page.
+      </p>
+
+      <p>
+        <a class="download" href="/downloads/merxet-1.0.0.mcpb" download>
+          Download Merxet for Claude
+        </a>
+      </p>
+
+      <p>
+        <a href="/downloads/merxet-1.0.0.mcpb.sha256">
+          View the SHA-256 checksum
+        </a>
+      </p>
+
+      <ol>
+        <li>Download the Merxet MCP Bundle above.</li>
+        <li>Open Claude Desktop and go to Settings, then Extensions.</li>
+        <li>
+          Open Advanced settings, choose Install Extension, and select the
+          downloaded <code>merxet-1.0.0.mcpb</code> file.
+        </li>
+        <li>Review the testnet pilot notice and finish the installation.</li>
+        <li>Restart Claude Desktop if Merxet does not appear immediately.</li>
+      </ol>
+
+      <h2>Codex</h2>
+
+      <ol>
+        <li>Make sure Codex and Node.js 22 or later are installed.</li>
+        <li>Open a terminal and run:</li>
+      </ol>
+
+      <pre><code>codex mcp add merxet -- npx -y @merxet/mcp@1.0.0</code></pre>
+
+      <p>Confirm that Merxet is connected:</p>
+
+      <pre><code>codex mcp list</code></pre>
+
+      <p>Restart Codex if the Merxet tools do not appear immediately.</p>
+
+      <h2>Other local MCP applications</h2>
+
+      <p>
+        Merxet uses the standard local STDIO transport. In an application that
+        supports local Node.js MCP servers, use:
+      </p>
+
+      <pre><code>Command: npx
+Arguments: -y @merxet/mcp@1.0.0</code></pre>
+
+      <p>
+        Other applications have not yet completed the Merxet testnet pilot
+        acceptance flow. Follow the MCP setup instructions supplied by your
+        application.
+      </p>
+
+      <h2>Ask for an order</h2>
+
+      <blockquote>
+        Order one can of sardines from this Merxet catalogue:
+        https://promo.merxet.com. Ask me for the delivery details and send me
+        the link to review and approve.
+      </blockquote>
+
+      <p>
+        Your assistant should show you the actual item and price before it
+        creates the approval link. Payment is completed only after you review
+        the transaction in the Merxet browser app.
+      </p>
+
+      <p>
+        <a href="/privacy.html">Pilot privacy notice</a>
+        &middot;
+        <a href="/">Return to the Merxet promo catalogue</a>
+      </p>
+    </main>
+  </body>
+</html>

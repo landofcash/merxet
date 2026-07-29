@@ -14,6 +14,7 @@ build/
 /merxet-x402-server/dist
 /merxet-mcp/node_modules
 /merxet-mcp/dist
+/merxet-mcp/.mcpb-stage
 /merxet-frontend/node_modules
 /merxet-frontend/dist
 /merxet-smartcontract/cache

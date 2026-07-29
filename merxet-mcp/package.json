@@ -1,7 +1,7 @@
 {
   "name": "@merxet/mcp",
   "version": "1.0.0",
-  "description": "Local Codex MCP bridge for Merxet browser-approved testnet orders",
+  "description": "Local MCP server for Merxet browser-approved testnet orders",
   "type": "module",
   "bin": { "merxet-mcp": "dist/server.js" },
   "main": "./dist/server.js",
@@ -9,6 +9,7 @@
   "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "bundle:mcpb": "npm run build && node scripts/build-mcpb.mjs",
     "test": "vitest run",
     "prepublishOnly": "npm test && npm run build",
     "start": "node dist/server.js"
@@ -21,6 +22,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
     "@types/node": "^22.19.15",
     "@types/qrcode": "^1.5.6",
     "typescript": "^5.9.3",

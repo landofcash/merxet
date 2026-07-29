@@ -1,0 +1,52 @@
+{
+  "manifest_version": "0.3",
+  "name": "merxet",
+  "display_name": "Merxet",
+  "version": "1.0.0",
+  "description": "Prepare and track browser-approved Merxet orders on Hedera testnet.",
+  "long_description": "Merxet prepares an order quote from a Merxet catalogue and returns a browser link where the shopper reviews and approves the transaction. The extension cannot access wallet keys, unlock a wallet, sign a transaction, or approve payment.",
+  "author": {
+    "name": "Merxet",
+    "url": "https://merxet.com"
+  },
+  "homepage": "https://promo.merxet.com/setup-ai.html",
+  "documentation": "https://promo.merxet.com/setup-ai.html",
+  "support": "https://github.com/landofcash/merxet/issues",
+  "icons": [
+    {
+      "src": "icon.png",
+      "size": "512x512"
+    }
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/server.js"
+      ]
+    }
+  },
+  "tools": [
+    {
+      "name": "create_merxet_order",
+      "description": "Create a Merxet testnet quote and return a browser-wallet approval URL."
+    },
+    {
+      "name": "get_merxet_order_status",
+      "description": "Check settlement evidence and status for an existing Merxet testnet order intent."
+    }
+  ],
+  "privacy_policies": [
+    "https://promo.merxet.com/privacy.html"
+  ],
+  "compatibility": {
+    "platforms": [
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=22.0.0"
+    }
+  }
+}
