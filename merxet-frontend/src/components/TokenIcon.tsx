@@ -10,6 +10,9 @@ interface TokenIconProps {
 
 const TokenIcon: React.FC<TokenIconProps> = ({assetId, size = 20, alt = '', className = ''}) => {
   const token = tryGetTokenByType(String(assetId));
+  const imgSrc = token ? token.img ?? `/tokens/${token.id}-icon.png` : null;
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+
   if (!token) {
     return (
       <span className={`inline-block align-middle text-xs font-semibold ${className}`} style={{
@@ -27,16 +30,13 @@ const TokenIcon: React.FC<TokenIconProps> = ({assetId, size = 20, alt = '', clas
       </span>
     );
   }
-  // Use token.id for fallback icon filename to support coinType-based lookups
-  const [imgSrc] = React.useState(token.img ?? `/tokens/${token.id}-icon.png`);
-  const [showFallback, setShowFallback] = React.useState(false);
 
   const handleError = () => {
-    setShowFallback(true);
+    setFailedSrc(imgSrc);
   };
 
   // If the image failed or no src was ever available, show fallback
-  if (showFallback || !imgSrc) {
+  if (!imgSrc || failedSrc === imgSrc) {
     return (
       <span className={`inline-block align-middle text-xs font-semibold ${className}`} style={{
         width: size,
