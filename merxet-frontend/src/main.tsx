@@ -21,36 +21,39 @@ import UrlParserAndRedirector from './components/UrlParserAndRedirector.tsx'
 import {OrderProvider} from './context/OrderContext.tsx'
 import {CREDIT_CARD_PAYMENTS_ENABLED} from './config.ts'
 import AgentOrderApprovalPage from './pages/AgentOrderApprovalPage.tsx'
+import {AgentOrderApprovalSessionProvider} from './context/AgentOrderApprovalSessionProvider.tsx'
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <WalletProvider>
             <OrderProvider>
-                <BrowserRouter>
-                    <Layout>
-                        <UrlParserAndRedirector/>
-                        <Routes>
-                            <Route path="/" element={<App/>}/>
-                            <Route path="/cart" element={<CartPage/>}/>
-                            <Route path="/scan" element={<QrScanPage/>}/>
-                            <Route path="/product-details" element={<ProductDetailPage/>}/>
-                            <Route path="/settings" element={<SettingsPage/>}/>
-                            <Route path="/wallet" element={<WalletPage/>}/>
-                            <Route path="/order" element={<OrderPage/>}/>
-                            <Route path="/orders" element={<OrderHistoryPage/>}/>
-                            <Route path="/pay-crypto" element={<PayWithCryptoPage/>}/>
-                            <Route path="/agent-orders/approve" element={<AgentOrderApprovalPage/>}/>
-                            <Route
-                                path="/pay-credit-card"
-                                element={CREDIT_CARD_PAYMENTS_ENABLED ? <PayWithCreditCardPage/> : <Navigate to="/order" replace />}
-                            />
-                            <Route path="/debug/encrypt" element={<TestEncryptionPage/>}/>
-                            <Route path="/debug/decrypt" element={<TestDecryptionPage/>}/>
-                            <Route path="/debug/logs/:category" element={<LogViewerPage/>}/>
-                            <Route path="/debug/hedera" element={<LogViewerPage/>}/>
-                        </Routes>
-                    </Layout>
-                </BrowserRouter>
+                <AgentOrderApprovalSessionProvider>
+                    <BrowserRouter>
+                        <Layout>
+                            <UrlParserAndRedirector/>
+                            <Routes>
+                                <Route path="/" element={<App/>}/>
+                                <Route path="/cart" element={<CartPage/>}/>
+                                <Route path="/scan" element={<QrScanPage/>}/>
+                                <Route path="/product-details" element={<ProductDetailPage/>}/>
+                                <Route path="/settings" element={<SettingsPage/>}/>
+                                <Route path="/wallet" element={<WalletPage/>}/>
+                                <Route path="/order" element={<OrderPage/>}/>
+                                <Route path="/orders" element={<OrderHistoryPage/>}/>
+                                <Route path="/pay-crypto" element={<PayWithCryptoPage/>}/>
+                                <Route path="/agent-orders/approve" element={<AgentOrderApprovalPage/>}/>
+                                <Route
+                                    path="/pay-credit-card"
+                                    element={CREDIT_CARD_PAYMENTS_ENABLED ? <PayWithCreditCardPage/> : <Navigate to="/order" replace />}
+                                />
+                                <Route path="/debug/encrypt" element={<TestEncryptionPage/>}/>
+                                <Route path="/debug/decrypt" element={<TestDecryptionPage/>}/>
+                                <Route path="/debug/logs/:category" element={<LogViewerPage/>}/>
+                                <Route path="/debug/hedera" element={<LogViewerPage/>}/>
+                            </Routes>
+                        </Layout>
+                    </BrowserRouter>
+                </AgentOrderApprovalSessionProvider>
             </OrderProvider>
         </WalletProvider>
     </StrictMode>,

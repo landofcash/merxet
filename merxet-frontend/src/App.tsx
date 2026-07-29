@@ -1,12 +1,13 @@
 import {QrCode, ShoppingCart, Settings, Package, HandCoins} from 'lucide-react'
 import {Button} from './components/ui/button'
-import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from './components/ui/card'
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from './components/ui/card'
 import {Link} from 'react-router-dom'
 import WalletAuth from './components/WalletAuth'
 import {APP_VERSION, APP_KEY_PREFIX, getConfig} from './config'
 import {useEffect, useMemo, useCallback} from 'react'
 import {useWallet} from './context/WalletContext'
 import BrandLockup from './components/BrandLockup'
+import AppFooter from './components/AppFooter'
 
 function App() {
   useEffect(() => {
@@ -114,9 +115,7 @@ function App() {
             </Button>
           </Link>
         </CardContent>
-        <CardFooter className="justify-center text-xs text-muted-foreground py-1">
-          © {new Date().getFullYear()} MERXET · v{APP_VERSION}
-        </CardFooter>
+        <AppFooter/>
       </Card>
     </div>
   )
