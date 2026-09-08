@@ -1,8 +1,8 @@
-import type {NetworkId} from "@/context/wallet/types.ts";
+import type {NetworkId} from "./context/wallet/types.ts";
 
 declare const __APP_VERSION__: string;
 
-export const APP_VERSION = __APP_VERSION__;
+export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'development';
 export const APP_NAME = "Merxet";
 export const BASE_URL = "https://merxet.com";
 export const BASE_APP_URL = "https://app.merxet.com";

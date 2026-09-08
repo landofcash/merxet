@@ -1,6 +1,8 @@
 # Merxet Storefronts: Implementation Overview
 
-Prepared September 8, 2026. This is a proposed architecture and delivery sequence. Existing catalog browsing and buyer-app links are already implemented; storefront customization and the builder described below are proposed additions.
+Updated September 8, 2026. Phase 1 is implemented in `merxet-promo`: a configurable storefront template, shared catalog and commerce helpers, dedicated static builds, and local acceptance checks. Automated AI customization, the builder, sandbox execution, and publication described below remain planned. See the [promo README](./merxet-promo/README.md) for local usage.
+
+The [implementation plan](./MERXET_STOREFRONTS_IMPLEMENTATION_PLAN.md) breaks this architecture into phased tasks, dependencies, and acceptance criteria.
 
 Railway VM-based Sandboxes are the selected build environment. The user confirmed enabling access on September 8, 2026. The first integration milestone will validate the create/build/collect/destroy flow; no sandbox build has been run as part of this documentation update.
 
@@ -35,7 +37,7 @@ The current promo app resolves a catalog from its seed and links individual prod
 flowchart TD
     Seller[Merchant in seller portal] --> Builder[Node.js builder API and coordinator]
     Builder --> Records[Private Bunny JSON records and artifacts]
-    Builder --> Queue[Queue: two concurrent attempts]
+    Builder --> Queue[Queue: configurable concurrency, default 2]
     Queue --> SandboxA[Railway VM sandbox: Shop A]
     Queue --> SandboxB[Railway VM sandbox: Shop B]
     Promo[Versioned promo source and clean build environment] --> SandboxA
@@ -55,6 +57,8 @@ flowchart TD
 ```
 
 **Storefront data and ownership.** Give each shop a stable ID, network, owner wallet, display name, catalog reference, and published revision. Keep storefront identity separate from its current generated design. The builder verifies wallet ownership for creation, editing, generation, and publication, including that the merchant controls the linked catalog.
+
+Use the seller's operational internal wallet for initial authentication: sign a single-use login challenge, verify the signature and account binding on the builder, then establish a management session. HashPack and other external-wallet authentication are deferred. Wallet connection alone does not authenticate requests to the builder.
 
 Start with one existing catalog per shop. Collections can group products within that catalog. Scope storefront product references by network, catalog, and product ID so each link opens the intended product. Multiple catalogs can follow as a browsing extension; payment and cart rules belong to the buyer application.
 
@@ -92,7 +96,7 @@ The agent/model remains selectable after the template-generation trial. Keep mod
 
 Prepare a clean, versioned Railway template or checkpoint with Node.js, the promo dependency lockfile, installed dependencies, and browser-check tooling. Key the environment version to the toolchain and lockfile. Each attempt starts from that clean base and receives only its own source, public catalog snapshot, and supplied assets. Merchant workspaces must never become the shared base for subsequent jobs. The sandbox base is a build cache; durable shop source and results remain in Bunny.
 
-Start with two active attempts globally and one active attempt per shop. Additional requests remain queued. The coordinator owns these limits, including provisioning, result collection, and cleanup; it does not release a slot for reuse while the old sandbox is still running. Use configurable command timeouts, an overall attempt deadline, output-size limits, and a bounded retry count. Establish concrete time and output budgets during the template trial, and check which VM resource controls the current Railway interface exposes before assigning CPU/memory settings.
+Make concurrency configurable through `MAX_CONCURRENT_BUILDS=2` and `MAX_CONCURRENT_BUILDS_PER_SHOP=1` as proposed startup defaults. The global limit applies across all merchants and can be increased; two is not an architectural maximum. Additional requests remain queued. The coordinator owns these limits, including provisioning, result collection, and cleanup; it does not release a slot for reuse while the old sandbox is still running. Use configurable command timeouts, an overall attempt deadline, output-size limits, and a bounded retry count. Establish concrete time and output budgets during the template trial, and check which VM resource controls the current Railway interface exposes before assigning CPU/memory settings.
 
 Use Railway's `ISOLATED` network mode with no access to the project's private services. This mode still allows outbound internet traffic. The builder supplies inputs and retrieves outputs through the files API. Configure the provider idle timeout within the account's allowed range and maintain the required interaction during long jobs; a running process alone does not prevent idle destruction. Explicit command and attempt deadlines remain separate from that idle timeout. [Railway networking and timeout behavior](https://docs.railway.com/sandboxes#networking).
 
@@ -116,7 +120,7 @@ After hosted publication works, provide a static website export and a reproducib
 | --- | --- | --- |
 | 1. Prepare promo for storefronts | Define shop metadata, separate promo catalog loading from presentation, and add merchant branding and a shop layout. Preserve price display and buyer-app links. | Responsive shop with live products; existing promo URLs still work; a link or QR opens the correct product in the existing buyer app. |
 | 2. Sandbox and agent feasibility | Prepare the clean Railway build environment. Create a sandbox, customize the template for a catalog and brief, build and validate it, collect artifacts, and destroy the sandbox. Repeat for a second merchant. | Two distinct designs pass the same checks; files belong to the intended attempt; artifacts remain available after sandbox destruction. This determines the initial model choice and build budgets. |
-| 3. Merchant builder | Add Bunny JSON job/attempt/revision records, the single coordinator and queue, Railway sandbox lifecycle integration, and the seller portal's prompt/preview/revise interface. | Two different shops can build concurrently; a third queues; same-shop requests serialize. Failure, cancellation, duplicate requests, restart recovery, and cleanup preserve previous work. |
+| 3. Merchant builder | Add Bunny JSON job/attempt/revision records, the single coordinator and configurable queue, Railway sandbox lifecycle integration, and the seller portal's prompt/preview/revise interface. | With default limits, two different shops can build concurrently, a third queues, and same-shop requests serialize. Changing the configured limits changes capacity. Failure, cancellation, duplicate requests, restart recovery, and cleanup preserve previous work. |
 | 4. Publication | Add stable hosted addresses, explicit revision publication, rollback, and basic artifact export. | An approved shop is reachable publicly; a failed revision leaves it intact; rollback restores a previous build. |
 | 5. End-to-end validation | Check cross-merchant isolation, current catalog data, direct links, existing catalog/QR compatibility, and a purchase through the existing buyer app. Record the new work for Continuity. | Two separately owned, differently branded shops work on desktop and at 390x844. A selected product opens in the buyer app and follows its existing cart, payment, and order flow. |
 

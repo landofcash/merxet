@@ -1,0 +1,16 @@
+{
+  "config": {
+    "schemaVersion": 1,
+    "shopId": "studio-fixture",
+    "network": "testnet",
+    "catalogSeed": "CCCCCCCCCCCCCCCCCCCCCC",
+    "branding": {"name": "Studio Sample", "description": "A sample clothing catalog for template validation.", "headline": "Wear it your way.", "eyebrow": "Studio collection"},
+    "collections": [{"id": "essentials", "name": "Essentials", "productIds": ["DDDDDDDDDDDDDDDDDDDDDD"]}],
+    "featuredProductIds": ["DDDDDDDDDDDDDDDDDDDDDD"],
+    "links": []
+  },
+  "products": [
+    {"ProductId": "DDDDDDDDDDDDDDDDDDDDDD", "Name": "Canvas Overshirt", "Description": "A sample overshirt. No size or variant selection is provided by this fixture.", "PriceToken": "0.0.429274", "Price": "59000000", "Image": "https://fixtures.merxet.test/overshirt.svg"},
+    {"ProductId": "EEEEEEEEEEEEEEEEEEEEEE", "Name": "Canvas Tote", "Description": "A sample everyday tote.", "PriceToken": "0.0.429274", "Price": "18000000", "Image": ""}
+  ]
+}

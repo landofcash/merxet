@@ -1,6 +1,6 @@
 # Merxet Storefront Template Specification
 
-Proposed September 8, 2026. This describes changes to `merxet-promo`; application code and dependencies have not been changed. See the [implementation overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) for the builder and Bunny storage design.
+Updated September 8, 2026. The Phase 1 template is implemented in `merxet-promo`; see its [README](./merxet-promo/README.md) and [generation contract](./merxet-promo/template/generation-guide.md). The Railway and builder integration below describes subsequent phases. See the [implementation overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) for the builder and Bunny storage design, and the [implementation plan](./MERXET_STOREFRONTS_IMPLEMENTATION_PLAN.md) for phased tasks and acceptance criteria.
 
 The template is a complete, responsive merchant shop built from the existing promo application. It loads the merchant's current catalog, presents products in a branded design, and opens products in the existing buyer app. Its prepared source is copied into a fresh Railway VM sandbox for each generation attempt, where the AI changes pages, sections, and styles through builder-controlled tools. Each approved result becomes a static website revision. Railway Sandboxes are the selected execution provider; the user confirmed enabling access on September 8, 2026.
 
@@ -18,10 +18,10 @@ The template is a complete, responsive merchant shop built from the existing pro
 | `qrcode.react` | Keep; locked to 4.2.0 | Render the same buyer-app URL as a QR code. |
 | `clsx`, `tailwind-merge`, `class-variance-authority` | Keep | Existing class composition and component variants. |
 | `tw-animate-css` | Keep where used | Small transitions for existing UI components. Respect reduced-motion preferences. |
-| shadcn/ui component source | Extend existing `components.json` and `components/ui` | Maintain local Button, Input, Card, Badge, Skeleton, Dialog, and Sheet components. |
-| `radix-ui` | Add for the selected UI primitives | Dialog focus handling, keyboard interactions, and mobile navigation built through local wrappers. |
+| shadcn/ui component source | Keep the local component approach in `components/ui` | Existing Card source plus maintained Button and Modal wrappers; native labeled inputs/selects and shared loading states. |
+| `radix-ui` | Added and pinned to 1.6.7 | Dialog focus handling, keyboard interactions, and mobile navigation built through local wrappers. |
 | ESLint and existing TypeScript/React plugins | Keep | Validate maintained and generated source. |
-| `@playwright/test` | Add as development tooling when implementing browser checks | Verify generated shops, mobile navigation, direct routes, and buyer-app links. |
+| `@playwright/test` | Added and pinned to 1.63.0 | Verify the maintained starter, mobile navigation, direct routes, and buyer-app links; adapt merchant inputs for generated checks in Phase 2. |
 
 The existing shadcn setup already uses local component files and CSS variables. Extend that setup with the selected Radix-backed components and review their required imports; the generator should use the prepared components rather than install new ones. Radix recommends the `radix-ui` package and supports importing only the primitives used. [shadcn Vite documentation](https://ui.shadcn.com/docs/installation/vite), [Radix documentation](https://www.radix-ui.com/primitives/docs/overview/introduction).
 
@@ -80,7 +80,7 @@ The builder runs model requests outside the generated-code environment and contr
 
 Railway management and Bunny credentials stay in the builder. Use isolated networking; the sandbox needs no connection to the project's private services. The Railway integration is a builder dependency and is not bundled into the storefront. Seller previews use the saved build artifacts through the preview service, so review does not depend on a live sandbox. [Railway Sandboxes documentation](https://docs.railway.com/sandboxes).
 
-The builder starts with two concurrent attempts globally and one per shop, while serializing Bunny metadata writes. Job/attempt identity, timeouts, restart recovery, and cleanup are specified in the [implementation overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md).
+The builder uses configurable concurrency, initially `MAX_CONCURRENT_BUILDS=2` globally and `MAX_CONCURRENT_BUILDS_PER_SHOP=1`, while serializing Bunny metadata writes. These are proposed defaults, not fixed capacity limits. Job/attempt identity, timeouts, restart recovery, and cleanup are specified in the [implementation overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md).
 
 **Public data contract.** The builder emits a small `storefront.json` containing `schemaVersion`, `shopId`, catalog seed, network, public branding, collections, featured product IDs, and merchant-provided public links. It is a public projection of the private management records on Bunny. Prompts, jobs, logs, and storage credentials are never part of this file. The AI can propose branding and collection choices; the builder validates the result and preserves the selected catalog binding.
 

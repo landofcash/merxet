@@ -1,17 +1,19 @@
 import React from "react";
 import {tryGetTokenByType} from "@/lib/tokenUtils.ts";
+import type {NetworkId} from '@/context/wallet/types';
 
 interface TokenIconProps {
   assetId: number | string;
   size?: number;
   alt?: string;
   className?: string;
+  network?: NetworkId;
 }
 
-const TokenIcon: React.FC<TokenIconProps> = ({assetId, size = 20, alt = '', className = ''}) => {
-  const token = tryGetTokenByType(String(assetId));
+const TokenIcon: React.FC<TokenIconProps> = ({assetId, size = 20, alt = '', className = '', network}) => {
+  const token = tryGetTokenByType(String(assetId), network);
   // Use token.id for the fallback icon filename to support tokenId-based lookups
-  const [imgSrc] = React.useState(token?.img ?? `/tokens/${token?.id ?? '0'}-icon.png`);
+  const imgSrc = token?.img ?? `${import.meta.env.BASE_URL}tokens/${token?.id ?? '0'}-icon.png`;
   const [showFallback, setShowFallback] = React.useState(false);
 
   if (!token) {

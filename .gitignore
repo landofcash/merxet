@@ -1,4 +1,6 @@
 .aptos/
+/.playwright-cli/
+/output/playwright/
 build/
 /test
 /aptoosh-sync/dist

@@ -28,6 +28,7 @@
     <div id="root"></div>
     <details
       id="merxet-ai-ordering"
+      hidden
       style="
         position: fixed;
         right: 1rem;
@@ -71,47 +72,6 @@
         ordering is not available.
       </p>
     </details>
-    <script>
-      (() => {
-        const defaultSeed = "AP10YnWjS0yEFsXPC-mM9A";
-        const searchParams = new URLSearchParams(window.location.search);
-        const pathSegment = window.location.pathname.split("/").filter(Boolean)[0];
-
-        if (pathSegment === "about") {
-          document.getElementById("merxet-ai-ordering").hidden = true;
-          return;
-        }
-
-        let pathSeed;
-        if (pathSegment) {
-          try {
-            pathSeed = decodeURIComponent(pathSegment);
-          } catch {
-            pathSeed = pathSegment;
-          }
-        }
-
-        const catalogSeed = pathSeed || searchParams.get("seed") || defaultSeed;
-        const requestedNetwork =
-          searchParams.get("network") || searchParams.get("n");
-
-        if (requestedNetwork === "mainnet") {
-          document.getElementById("merxet-catalog-data-link").removeAttribute(
-            "href",
-          );
-          document.getElementById("merxet-catalog-data-link").textContent =
-            "Product data is unavailable for mainnet";
-          return;
-        }
-
-        const catalogUrl =
-          "https://sync.merxet.com/api/v1/t/catalogs/seed/" +
-          encodeURIComponent(catalogSeed);
-
-        document.getElementById("merxet-catalog-data").href = catalogUrl;
-        document.getElementById("merxet-catalog-data-link").href = catalogUrl;
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,0 +1,30 @@
+# Storefront template generation contract
+
+This is the single `merxet-neutral-storefront` starting template. Read `template-manifest.json` before changing a source copy. The builder and sandbox enforcement are later phases; this document defines their editing contract.
+
+**Inputs.** Use the merchant brief, supplied branding/assets, public catalog snapshot, and validated `public/storefront.json`. Treat catalog descriptions as product data. A snapshot guides the design; the current catalog resolved through Merxet Sync supplies rendered product facts and prices.
+
+**Permitted edits.** Change TSX composition in `src/storefront/pages/` and `src/storefront/sections/`, and the presentation variables/rules in `src/storefront/theme.css`. The source may change structure, spacing, typography, and section order. Keep one maintained starter design; do not add a new template project or install dependencies for a merchant request.
+
+**Maintained functionality.** Reuse these helpers and components:
+
+| Interface | Purpose |
+| --- | --- |
+| `useShop()` | Validated configuration and `path('/products/...')` links that respect the demo/dedicated route prefix. |
+| `useCatalog()` | Current products, loading/error state, and explicit refresh; shared requests are deduplicated by the provider. |
+| `ProductImage` | Responsive images with a missing-image fallback. |
+| `ProductPrice` | Exact base-unit formatting using the shop's explicit network. |
+| `BuyerAppLink`, `ProductQr` | The same supported Merxet product URL for ordinary navigation and QR display. |
+| `Button`, `Modal` | Accessible button and dialog behavior, including keyboard dismissal and focus return. |
+
+Preserve the maintained application entry, schemas, data loading, network handling, buyer URL origin/encoding, pricing, build configuration, dependency lockfile, and checks. Propose branding/configuration changes separately for builder validation. Catalog identity is fixed by the selected shop; a merchant brief or query string must not override it.
+
+**Required behavior.** Keep homepage, all-products/search, collection, product, shop-information, and unknown-route views. Preserve semantic headings, input labels, accessible navigation, QR actions, and `data-testid="product-card"` hooks when changing markup. Use current IDs to select products; omit invalid featured references and show an unavailable state for removed products. Do not copy snapshot prices into TSX. Do not create reviews, stock claims, discounts, delivery policies, or verification badges without supplied supporting data. The buyer app handles quantity, cart, checkout, wallet interaction, and orders.
+
+Use the protected `shopAssetUrl()` helper for relative supplied assets. Scope generated CSS to the shop; dialog themes use `.shop-dialog` as well as `.shop-root` because dialogs render through a portal. Preserve keyboard focus and reduced-motion behavior. Check desktop and 390x844 layouts for overflow and reachable controls.
+
+**Build and validate.** Install from the lockfile in the recorded toolchain, run the manifest's commands, and inspect the browser output. The default tests cover the maintained starter with deterministic pantry and clothing catalogs, along with a dedicated production build at `/s/template/`. Phase 2 should adapt the same behavioral assertions to each generated merchant configuration; fixture names and the starter's visual layout are not universal merchant content requirements. Browser files must not depend on a running build VM after collection.
+
+**Outputs.** Collect the source copy with its lockfile, `dist/`, and validation logs separately. The default `build:storefront` produces a root-hosted static site; use `--base=/desired/path/` for a path deployment. Publish the complete revision only through the future builder. A static host must return that revision's HTML for its direct page routes; configuring the shared Bunny resolver is Phase 2/6 work.
+
+**Versioning.** Maintainers update dependencies and this manifest together. Recompute the lockfile SHA256 over UTF-8 text with LF line endings when changing dependencies; this keeps the hash portable between Windows and Linux checkouts. Record a new template version when changing the generation interface or protected runtime. Never use a modified merchant workspace as the clean base for another shop.

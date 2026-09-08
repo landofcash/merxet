@@ -26,8 +26,8 @@ export function getCatalogMetadataUrl(seed: string, network?: NetworkId): string
   return `${config.apiUrl}/catalogs/seed/${encodeURIComponent(seed)}`;
 }
 
-export async function fetchProductBySeed(seed: string, network?: NetworkId): Promise<ProductData | null> {
-  const response = await fetch(getCatalogMetadataUrl(seed, network));
+export async function fetchProductBySeed(seed: string, network?: NetworkId, signal?: AbortSignal): Promise<ProductData | null> {
+  const response = await fetch(getCatalogMetadataUrl(seed, network), {signal, cache: 'no-cache'});
 
   if (response.status === 404) {
     return null;

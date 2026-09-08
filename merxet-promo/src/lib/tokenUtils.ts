@@ -1,9 +1,11 @@
-import {getCurrentConfig, type TokenConfig} from "@/config.ts";
+import {getConfig, getCurrentConfig, type TokenConfig} from "@/config.ts";
+import type {NetworkId} from '@/context/wallet/types';
+import {exactBaseUnits, formatBaseUnits} from './pricing/amount';
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-export function getSupportedTokens() {
-  return getCurrentConfig().supportedTokens;
+export function getSupportedTokens(network?: NetworkId) {
+  return (network ? getConfig(network) : getCurrentConfig()).supportedTokens;
 }
 
 function normalizeTokenType(tokenType: string): string {
@@ -24,8 +26,8 @@ function normalizeTokenType(tokenType: string): string {
   return key;
 }
 
-export function getTokenByType(tokenType: string): TokenConfig {
-  const tokens = getSupportedTokens();
+export function getTokenByType(tokenType: string, network?: NetworkId): TokenConfig {
+  const tokens = getSupportedTokens(network);
   const key = normalizeTokenType(tokenType);
   const byType = tokens.find(t => normalizeTokenType(t.tokenId) === key);
   if (!byType) throw new Error('Token not found');
@@ -48,36 +50,22 @@ export function priceToBaseUnits(token: string | TokenConfig, price: string | nu
   return BigInt(Math.round(priceNum * (10 ** tokenConfig.decimals)));
 }
 
-export function priceToDisplayString(tokenType: string, price: number | bigint, displayName: boolean = true): string {
-  const token = getTokenByType(tokenType);
-  const priceNum = typeof price === 'bigint' ? Number(price) : price;
-  const value = priceNum / 10 ** token.decimals;
-  const formatted = value.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: token.decimals,
-  });
-  let res = `${formatted}`;
-  if (res.length < 3 && res.indexOf(".") < 0) {
-    res = `${res}.00`;
-  }
-  if (displayName) {
-    res = `${res} ${token.name}`;
-  }
-  return res;
+export function priceToDisplayString(tokenType: string, price: number | bigint, displayName = true, network?: NetworkId): string {
+  const token = getTokenByType(tokenType, network);
+  const formatted = formatBaseUnits(exactBaseUnits(price), token.decimals);
+  return displayName ? `${formatted} ${token.name}` : formatted;
 }
 
-export function tryGetTokenByType(tokenType: string) {
-  const tokens = getSupportedTokens()
+export function tryGetTokenByType(tokenType: string, network?: NetworkId) {
+  const tokens = getSupportedTokens(network)
   const key = normalizeTokenType(tokenType)
   return tokens.find(t => normalizeTokenType(t.tokenId) === key) ?? null
 }
 
-export function safePriceToDisplayString(tokenType: string, price: number | bigint, displayName: boolean = true): string {
+export function safePriceToDisplayString(tokenType: string, price: number | bigint, displayName = true, network?: NetworkId): string {
   try {
-    return priceToDisplayString(tokenType, price, displayName)
+    return priceToDisplayString(tokenType, price, displayName, network)
   } catch {
-    const priceNum = typeof price === 'bigint' ? Number(price) : price
-    const formatted = priceNum.toLocaleString(undefined, {maximumFractionDigits: 8})
-    return displayName ? `${formatted}` : formatted
+    return `${price.toString()} base units${displayName ? ` (${tokenType})` : ''}`
   }
 }

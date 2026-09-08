@@ -9,32 +9,11 @@ import CoverPage from '@/components/CoverPage';
 import ProductPageDesktop from "@/components/ProductPageDesktop.tsx";
 import ProductPageMobile from "@/components/ProductPageMobile.tsx";
 import FinalPage from '@/components/FinalPage';
-import {type Product, ProductCatalogueSchema} from "@/lib/productSchemas.ts";
+import {type Product} from "@/lib/productSchemas.ts";
 import {DEFAULT_CATALOG_SEED, DEFAULT_NETWORK, isNetworkId, setCurrentNetwork} from '@/config.ts';
 import type {NetworkId} from "@/context/wallet/types.ts";
-import {fetchProductBySeed} from "@/lib/syncService.ts";
+import {loadCatalog} from '@/lib/catalog/load';
 import {isApprovedShopWallet} from "@/lib/approvedShop.ts";
-
-interface ProductRaw {
-  ProductId: string;
-  PriceToken: string;
-  Price: number | string | bigint;
-  Name: string;
-  Description: string;
-  Image: string;
-}
-
-function normalizePrice(value: number | string | bigint): bigint {
-  if (typeof value === "bigint") {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    return BigInt(value);
-  }
-
-  return BigInt(value);
-}
 
 function resolveNetworkId(searchParams: URLSearchParams): NetworkId {
   const queryNetwork = searchParams.get("network") ?? searchParams.get("n");
@@ -66,6 +45,7 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     const loadCatalogue = async () => {
       try {
@@ -84,33 +64,15 @@ export default function HomePage() {
         setProducts([]);
         setIsApprovedWallet(false);
 
-        const productData = await fetchProductBySeed(seedParam, requestedNetwork);
+        const {metadata, products: parsedProducts} = await loadCatalog(seedParam, requestedNetwork, controller.signal);
         if (cancelled) return;
 
-        if (!productData) {
-          throw new Error('Catalogue not found for the provided seed');
-        }
-
-        setIsApprovedWallet(await isApprovedShopWallet(productData.shopWallet, requestedNetwork));
+        const approved = await isApprovedShopWallet(metadata.shopWallet, requestedNetwork);
         if (cancelled) return;
 
-        const response = await fetch(productData.productsUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch catalogue: ${response.status}`);
-        }
-
-        const data = await response.json() as ProductRaw[];
-        const parsedProducts = ProductCatalogueSchema.parse(
-          data.map((product) => ({
-            ...product,
-            Price: normalizePrice(product.Price),
-          })),
-        );
-        if (cancelled) return;
-
+        setIsApprovedWallet(approved);
         setProducts(parsedProducts);
       } catch (err) {
-        console.error('Error loading catalogue:', err);
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load catalogue');
         }
@@ -125,6 +87,7 @@ export default function HomePage() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [location.search, params.seed]);
 

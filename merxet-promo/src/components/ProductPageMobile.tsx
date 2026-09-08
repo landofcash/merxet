@@ -3,21 +3,16 @@ import {Check, Copy, ExternalLink, QrCode} from "lucide-react";
 import {QRCodeSVG} from "qrcode.react";
 import {Card, CardContent} from "@/components/ui/card";
 import TokenIcon from "@/components/TokenIcon.tsx";
-import {BASE_APP_URL} from "@/config.ts";
 import type {NetworkId} from "@/context/wallet/types.ts";
 import type {Product} from "@/lib/productSchemas.ts";
-import {concatenateIDs} from "@/lib/qrCodeUtils.ts";
-import {priceToDisplayString} from "@/lib/tokenUtils.ts";
+import {getBuyerProductUrl} from '@/lib/buyer/links';
+import {ProductPrice} from '@/components/commerce/ProductPrice';
 
 interface Props {
   catalogueSeed: string;
   product: Product;
   isApprovedWallet: boolean;
   network: NetworkId;
-}
-
-function getProductUrl(catalogueSeed: string, product: Product, network: NetworkId): string {
-  return `${BASE_APP_URL}/#${concatenateIDs(catalogueSeed, product.ProductId, network)}`;
 }
 
 export default function ProductPageMobile({
@@ -29,7 +24,7 @@ export default function ProductPageMobile({
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const qrValue = getProductUrl(catalogueSeed, product, network);
+  const qrValue = getBuyerProductUrl(catalogueSeed, product.ProductId, network);
 
   const handleCopy = async () => {
     try {
@@ -67,9 +62,9 @@ export default function ProductPageMobile({
                 <div className="flex flex-col">
                   <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Price</span>
                   <div className="flex items-center gap-1.5">
-                    <TokenIcon assetId={product.PriceToken} size={14}/>
+                    <TokenIcon assetId={product.PriceToken} size={14} network={network}/>
                     <span className="font-bold text-base text-emerald-700 tracking-tight leading-none">
-                      {priceToDisplayString(product.PriceToken, product.Price)}
+                      <ProductPrice product={product} network={network}/>
                     </span>
                   </div>
                 </div>

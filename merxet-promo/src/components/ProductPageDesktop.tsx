@@ -1,10 +1,9 @@
 import {Card, CardContent} from "@/components/ui/card";
 import TokenIcon from "@/components/TokenIcon.tsx";
-import {priceToDisplayString} from "@/lib/tokenUtils.ts";
+import {ProductPrice} from '@/components/commerce/ProductPrice';
 import {QRCodeSVG} from "qrcode.react";
-import {BASE_APP_URL} from "@/config.ts";
 import type {Product} from "@/lib/productSchemas.ts";
-import {concatenateIDs} from "@/lib/qrCodeUtils.ts";
+import {getBuyerProductUrl} from '@/lib/buyer/links';
 import type {NetworkId} from "@/context/wallet/types.ts";
 
 interface Props {
@@ -15,10 +14,6 @@ interface Props {
   network: NetworkId;
 }
 
-function getProductUrl(catalogueSeed: string, product: Product, network: NetworkId): string {
-  return `${BASE_APP_URL}/#${concatenateIDs(catalogueSeed, product.ProductId, network)}`;
-}
-
 export default function ProductPageDesktop({
   catalogueSeed,
   product,
@@ -26,7 +21,7 @@ export default function ProductPageDesktop({
   isApprovedWallet,
   network,
 }: Props) {
-  const qrValue = getProductUrl(catalogueSeed, product, network);
+  const qrValue = getBuyerProductUrl(catalogueSeed, product.ProductId, network);
 
   return (
     <Card className="h-full flex flex-col justify-between px-10 py-8 bg-gradient-to-br from-white to-neutral-200 text-slate-900 border-neutral-100">
@@ -47,9 +42,9 @@ export default function ProductPageDesktop({
 
             <div className="flex flex-col items-start justify-start gap-1">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <TokenIcon assetId={product.PriceToken} size={18}/>
+                <TokenIcon assetId={product.PriceToken} size={18} network={network}/>
                 <span className="font-bold text-sm print:text-[10px] text-emerald-700 tracking-wide">
-                  {priceToDisplayString(product.PriceToken, product.Price)}
+                  <ProductPrice product={product} network={network}/>
                 </span>
               </div>
               <div className="flex justify-center mb-1">

@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:storefront": "vite --mode storefront",
     "build": "tsc -b && vite build",
+    "build:storefront": "tsc -b && vite build --mode storefront",
+    "typecheck": "tsc -b",
+    "test": "playwright test",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -14,6 +18,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.524.0",
     "qrcode.react": "^4.2.0",
+    "radix-ui": "1.6.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-pageflip": "^2.0.3",
@@ -24,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^24.0.4",
     "@types/react": "^19.1.8",
