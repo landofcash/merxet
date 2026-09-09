@@ -165,6 +165,7 @@ The buyer decrypts the seller's delivery update and confirms receipt. The smart 
 - `merxet-frontend` - buyer-facing checkout mobile app
 - `merxet-sync` - sync and caching API that indexes contract logs and HCS messages
 - `merxet-promo` - promo/catalog presentation site
+- `merxet-storefront-template` - standalone starter for generated merchant shops; see [development and build instructions](./merxet-storefront-template/README.md)
 
 ## Local Development
 

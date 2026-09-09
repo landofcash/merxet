@@ -1,6 +1,6 @@
 # Merxet Storefronts: Implementation Plan
 
-Updated September 8, 2026. Phase 1 is implemented and locally validated; phases 2–7 remain planned. This document turns the agreed [architecture overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) and [template specification](./MERXET_STOREFRONT_TEMPLATE_SPEC.md) into implementation work and acceptance criteria.
+Updated September 9, 2026. Phase 1 is implemented and locally validated. Its standalone template extraction is complete as preparation for Phase 2; the sandbox/generation/hosting trial and phases 3-7 remain planned. This document turns the agreed [architecture overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) and [template specification](./MERXET_STOREFRONT_TEMPLATE_SPEC.md) into implementation work and acceptance criteria.
 
 The outcome is a merchant-owned shop generated from an existing catalog and a design brief. The merchant can preview it, request design changes, publish a selected revision, and restore a previous revision. Products open in the existing buyer application, which continues to handle quantity, cart, checkout, wallet approval, and orders.
 
@@ -8,8 +8,8 @@ The outcome is a merchant-owned shop generated from an existing catalog and a de
 
 | Area | Decision |
 | --- | --- |
-| Storefront application | Extend `merxet-promo`, preserving its existing catalog URLs and flipbook/swipe presentation. |
-| Template selection | Start with one complete neutral template under `src/storefront/`. The AI changes its pages, sections, and styles. Additional design presets can follow after this works. |
+| Storefront application | Maintain the complete starter in `merxet-storefront-template`, extracted from Phase 1. Preserve `merxet-promo` as the existing catalog application. |
+| Template selection | Start with one complete neutral template under `merxet-storefront-template/src/storefront/`. The AI changes its pages, sections, and styles. Additional design presets can follow after this works. |
 | Builder | Add one new Node.js/TypeScript project, `merxet-storefront-builder`, in this repository. |
 | Merchant interface | Add storefront management to `merxet-seller`. |
 | Seller authentication | Use the operational internal wallet for signed login challenges and builder sessions. HashPack and other external-wallet integrations are deferred. |
@@ -27,7 +27,7 @@ A merchant shop is a stored identity plus a series of generated revisions. It do
 | Phase | Deliverable | Depends on | Completion gate |
 | --- | --- | --- | --- |
 | 1 | Working storefront inside the promo project | Existing catalog and buyer-link behavior | One branded shop with live products and working buyer links; existing promo still works. |
-| 2 | Sandbox, generation, and hosting feasibility | Phase 1 | Two distinct generated designs build in separate VMs; collected output works after VM destruction; hosted direct routes work. |
+| 2 | Standalone template extraction, then sandbox, generation, and hosting feasibility | Phase 1 | Two distinct generated designs build in separate VMs; collected output works after VM destruction; hosted direct routes work. |
 | 3 | Builder API, ownership, and durable records | Contracts established in phases 1–2 | An authenticated merchant can create a shop; metadata survives restart; another merchant cannot access its management records. |
 | 4 | Durable generation queue and recovery | Phases 2–3 | Configurable parallel builds, bounded retries, cancellation, and restart recovery work without accepting stale results. |
 | 5 | Seller generation and preview interface | Phases 3–4 | A merchant can generate, preview, revise, and inspect previous drafts from the seller portal. |
@@ -58,6 +58,7 @@ Current products remain the source for names, descriptions, images, prices, and 
 
 **Phase 2 — Prove the sandbox and hosting workflow**
 
+- [x] Extract the completed starter into `merxet-storefront-template` with its own source, public assets, lockfile, build tooling, generation contract, and browser checks. Serve it at `/`; remove the storefront entry and build mode from promo. Preserve promo seed/query routes and validate both applications independently.
 - [ ] Select a dedicated Railway execution environment and record sandbox ownership conventions. Pin the SDK version and prepare a clean template/checkpoint containing a compatible Node.js toolchain, lockfile-installed dependencies, and browser-check tooling.
 - [ ] Implement a small sandbox adapter: create, connect, transfer files, execute a fixed command, inspect its result, collect output, and destroy. Scope every operation to the attempt's explicit sandbox ID.
 - [ ] Build the unchanged starter first. Collect source, `dist/`, and validation logs, verify the collected files, then destroy the sandbox. Prove the collected website remains usable.
@@ -194,6 +195,8 @@ The phase 2 prototype must establish the exact CDN/origin configuration, router 
 
 **Definition of done:** a merchant can generate and revise a real shop from an owned catalog, preview it after the build VM has been destroyed, publish a selected revision, recover a previous revision, and export it. Another merchant can do the same concurrently within configurable limits. Current catalog data and existing buyer links work, and failures preserve the last usable shop and durable job history.
 
-**Phase 1 implementation evidence:** [promo README](./merxet-promo/README.md), [generation guide](./merxet-promo/template/generation-guide.md), [template manifest](./merxet-promo/template/template-manifest.json), and [browser checks](./merxet-promo/tests/storefront.spec.ts). The promo build and lint pass. The automated suite passed 17 applicable checks on desktop, at 390x844, and against a dedicated compiled shop under `/s/template/`; its desktop-only skip is the mobile-menu case, which passes in the mobile project. A separate browser check loaded the public demo catalog and current prices, then followed the olive-oil product link into the existing buyer app, which displayed the matching product and 3.5 HBAR price. No Railway sandbox or public deployment was created in this phase.
+**Phase 1 implementation evidence (before extraction):** [template README](./merxet-storefront-template/README.md), [generation guide](./merxet-storefront-template/template/generation-guide.md), [template manifest](./merxet-storefront-template/template/template-manifest.json), and [browser checks](./merxet-storefront-template/tests/storefront.spec.ts). The promo build and lint pass. The automated suite passed 17 applicable checks on desktop, at 390x844, and against a dedicated compiled shop under `/s/template/`; its desktop-only skip is the mobile-menu case, which passes in the mobile project. A separate browser check loaded the public demo catalog and current prices, then followed the olive-oil product link into the existing buyer app, which displayed the matching product and 3.5 HBAR price. No Railway sandbox or public deployment was created in this phase.
 
-**Next milestone:** use this working source for the Phase 2 sandbox, generation, and hosting feasibility trial.
+**Standalone extraction evidence (September 9, 2026):** `merxet-storefront-template` installs from its own lockfile and builds without sibling imports. Both projects pass production builds (including TypeScript checking) and lint. The relocated storefront suite passed 17 applicable checks, including mobile and compiled deployment-subpath coverage; the desktop mobile-menu case remains intentionally skipped. The separate promo suite passed both desktop and mobile URL regression checks. The existing dependency versions were preserved, the template manifest is now version 1.1.0 with its refreshed lockfile hash, and the storefront pages and generation contract exist only in the new project.
+
+**Next milestone:** use the standalone `merxet-storefront-template` source for the Phase 2 sandbox, generation, and hosting feasibility trial.

@@ -4,11 +4,11 @@ import studio from '../template/fixtures/studio.json' with {type: 'json'};
 
 test('homepage, product browsing, search, collections and direct reload', async ({page}, info) => {
   const catalog = await mockCatalog(page);
-  await page.goto('/storefront');
+  await page.goto('/');
   await expect(page.getByRole('heading', {level: 1})).toHaveText('A little discovery. Every day.');
   await expect(page.locator('.shop-product-card')).toHaveCount(3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.screenshot({path: `../output/playwright/storefront-${info.project.name}.png`, fullPage: true});
+  await page.screenshot({path: `output/playwright/storefront-${info.project.name}.png`, fullPage: true});
   await page.getByRole('link', {name: 'View all products'}).click();
   await page.getByRole('searchbox', {name: 'Search products'}).fill('olive');
   await expect(page.locator('.shop-product-card')).toHaveCount(1);
@@ -31,7 +31,7 @@ test('buyer link and accessible QR dialog preserve explicit shop identity', asyn
   await page.addInitScript(() => localStorage.setItem('MerxetPromo-network', 'mainnet'));
   const id = pantry.products[0].ProductId;
   const expectedUrl = `https://app.merxet.com/#${pantry.catalogSeed}${id}2`;
-  await page.goto(`/storefront/products/${id}?network=mainnet&seed=another-catalog`);
+  await page.goto(`/products/${id}?network=mainnet&seed=another-catalog`);
   await expect(page.getByRole('link', {name: 'Open in Merxet', exact: true})).toHaveAttribute('href', expectedUrl);
   await expect(page.locator('.shop-detail-price')).toHaveText('1.25 USDC');
   await page.getByRole('button', {name: 'Show product QR code'}).click();
@@ -50,7 +50,7 @@ test('buyer link and accessible QR dialog preserve explicit shop identity', asyn
 test('mobile top navigation supports keyboard dismissal and links', async ({page}, info) => {
   test.skip(info.project.name !== 'mobile', 'Mobile menu is used at the narrow viewport');
   await mockCatalog(page);
-  await page.goto('/storefront');
+  await page.goto('/');
   const trigger = page.getByRole('button', {name: 'Open navigation'});
   await trigger.click();
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -67,7 +67,7 @@ test('catalog failures can be retried and refreshed products replace snapshots',
   let fail = true;
   let products = pantry.products;
   await mockCatalog(page, {failMetadata: () => fail, getProducts: () => products});
-  await page.goto('/storefront/products');
+  await page.goto('/products');
   await expect(page.getByRole('alert')).toContainText('Products are unavailable');
   fail = false;
   await page.getByRole('button', {name: 'Try again'}).click();
@@ -77,7 +77,7 @@ test('catalog failures can be retried and refreshed products replace snapshots',
   await expect(page.locator('.shop-product-card')).toHaveCount(2);
   await expect(page.getByText('2.5 USDC', {exact: true})).toBeVisible();
   await expect(page.getByRole('link', {name: 'View New catalog product'})).toBeVisible();
-  await page.goto(`/storefront/products/${pantry.products[2].ProductId}`);
+  await page.goto(`/products/${pantry.products[2].ProductId}`);
   await expect(page.getByRole('heading', {name: 'Product unavailable'})).toBeVisible();
   await expect(page.getByRole('link', {name: 'Open in Merxet', exact: true})).toHaveCount(0);
 });
@@ -85,20 +85,20 @@ test('catalog failures can be retried and refreshed products replace snapshots',
 test('contrasting shop config, missing images and unknown routes', async ({page}) => {
   await page.route('**/storefront.json', route => route.fulfill({json: studio.config}));
   await mockCatalog(page, {seed: studio.config.catalogSeed, getProducts: () => studio.products});
-  await page.goto('/storefront');
+  await page.goto('/');
   await expect(page.getByRole('heading', {level: 1})).toHaveText('Wear it your way.');
-  await page.goto('/storefront/products/EEEEEEEEEEEEEEEEEEEEEE');
+  await page.goto('/products/EEEEEEEEEEEEEEEEEEEEEE');
   await expect(page.getByRole('img', {name: 'Image unavailable for Canvas Tote'})).toBeVisible();
   await expect(page.getByRole('link', {name: 'Open in Merxet', exact: true})).toHaveAttribute('href', `https://app.merxet.com/#${studio.config.catalogSeed}EEEEEEEEEEEEEEEEEEEEEE2`);
-  await page.goto('/storefront/collections/missing');
+  await page.goto('/collections/missing');
   await expect(page.getByRole('heading', {name: 'Page not found'})).toBeVisible();
-  await page.goto('/storefront/unknown/page');
+  await page.goto('/unknown/page');
   await expect(page.getByRole('heading', {name: 'Page not found'})).toBeVisible();
 });
 
 test('invalid config, malformed catalog and failed images have usable states', async ({page}) => {
   await page.route('**/storefront.json', route => route.fulfill({json: {schemaVersion: 1}}));
-  await page.goto('/storefront');
+  await page.goto('/');
   await expect(page.getByRole('heading', {name: 'Shop unavailable'})).toBeVisible();
   await page.unroute('**/storefront.json');
   await mockCatalog(page, {getProducts: () => [{...pantry.products[0], Price: 'invalid'}]});
@@ -106,22 +106,12 @@ test('invalid config, malformed catalog and failed images have usable states', a
   await expect(page.getByRole('alert')).toBeVisible();
   await page.route('https://fixtures.merxet.test/catalog.json', route => route.fulfill({json: pantry.products}));
   await page.route('https://fixtures.merxet.test/oil.svg', route => route.fulfill({status: 404}));
-  await page.goto(`/storefront/products/${pantry.products[0].ProductId}`);
+  await page.goto(`/products/${pantry.products[0].ProductId}`);
   await expect(page.getByRole('img', {name: 'Image unavailable for Extra Virgin Olive Oil'})).toBeVisible();
 });
 
-test('empty live catalog is explicit and existing promo seed/query URLs still work', async ({page}) => {
-  let products = [] as typeof pantry.products;
-  await mockCatalog(page, {getProducts: () => products});
-  await page.goto('/storefront/products');
+test('empty live catalog is explicit', async ({page}) => {
+  await mockCatalog(page, {getProducts: () => []});
+  await page.goto('/products');
   await expect(page.getByRole('heading', {name: 'No products here yet'})).toBeVisible();
-  products = pantry.products;
-  for (const url of [`/${pantry.catalogSeed}?n=testnet`, `/?seed=${pantry.catalogSeed}&network=testnet`]) {
-    await page.goto(url);
-    await expect(page.locator('.promo-catalogue')).toBeVisible();
-    await expect(page.locator('#merxet-catalog-data')).toHaveAttribute('href', `https://sync.merxet.com/api/v1/t/catalogs/seed/${pantry.catalogSeed}`);
-    await expect(page.locator('.shop-root')).toHaveCount(0);
-  }
-  await page.goto('/about');
-  await expect(page.locator('#merxet-ai-ordering')).toBeHidden();
 });

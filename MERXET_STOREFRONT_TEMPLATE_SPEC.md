@@ -1,6 +1,6 @@
 # Merxet Storefront Template Specification
 
-Updated September 8, 2026. The Phase 1 template is implemented in `merxet-promo`; see its [README](./merxet-promo/README.md) and [generation contract](./merxet-promo/template/generation-guide.md). The Railway and builder integration below describes subsequent phases. See the [implementation overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) for the builder and Bunny storage design, and the [implementation plan](./MERXET_STOREFRONTS_IMPLEMENTATION_PLAN.md) for phased tasks and acceptance criteria.
+Updated September 9, 2026. The completed Phase 1 storefront is now the standalone `merxet-storefront-template` project; see its [README](./merxet-storefront-template/README.md) and [generation contract](./merxet-storefront-template/template/generation-guide.md). The Railway and builder integration below describes subsequent work. See the [implementation overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) and [implementation plan](./MERXET_STOREFRONTS_IMPLEMENTATION_PLAN.md).
 
 The template is a complete, responsive merchant shop built from the existing promo application. It loads the merchant's current catalog, presents products in a branded design, and opens products in the existing buyer app. Its prepared source is copied into a fresh Railway VM sandbox for each generation attempt, where the AI changes pages, sections, and styles through builder-controlled tools. Each approved result becomes a static website revision. Railway Sandboxes are the selected execution provider; the user confirmed enabling access on September 8, 2026.
 
@@ -16,16 +16,16 @@ The template is a complete, responsive merchant shop built from the existing pro
 | `zod` | Keep; locked to 4.1.11 | Validate public shop configuration and downloaded catalog JSON before rendering. |
 | `lucide-react` | Keep; locked to 0.524.0 | Search, navigation, external-link, and QR icons. |
 | `qrcode.react` | Keep; locked to 4.2.0 | Render the same buyer-app URL as a QR code. |
-| `clsx`, `tailwind-merge`, `class-variance-authority` | Keep | Existing class composition and component variants. |
+| `clsx`, `tailwind-merge` | Keep | Existing class composition. The unused `class-variance-authority` dependency is excluded from the standalone template. |
 | `tw-animate-css` | Keep where used | Small transitions for existing UI components. Respect reduced-motion preferences. |
-| shadcn/ui component source | Keep the local component approach in `components/ui` | Existing Card source plus maintained Button and Modal wrappers; native labeled inputs/selects and shared loading states. |
+| shadcn/ui component source | Keep the local component approach in `components/ui` | Maintained Button and Modal wrappers; native labeled inputs/selects and shared loading states. |
 | `radix-ui` | Added and pinned to 1.6.7 | Dialog focus handling, keyboard interactions, and mobile navigation built through local wrappers. |
 | ESLint and existing TypeScript/React plugins | Keep | Validate maintained and generated source. |
 | `@playwright/test` | Added and pinned to 1.63.0 | Verify the maintained starter, mobile navigation, direct routes, and buyer-app links; adapt merchant inputs for generated checks in Phase 2. |
 
 The existing shadcn setup already uses local component files and CSS variables. Extend that setup with the selected Radix-backed components and review their required imports; the generator should use the prepared components rather than install new ones. Radix recommends the `radix-ui` package and supports importing only the primitives used. [shadcn Vite documentation](https://ui.shadcn.com/docs/installation/vite), [Radix documentation](https://www.radix-ui.com/primitives/docs/overview/introduction).
 
-Use native `fetch` and a shared catalog provider initially. Load the catalog once per shop context, expose loading/error/refresh states, and keep browsing state in React and URL query parameters. The current scope does not require an additional global state or data-fetching package. Keep `react-pageflip` and `swiper` available for the existing promo experience, with their code and styles loaded only by the layouts that use them.
+Use native `fetch` and a shared catalog provider initially. Load the catalog once per shop context, expose loading/error/refresh states, and keep browsing state in React and URL query parameters. The current scope does not require an additional global state or data-fetching package. The `react-pageflip` and `swiper` dependencies remain only in `merxet-promo`; the standalone template excludes them.
 
 **Pages and starter sections.** Start with one complete neutral design that the agent can transform for different merchants.
 
@@ -41,12 +41,12 @@ Use native `fetch` and a shared catalog provider initially. Load the catalog onc
 
 Do not generate reviews, discounts, stock claims, delivery promises, or verification claims without supporting data. Collections are storefront metadata and initially reference existing products; they do not require changing the catalog format. The buyer app continues handling quantity selection, cart, and checkout.
 
-**Source organization and AI editing.** The proposed organization stays inside `merxet-promo`. Existing files can move gradually as their responsibilities are separated.
+**Source organization and AI editing.** The complete buildable starter lives in `merxet-storefront-template`. It includes all required runtime, assets, dependencies, and tooling; copying only `src/storefront/` is insufficient. No source or package imports reach into sibling projects. The promo application retains its own presentation and regression checks.
 
 ```text
-merxet-promo/
+merxet-storefront-template/
   src/
-    app/                    entry, routing, mode selection, providers
+    app/                    entry, routing, providers
     lib/
       catalog/              loading, validation, product lookup
       buyer/                buyer URLs and QR payload helpers
@@ -59,7 +59,6 @@ merxet-promo/
       pages/                AI-editable shop pages
       sections/             AI-editable hero, grid, story, footer
       theme.css             AI-editable colors, typography, spacing
-    promo/                  existing flipbook/swipe presentation
   public/
     storefront.json         public shop configuration in generated output
     shop-assets/            merchant branding and supplied assets
@@ -68,13 +67,17 @@ merxet-promo/
     template-manifest.json version, editable paths, validation rules
     fixtures/              sample public catalogs for validation
   tests/                   maintained browser acceptance checks
+  tooling/                 static HTML/configuration build plugin
+  package.json             independent scripts and dependencies
+  package-lock.json        pinned dependency graph
+  vite.config.ts           independent build configuration
 ```
 
 The AI may rewrite page and section TSX, adjust layout composition, and change the theme. It receives catalog data and branding to guide those changes. This supports designs that differ in structure as well as colors.
 
 Catalog/network identity, buyer-link generation, price formatting, dependency manifests, build configuration, and acceptance checks remain maintained template code. Expose these through small helpers and components. Validate the changed file paths and imports, then check actual rendered behavior; an editable-file list alone is not an isolation mechanism. Each attempt's Railway VM sandbox provides the separate environment for executing generated code.
 
-**Railway build contract.** Prepare a clean Railway template/checkpoint containing a pinned Node.js toolchain, dependencies installed from the promo lockfile, and the browser tooling required by the acceptance checks. A storefront template release records which clean build-environment version it expects. Copy the selected shop source and public configuration into each new sandbox; never reuse a previous merchant's writable workspace as another shop's base.
+**Railway build contract.** Prepare a clean Railway template/checkpoint containing a pinned Node.js toolchain, dependencies installed from the template lockfile, and the browser tooling required by the acceptance checks. A storefront template release records which clean build-environment version it expects. Copy the selected shop source and public configuration into each new sandbox; never reuse a previous merchant's writable workspace as another shop's base.
 
 The builder runs model requests outside the generated-code environment and controls sandbox file/command operations through its backend adapter. All source execution, Vite builds, and generated-page browser checks run inside the attempt's sandbox. Use fixed build commands and collect `dist/`, the source archive with its lockfile, and validation logs as separate outputs. The builder validates and uploads these to Bunny, then destroys the sandbox. A non-zero exit, timeout, failed browser check, or failed artifact upload cannot produce a ready revision.
 
@@ -102,4 +105,4 @@ Produce static `dist/` files and a source archive with the dependency lockfile. 
 
 **Validation and first milestone.** The template release should pass type checking, lint, and a production build. Browser checks should cover catalog failures, missing products, navigation and reloads, mobile menu/QR behavior, and buyer links with the correct catalog/product/network. Include large-price formatting checks when extracting that helper. Playwright provides browser automation and assertions for these flows. [Playwright documentation](https://playwright.dev/docs/intro).
 
-The first milestone is a working branded shop inside `merxet-promo` using an existing catalog and buyer links. The next proof is two visibly different AI-generated designs built in separate Railway VM sandboxes and passing the same checks. Confirm that collected artifacts remain usable after sandbox destruction. The builder then automates this established workflow.
+The working branded shop and buyer links from Phase 1 have been extracted into the standalone template. The next proof is two visibly different AI-generated designs built in separate Railway VM sandboxes and passing the same checks. Confirm that collected artifacts remain usable after sandbox destruction. The builder then automates this established workflow.

@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import pantry from './fixtures/pantry.json' with {type: 'json'};
+import pantry from '../template/fixtures/pantry.json' with {type: 'json'};
 
 export {pantry};
 export async function mockCatalog(page: Page, options: {seed?: string; getProducts?: () => unknown; failMetadata?: () => boolean} = {}) {

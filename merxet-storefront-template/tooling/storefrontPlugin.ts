@@ -40,8 +40,7 @@ export function storefrontPlugin(enabled: boolean): Plugin {
           html: html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escape(shop.branding.name)}</title>`)
             .replace(/<meta\s+name="(?:description|keywords)"[\s\S]*?\/>/g, '')
             .replace(/<link\s[^>]*rel="(?:icon|apple-touch-icon)"[^>]*\/>/g, '')
-            .replace(/<link\s+id="merxet-catalog-data"[\s\S]*?\/>/, '')
-            .replace(/<details\s+id="merxet-ai-ordering"[\s\S]*?<\/details>/, ''),
+            .replace(/<link\s+id="merxet-catalog-data"[\s\S]*?\/>/, ''),
           // Keep charset before potentially long merchant metadata/configuration.
           tags: tags.map(tag => ({...tag, injectTo: 'head'})),
         };

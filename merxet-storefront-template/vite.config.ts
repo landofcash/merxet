@@ -4,8 +4,9 @@ import path from 'path'
 import tailwindcss from "@tailwindcss/postcss";
 import autoprefixer from "autoprefixer";
 import pkg from './package.json' with { type: 'json' }
+import {storefrontPlugin} from './tooling/storefrontPlugin';
 
-export default defineConfig({
+export default defineConfig(({command}) => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
@@ -22,5 +23,6 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    storefrontPlugin(command === 'build'),
   ],
-})
+}))

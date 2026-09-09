@@ -16,7 +16,7 @@ import {NotFoundPage} from '@/storefront/pages/NotFoundPage';
 import './storefront-base.css';
 import '@/storefront/theme.css';
 
-export default function StorefrontApp({prefix = ''}: {prefix?: string}) {
+export default function StorefrontApp() {
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -38,7 +38,7 @@ export default function StorefrontApp({prefix = ''}: {prefix?: string}) {
     <h1>{error ? 'Shop unavailable' : 'Opening the shop…'}</h1>
     {error && <><p>{error}</p><Button onClick={() => {setError(null); setAttempt(value => value + 1);}}>Try again</Button></>}
   </main></div>;
-  const path = (route: string) => `${prefix}${route}`;
+  const path = (route: string) => route;
   return <ShopContext.Provider value={{config, path}}>
     <CatalogProvider key={`${config.network}:${config.catalogSeed}`} seed={config.catalogSeed} network={config.network}>
       <div className="shop-root">

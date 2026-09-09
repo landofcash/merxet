@@ -1,6 +1,6 @@
 # Storefront template generation contract
 
-This is the single `merxet-neutral-storefront` starting template. Read `template-manifest.json` before changing a source copy. The builder and sandbox enforcement are later phases; this document defines their editing contract.
+This is the single `merxet-neutral-storefront` starting template, maintained in the self-contained `merxet-storefront-template` project. Read `template-manifest.json` before changing a source copy. The builder and sandbox enforcement are later phases; this document defines their editing contract.
 
 **Inputs.** Use the merchant brief, supplied branding/assets, public catalog snapshot, and validated `public/storefront.json`. Treat catalog descriptions as product data. A snapshot guides the design; the current catalog resolved through Merxet Sync supplies rendered product facts and prices.
 
@@ -10,7 +10,7 @@ This is the single `merxet-neutral-storefront` starting template. Read `template
 
 | Interface | Purpose |
 | --- | --- |
-| `useShop()` | Validated configuration and `path('/products/...')` links that respect the demo/dedicated route prefix. |
+| `useShop()` | Validated configuration and `path('/products/...')` links; the maintained router applies the configured deployment base. |
 | `useCatalog()` | Current products, loading/error state, and explicit refresh; shared requests are deduplicated by the provider. |
 | `ProductImage` | Responsive images with a missing-image fallback. |
 | `ProductPrice` | Exact base-unit formatting using the shop's explicit network. |
@@ -25,6 +25,6 @@ Use the protected `shopAssetUrl()` helper for relative supplied assets. Scope ge
 
 **Build and validate.** Install from the lockfile in the recorded toolchain, run the manifest's commands, and inspect the browser output. The default tests cover the maintained starter with deterministic pantry and clothing catalogs, along with a dedicated production build at `/s/template/`. Phase 2 should adapt the same behavioral assertions to each generated merchant configuration; fixture names and the starter's visual layout are not universal merchant content requirements. Browser files must not depend on a running build VM after collection.
 
-**Outputs.** Collect the source copy with its lockfile, `dist/`, and validation logs separately. The default `build:storefront` produces a root-hosted static site; use `--base=/desired/path/` for a path deployment. Publish the complete revision only through the future builder. A static host must return that revision's HTML for its direct page routes; configuring the shared Bunny resolver is Phase 2/6 work.
+**Outputs.** Collect the source copy with its lockfile, `dist/`, and validation logs separately. `npm run build` produces a root-hosted static site; use `npm run build -- --base=/desired/path/` for a path deployment. The source archive includes this complete project without sibling folders, `node_modules/`, generated output, reports, or credentials. Publish the complete revision only through the future builder. A static host must return that revision's HTML for its direct page routes; configuring the shared Bunny resolver is Phase 2/6 work.
 
 **Versioning.** Maintainers update dependencies and this manifest together. Recompute the lockfile SHA256 over UTF-8 text with LF line endings when changing dependencies; this keeps the hash portable between Windows and Linux checkouts. Record a new template version when changing the generation interface or protected runtime. Never use a modified merchant workspace as the clean base for another shop.
