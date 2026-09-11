@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Merxet ENS setup</title>
+<style>body{font:16px system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 24px;color:#19312c;background:#f8faf9}h1{letter-spacing:-1px}button{padding:10px 16px;background:#175f4e;color:white;border:0;border-radius:6px;cursor:pointer;margin:5px}button:disabled{opacity:.5;cursor:default}li{margin:20px 0}pre,code{overflow-wrap:anywhere;white-space:pre-wrap;font-size:13px}pre{padding:16px;background:#e8efec;border-radius:8px}#message{white-space:pre-wrap}details{margin-top:8px}a{color:#175f4e}</style></head><body>
+<h1>Connect your shop namespace</h1><p>One-time setup for ENSv2 on Ethereum Sepolia. Use the administrator wallet that owns the parent name.</p>
+<p>The backend receives permission to register subnames. The administrator retains control of the parent and registry. Each shop gets its own resolver with permission for the backend to update only that shop's URL.</p>
+<pre id="identity">Checking the namespace…</pre><button id="connect">Connect administrator wallet</button><button id="refresh">Refresh status</button>
+<p id="message" role="status"></p><ol id="steps"></ol><pre id="variables" hidden></pre>
+<p>Keep this page open while confirming transactions. If a wallet response is interrupted, check the wallet's activity before retrying.</p><script type="module" src="/app.js"></script></body></html>

@@ -86,7 +86,7 @@ export class PublicDelivery {
     if (!bytes || bytes.length !== entry.size || sha256(bytes) !== entry.sha256) throw new ApiError(503, 'public_artifact_mismatch');
     return {bytes, revisionId, type: publicTypes[name.split('.').at(-1)!], cache: page || file === 'storefront.json' ? 'no-store' : 'public, max-age=31536000, immutable'};
   }
-  app() {
+  app(alias?: (label: string, file: string) => Promise<string>) {
     const app = express(); app.disable('x-powered-by'); app.disable('etag');
     app.use((req, res, next) => {
       res.set({'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
@@ -110,6 +110,18 @@ export class PublicDelivery {
         const result = await this.resolve(String(req.params.shopId), file);
         if (!result) throw new ApiError(404, 'shop_not_found');
         res.set({'Content-Type': result.type, 'Cache-Control': result.cache, 'X-Merxet-Revision': result.revisionId}).send(result.bytes);
+      } finally { this.#reads--; }
+    });
+    if (alias) app.get('/{*alias}', async (req, res) => {
+      if (this.#reads >= 32) throw new ApiError(503, 'public_delivery_busy');
+      this.#reads++;
+      try {
+        const [label, ...parts] = (req.params.alias as string[] | undefined) ?? [];
+        if (!label) throw new ApiError(404, 'shop_not_found');
+        const target = await alias(label, parts.join('/').replace(/\/$/, ''));
+        const query = new URLSearchParams();
+        for (const key of ['q', 'sort']) if (typeof req.query[key] === 'string' && req.query[key].length <= 200) query.set(key, req.query[key]);
+        res.redirect(302, target + (query.size ? `?${query}` : ''));
       } finally { this.#reads--; }
     });
     app.use((_req, _res) => { throw new ApiError(404, 'shop_not_found'); });

@@ -1,4 +1,5 @@
 import type {ChallengeResponse, CreateShop, GenerationJob, PreviewResponse, Revision, SessionResponse, Shop, SubmitJob, Publication, PublicationStatus, PublishRequest} from './contracts';
+import type {EnsStatus, EnsAvailability, EnsName, ClaimName} from './contracts';
 
 export class BuilderError extends Error {
   status: number;
@@ -21,6 +22,15 @@ export function errorMessage(code: string): string {
     immutable_asset_conflict: 'This draft changes an asset that an older published shop still uses. Generate a revision with a new asset filename.',
     public_artifact_mismatch: 'The uploaded website could not be verified. Retry publication.', public_delivery_unavailable: 'The public website could not be reached. Check public delivery and retry.',
     public_route_mismatch: 'The live website did not match the selected draft. The previous publication is being restored.',
+    ens_invalid_label: 'Use 3–40 letters, numbers or single hyphens. This name may be reserved.',
+    ens_name_unavailable: 'This name is already taken. Choose another name.', ens_shop_already_named: 'This shop already has a name request.',
+    ens_publish_first: 'Publish your shop before requesting its name.', ens_not_configured: 'Shop names are not configured yet.',
+    ens_rpc_unavailable: 'The naming network is temporarily unavailable. Your request is saved.',
+    ens_permissions_not_ready: 'The naming operator needs administrator setup.', ens_operator_busy: 'Waiting for an earlier naming transaction.',
+    ens_transaction_reverted: 'The naming transaction failed. You can retry the saved request.',
+    ens_nonce_reconciliation: 'A transaction needs administrator review. Your request is saved; do not submit another name.',
+    ens_records_mismatch: 'The name records need administrator review before the link can be activated.',
+    ens_fee_limit: 'Waiting for lower network fees.', ens_queue_full: 'Many names are being registered. Please try again shortly.',
   };
   return messages[code] ?? 'The request could not be completed. Please try again.';
 }
@@ -80,4 +90,8 @@ export class BuilderClient {
   publications(id: string) { return this.request<PublicationStatus>(`/shops/${id}/publications`); }
   publish(id: string, input: PublishRequest, requestId: string) { return this.request<Publication>(`/shops/${id}/publications`, 'POST', input, requestId); }
   retryPublication(id: string, operationId: string, requestId: string) { return this.request<Publication>(`/shops/${id}/publications/${operationId}/retry`, 'POST', {}, requestId); }
+  ens(id: string) { return this.request<EnsStatus>(`/shops/${id}/ens`); }
+  ensAvailability(id: string, label: string) { return this.request<EnsAvailability>(`/shops/${id}/ens/availability?label=${encodeURIComponent(label)}`); }
+  claimName(id: string, input: ClaimName, requestId: string) { return this.request<EnsName>(`/shops/${id}/ens`, 'POST', input, requestId); }
+  retryName(id: string, requestId: string) { return this.request<EnsName>(`/shops/${id}/ens/retry`, 'POST', {}, requestId); }
 }

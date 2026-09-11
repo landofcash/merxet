@@ -1,0 +1,37 @@
+async (page) => {
+  const check = (value, message) => { if (!value) throw new Error(message); };
+  const card = page.getByRole('region', {name: 'Shop name'});
+  await card.getByRole('button', {name: 'Choose name'}).click();
+  await card.getByText('Publish your shop to choose its name.', {exact: true}).waitFor();
+  await card.getByRole('button', {name: 'Close', exact: true}).click();
+  await page.getByRole('button', {name: 'Publish draft', exact: true}).click();
+  await page.getByRole('button', {name: 'Confirm publish', exact: true}).click();
+  await page.getByRole('link', {name: 'Open live shop'}).waitFor({timeout: 30000});
+  await card.getByRole('button', {name: 'Choose name'}).click();
+  await card.getByLabel('Shop name', {exact: true}).fill('taken-name');
+  await card.getByRole('button', {name: 'Check availability'}).click();
+  await card.getByText('is already taken.', {exact: false}).waitFor();
+  check(await card.getByRole('button', {name: 'Confirm name'}).count() === 0, 'Taken names cannot be confirmed');
+  await card.getByLabel('Shop name', {exact: true}).fill('pantry');
+  await card.getByRole('button', {name: 'Check availability'}).click();
+  await card.getByRole('button', {name: 'Confirm name'}).waitFor();
+  await page.screenshot({path: 'output/playwright/ens-desktop-confirmation.png'});
+  await card.getByRole('button', {name: 'Confirm name'}).click();
+  await card.getByText('Name ready', {exact: true}).waitFor({timeout: 45000});
+  const url = await card.getByRole('link', {name: 'Open short link'}).getAttribute('href');
+  check(url === 'http://127.0.0.1:4185/pantry', 'The short URL uses the public listener');
+  const response = await page.request.get(url + '/products/lIZWNPYBR6aCU0P8t0rZNA?q=olive&redirect=https://evil.example', {maxRedirects: 0});
+  check(response.status() === 302 && /\/s\/[a-f0-9-]+\/products\/lIZWNPYBR6aCU0P8t0rZNA\?q=olive$/.test(response.headers().location), 'Product navigation preserves only supported parameters');
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], {origin: 'http://127.0.0.1:5183'});
+  await card.getByRole('button', {name: 'Copy link'}).click(); await card.getByRole('button', {name: 'Copied', exact: true}).waitFor();
+  await page.setViewportSize({width: 390, height: 844});
+  await page.getByRole('button', {name: 'Hide Design panel'}).click();
+  await page.screenshot({path: 'output/playwright/ens-mobile-active.png'});
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile page must not overflow horizontally');
+  const tab = await page.context().newPage();
+  await tab.goto(url + '/products/lIZWNPYBR6aCU0P8t0rZNA');
+  await tab.getByRole('heading', {name: 'Extra Virgin Olive Oil', exact: true}).waitFor();
+  check((await tab.getByRole('link', {name: 'Open in Merxet', exact: true}).getAttribute('href')) === 'https://app.merxet.com/#AAAAAAAAAAAAAAAAAAAAAAlIZWNPYBR6aCU0P8t0rZNA2', 'Buyer handoff remains bound to the shop catalog and network');
+  await tab.close();
+  console.log('ENS browser fixture passed: publish gate, unavailable name, confirmation, async registration, copy link, mobile layout, public product redirect and buyer handoff. ENS chain was simulated.');
+}

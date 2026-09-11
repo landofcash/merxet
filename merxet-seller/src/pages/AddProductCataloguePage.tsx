@@ -5,6 +5,7 @@ import {Input} from '@/components/ui/input'
 import {Button} from '@/components/ui/button'
 import {useWallet} from '@/context/WalletContext'
 import {ProductCatalogueSchema, type ProductCatalogue} from '@/lib/productSchemas'
+import {validateSingleTokenCatalogue} from '@/lib/catalogueValidation.ts'
 import TokenIcon from '@/components/TokenIcon'
 import {priceToDisplayString, getSupportedTokens} from '@/lib/tokenUtils'
 import {formatCryptoError} from '@/lib/cryptoFormat'
@@ -34,6 +35,7 @@ function AddProductCataloguePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [catalogue, setCatalogue] = useState<ProductCatalogue | null>(null)
+  const [catalogueToken, setCatalogueToken] = useState<string | null>(null)
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false)
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -45,39 +47,38 @@ function AddProductCataloguePage() {
   const [isSigningStep, setIsSigningStep] = useState(false)
   const [isSigningComplete, setIsSigningComplete] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setCatalogue(null)
-    setIsLoading(true)
-
-    try {
-      const response = await fetch(catalogueUrl, {
+  const fetchCatalogue = async (url: string): Promise<{catalogue: ProductCatalogue; token: string}> => {
+    const response = await fetch(url, {
         redirect: 'follow',
         headers: {
           'Accept': 'application/json'
         }
       })
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Catalog not found at the specified URL')
-        }
-        throw new Error(`Failed to fetch catalog: ${response.status} ${response.statusText}`)
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Catalog not found at the specified URL')
       }
+      throw new Error(`Failed to fetch catalog: ${response.status} ${response.statusText}`)
+    }
 
-      const data = await response.json()
-      const parsedCatalogue = ProductCatalogueSchema.parse(data)
+    const data = await response.json()
+    const parsedCatalogue = ProductCatalogueSchema.parse(data)
+    const token = validateSingleTokenCatalogue(parsedCatalogue, getSupportedTokens().map(item => item.tokenId))
+    return {catalogue: parsedCatalogue, token}
+  }
 
-      // Validate that each product's PriceToken is supported
-      const supported = new Set(getSupportedTokens().map(t => t.tokenId))
-      const invalid = parsedCatalogue.filter(p => !supported.has(p.PriceToken))
-      if (invalid.length > 0) {
-        const invalidTokens = Array.from(new Set(invalid.map(p => p.PriceToken))).join(', ')
-        throw new Error(`Catalog contains unsupported token type(s): ${invalidTokens}`)
-      }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setCatalogue(null)
+    setCatalogueToken(null)
+    setIsLoading(true)
 
-      setCatalogue(parsedCatalogue)
+    try {
+      const result = await fetchCatalogue(catalogueUrl)
+      setCatalogue(result.catalogue)
+      setCatalogueToken(result.token)
     } catch (err) {
       let errorMessage = 'Failed to load catalog'
 
@@ -138,6 +139,9 @@ function AddProductCataloguePage() {
     setError(null)
 
     try {
+      const result = await fetchCatalogue(catalogueUrl)
+      setCatalogue(result.catalogue)
+      setCatalogueToken(result.token)
       const newTxId = await getChainAdapter()
         .uploadCatalogUrlToBlockchain(walletAdapter, seed, sellerPubKey, catalogueUrl)
       setTxId(newTxId)
@@ -162,6 +166,13 @@ function AddProductCataloguePage() {
     setIsSigningStep(false)
     setIsSigningComplete(false)
     setError(null)
+  }
+
+  const handleCatalogueUrlChange = (value: string) => {
+    setCatalogueUrl(value)
+    setCatalogue(null)
+    setCatalogueToken(null)
+    resetProcess()
   }
 
   if (!walletAddress) {
@@ -284,7 +295,7 @@ function AddProductCataloguePage() {
               <label htmlFor="catalogueUrl" className="text-sm font-medium">
                 Catalog URL
               </label>
-              <Input id="catalogueUrl" type="url" value={catalogueUrl} onChange={(e) => setCatalogueUrl(e.target.value)}
+              <Input id="catalogueUrl" type="url" value={catalogueUrl} onChange={(e) => handleCatalogueUrlChange(e.target.value)}
                      placeholder="https://example.com/products.json" required/>
             </div>
             <Button type="submit" disabled={isLoading}>
@@ -295,6 +306,12 @@ function AddProductCataloguePage() {
           {catalogue && (
             <div className="space-y-4">
               <h3 className="font-semibold">Preview ({catalogue.length} products)</h3>
+              {catalogueToken && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <TokenIcon assetId={catalogueToken} size={20} alt={getSupportedTokens().find(token => token.tokenId === catalogueToken)?.name ?? catalogueToken}/>
+                  <span>Catalog payment token: <strong>{getSupportedTokens().find(token => token.tokenId === catalogueToken)?.name ?? catalogueToken}</strong></span>
+                </div>
+              )}
               <div className="grid gap-4">
                 {catalogue.map((product) => (
                   <div key={product.ProductId} className="p-4 border rounded-lg flex items-start gap-4">

@@ -13,13 +13,14 @@ async function main() {
   const config = loadConfig();
   await assertDeploymentVolume(config);
   const publicationConfigured = !!(config.publicStorage.key || config.publicBaseUrl);
+  if (config.ens.enabled && !publicationConfigured) throw new Error('ENS requires configured public shop delivery');
   if (publicationConfigured && (!config.publicStorage.key || !config.publicStorage.zone || !config.publicBaseUrl || config.publicStorage.zone === config.storage.zone)) throw new Error('Configure separate public Bunny storage and its CDN URL');
   if ([config.previewPort, config.publicPort].includes(config.port) || config.previewPort === config.publicPort) throw new Error('API, preview and public listeners need separate ports');
   const publicStore = publicationConfigured ? new BunnyStorage(config.publicStorage) : undefined;
   const journal = await Journal.open(new BunnyStorage(config.storage), config.prefix, config.maxOperations, config.maxPendingWrites);
   const worker = config.workerEnabled ? new Coordinator(journal, config, new RailwayProvider(config.prefix), new GenerationEngine(journal, config)) : undefined;
   let ready = false;
-  const {app, previews, publications} = createApp({journal, config, identity: new MerxetIdentity(config), ready: () => ready,
+  const {app, previews, publications, ens} = createApp({journal, config, identity: new MerxetIdentity(config), ready: () => ready,
     publicStore, publicReader: publicStore ? (file, maxBytes) => readHttp(`${config.publicBaseUrl}/${file}`, maxBytes) : undefined});
   // Bind the listener before scheduling/writing. A second local start on the same
   // address must fail before it can provision work from a stale journal snapshot.
@@ -31,15 +32,16 @@ async function main() {
     previewServer = previews.app().listen(config.previewPort, config.host);
     await new Promise<void>((resolve, reject) => { previewServer!.once('listening', resolve); previewServer!.once('error', reject); });
     if (publications) {
-      publicServer = publications.delivery.app().listen(config.publicPort, config.host);
+      publicServer = publications.delivery.app(ens?.redirect.bind(ens)).listen(config.publicPort, config.host);
       await new Promise<void>((resolve, reject) => { publicServer!.once('listening', resolve); publicServer!.once('error', reject); });
     }
     await worker?.start(); ready = true;
     publications?.start();
+    ens?.start();
     console.log(`Storefront builder listening on ${config.host}:${config.port}`);
     console.log(`Private preview listener on ${config.host}:${config.previewPort}`);
     if (publicServer) console.log(`Public shop listener on ${config.host}:${config.publicPort}`);
-  } catch (error) { server.close(); previewServer?.close(); publicServer?.close(); await worker?.stop(); await publications?.stop(); throw error; }
+  } catch (error) { server.close(); previewServer?.close(); publicServer?.close(); await worker?.stop(); await publications?.stop(); await ens?.stop(); throw error; }
   server.requestTimeout = 30000; server.headersTimeout = 10000;
   previewServer.requestTimeout = 30000; previewServer.headersTimeout = 10000;
   if (publicServer) { publicServer.requestTimeout = 30000; publicServer.headersTimeout = 10000; }
@@ -50,7 +52,7 @@ async function main() {
     const closed = Promise.all([server, previewServer!].map(listener => new Promise<void>((resolve, reject) => listener.close(error => error ? reject(error) : resolve()))));
     void (async () => {
       // Keep delivery available until an in-flight publication has finished its HTTP checks.
-      await Promise.all([closed, worker?.stop(), publications?.stop()]);
+      await Promise.all([closed, worker?.stop(), publications?.stop(), ens?.stop()]);
       await new Promise<void>((resolve, reject) => publicServer ? publicServer.close(error => error ? reject(error) : resolve()) : resolve());
       await journal.drain(); clearTimeout(deadline);
     })().catch(() => { process.exitCode = 1; });

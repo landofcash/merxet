@@ -13,15 +13,19 @@ import {ChallengeResponseSchema, PreviewResponseSchema, SessionResponseSchema} f
 import type {ObjectStore} from '../storage/bunny.ts';
 import {PublicDelivery, type Reader} from '../publishing/delivery.ts';
 import {PublicationService, PublishRequestSchema} from '../publishing/service.ts';
+import {SepoliaEns, type EnsChain} from '../ens/chain.ts';
+import {EnsService} from '../ens/service.ts';
+import {ClaimNameSchema} from '../ens/labels.ts';
 
 const ChallengeRequest = z.object({accountId: AccountId}).strict();
 const VerifyRequest = z.object({accountId: AccountId, challengeId: Id, signature: z.string().regex(/^0x[a-fA-F0-9]{130}$/)}).strict();
-export function createApp(deps: {journal: Journal; identity: IdentityProvider; config: Config; now?: () => number; ready?: () => boolean; publicStore?: ObjectStore; publicReader?: Reader}) {
+export function createApp(deps: {journal: Journal; identity: IdentityProvider; config: Config; now?: () => number; ready?: () => boolean; publicStore?: ObjectStore; publicReader?: Reader; ensChain?: EnsChain}) {
   const {journal, identity, config} = deps, now = deps.now ?? Date.now;
   const auth = new AuthService(journal, identity, config, now), shops = new ShopService(auth);
   const previews = new PreviewService(auth, shops);
   const publications = deps.publicStore && deps.publicReader ? new PublicationService(auth, shops, deps.publicStore,
     new PublicDelivery(journal.store, config, journal.prefix, deps.publicReader)) : undefined;
+  const ens = config.ens.enabled && publications ? new EnsService(auth, shops, deps.ensChain ?? new SepoliaEns(config.ens), publications.delivery) : undefined;
   const app = express(), router = express.Router({mergeParams: true});
   const windows = new Map<string, {start: number; count: number}>();
   app.disable('x-powered-by'); app.disable('etag');
@@ -72,6 +76,26 @@ export function createApp(deps: {journal: Journal; identity: IdentityProvider; c
     res.status(result.status).json({success: true, data: result.data});
   });
   router.get('/shops/:shopId/revisions', (req, res) => { res.json({success: true, data: shops.revisions(res.locals.session, Id.parse(req.params.shopId))}); });
+  router.get('/shops/:shopId/ens', (req, res) => {
+    const shopId = Id.parse(req.params.shopId); shops.get(res.locals.session, shopId);
+    res.json({success: true, data: ens?.status(res.locals.session, shopId) ?? {enabled: false, chainId: 11155111, parentName: config.ens.parentName, name: null, shortUrl: null}});
+  });
+  router.get('/shops/:shopId/ens/availability', async (req, res) => {
+    if (!ens) throw new ApiError(503, 'ens_not_configured');
+    const label = z.string().min(3).max(40).parse(req.query.label);
+    res.json({success: true, data: await ens.availability(res.locals.session, Id.parse(req.params.shopId), label)});
+  });
+  router.post('/shops/:shopId/ens', async (req, res) => {
+    if (!ens) throw new ApiError(503, 'ens_not_configured');
+    const result = await ens.submit(res.locals.session, Id.parse(req.params.shopId), Id.parse(req.get('Idempotency-Key')), ClaimNameSchema.parse(req.body));
+    res.status(result.status).json({success: true, data: result.data});
+  });
+  router.post('/shops/:shopId/ens/retry', async (req, res) => {
+    if (!ens) throw new ApiError(503, 'ens_not_configured');
+    z.object({}).strict().parse(req.body ?? {});
+    const result = await ens.retry(res.locals.session, Id.parse(req.params.shopId), Id.parse(req.get('Idempotency-Key')));
+    res.status(result.status).json({success: true, data: result.data});
+  });
   router.get('/shops/:shopId/publications', (req, res) => {
     const shopId = Id.parse(req.params.shopId); shops.get(res.locals.session, shopId);
     res.json({success: true, data: publications?.list(res.locals.session, shopId) ?? {enabled: false, liveUrl: null, operations: []}});
@@ -114,5 +138,5 @@ export function createApp(deps: {journal: Journal; identity: IdentityProvider; c
     else if (error && typeof error === 'object' && 'status' in error && [400, 413, 415].includes(Number(error.status))) { status = Number(error.status); code = status === 413 ? 'request_too_large' : 'invalid_json_request'; }
     res.status(status).json({success: false, error: code});
   });
-  return {app, auth, shops, previews, publications};
+  return {app, auth, shops, previews, publications, ens};
 }

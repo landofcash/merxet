@@ -20,7 +20,9 @@
     "build-assets:sync": "node scripts/sync-build-assets.ts",
     "build-assets:check": "node scripts/sync-build-assets.ts --check",
     "worker:smoke": "node --env-file-if-exists=.env.local scripts/worker-smoke.ts",
-    "worker:env": "node scripts/init-worker-env.mjs"
+    "worker:env": "node scripts/init-worker-env.mjs",
+    "ens:setup": "node --env-file-if-exists=.env.local scripts/ens-setup.ts",
+    "ens:check": "node --env-file-if-exists=.env.local scripts/ens-check.ts"
   },
   "dependencies": {
     "ethers": "6.17.0",

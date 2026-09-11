@@ -4,9 +4,11 @@ import {Card, CardHeader, CardTitle, CardContent} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Textarea} from '@/components/ui/textarea';
+import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {toast} from 'sonner';
-import {CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN, getCurrentConfig, type TokenConfig} from '@/config';
+import {CRYPTO_NAME, CRYPTO_NAME_BLOCKCHAIN, getConfig, type TokenConfig} from '@/config';
 import {encodeBase64Uuid} from '@/lib/uuidUtils';
+import {validateSingleTokenCatalogue} from '@/lib/catalogueValidation.ts';
 import {useNavigate, Link} from "react-router-dom";
 import {
   Plus,
@@ -19,10 +21,14 @@ import {
   Server,
   ArrowRight,
   CheckCircle,
-  FileImage
+  FileImage,
+  Coins,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import {formatMicroToFull} from '@/lib/cryptoFormat';
 import {useWallet} from "@/context/WalletContext.tsx";
+import TokenIcon from '@/components/TokenIcon';
 
 interface Product {
   ProductId: string;
@@ -42,7 +48,6 @@ type EditableProduct = {
   Name: string;
   Description: string;
   Price: string;       // full-unit price
-  PriceToken: string;
   LocalFile?: File;
 };
 
@@ -53,26 +58,27 @@ function toEditableProduct(product: Product, tokens: TokenConfig[]): EditablePro
     Name: product.Name,
     Description: product.Description,
     Price: (product.Price / 10 ** decimals).toString(),  // micro → full
-    PriceToken: product.PriceToken,
     LocalFile: product.LocalFile,
   };
 }
 
 function CatalogueEditPage() {
-  const {walletAddress} = useWallet()
-  const config = getCurrentConfig();
+  const {walletAddress, network} = useWallet()
+  const config = getConfig(network);
   const supportedTokens = config.supportedTokens;
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [products, setProducts] = useState<Product[]>([]);
-  const [lastSelectedTokenType, setLastSelectedTokenType] = useState<string>(supportedTokens[0]?.tokenId ?? '');
+  const [catalogueToken, setCatalogueToken] = useState<string>(supportedTokens[0]?.tokenId ?? '');
+  const [catalogueTokenNetwork, setCatalogueTokenNetwork] = useState(network);
+  const [isTokenConfirmed, setIsTokenConfirmed] = useState(false);
+  const [isTokenPickerOpen, setIsTokenPickerOpen] = useState(false);
   const [newProduct, setNewProduct] = useState<EditableProduct>({
     Name: '',
     Description: '',
     Price: '',
-    PriceToken: supportedTokens[0]?.tokenId ?? '',
     LocalFile: undefined,
   });
   const [cdnPath, setCdnPath] = useState<string>()
@@ -106,6 +112,34 @@ function CatalogueEditPage() {
     }
   }, [editingId, products, supportedTokens]);
 
+  useEffect(() => {
+    if (catalogueTokenNetwork === network || products.length > 0) return;
+    setCatalogueToken(supportedTokens[0]?.tokenId ?? '');
+    setCatalogueTokenNetwork(network);
+    setIsTokenConfirmed(false);
+  }, [catalogueTokenNetwork, network, products.length, supportedTokens]);
+
+  const catalogueNetworkMismatch = catalogueTokenNetwork !== network;
+  const canEditProducts = isTokenConfirmed && !catalogueNetworkMismatch;
+  const selectedCatalogueToken = supportedTokens.find(token => token.tokenId === catalogueToken);
+
+  const handleCatalogueTokenChange = (tokenId: string) => {
+    if (products.length > 0) return;
+    setCatalogueToken(tokenId);
+    setCatalogueTokenNetwork(network);
+    setIsTokenConfirmed(false);
+    setIsTokenPickerOpen(false);
+  };
+
+  const handleConfirmCatalogueToken = () => {
+    if (!supportedTokens.some(token => token.tokenId === catalogueToken)) {
+      toast.error('Choose a supported payment token before continuing.');
+      return;
+    }
+    setCatalogueTokenNetwork(network);
+    setIsTokenConfirmed(true);
+  };
+
   const handleImageDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
@@ -123,6 +157,10 @@ function CatalogueEditPage() {
 
   const handleAddOrUpdateProduct = () => {
     const {Name, Price, LocalFile} = newProduct;
+    if (!canEditProducts || !supportedTokens.some(token => token.tokenId === catalogueToken)) {
+      toast.error('Confirm a catalog payment token before adding products.');
+      return;
+    }
     if (!cdnPath) {
       toast.error("Unable to generate upload path—wallet not connected yet.")
       return
@@ -139,7 +177,7 @@ function CatalogueEditPage() {
     const filename = `${cdnPath}.${imageId}.${ext}`;
     const imageUrl = `${config.cdnBasePath}/${filename}`;
 
-    const selectedToken = supportedTokens.find(t => t.tokenId === newProduct.PriceToken);
+    const selectedToken = supportedTokens.find(t => t.tokenId === catalogueToken);
     const decimals = selectedToken?.decimals ?? 0;
 
     const parsedPrice = parseFloat(newProduct.Price || '0');
@@ -156,7 +194,7 @@ function CatalogueEditPage() {
       Name: newProduct.Name,
       Description: newProduct.Description,
       Price: microPrice,
-      PriceToken: newProduct.PriceToken,
+      PriceToken: catalogueToken,
       Image: imageUrl,
       LocalFile
     };
@@ -168,14 +206,10 @@ function CatalogueEditPage() {
       return [...prev, productEntry];
     });
 
-    // Remember the selected token for next product
-    setLastSelectedTokenType(newProduct.PriceToken);
-
     setNewProduct({
       Name: '',
       Description: '',
       Price: '',
-      PriceToken: newProduct.PriceToken, // Keep the same token for next product
     });
     setEditingId(null);
     setShowModal(false);
@@ -183,7 +217,15 @@ function CatalogueEditPage() {
   };
 
   const handleUploadAll = async () => {
+    if (!canEditProducts) {
+      toast.error('Confirm the catalog payment token before uploading.');
+      return;
+    }
     try {
+      const token = validateSingleTokenCatalogue(products, supportedTokens.map(item => item.tokenId));
+      if (token !== catalogueToken) {
+        throw new Error('Catalog products do not match the confirmed payment token.');
+      }
       setUploading(true);
 
       for (const product of products) {
@@ -227,16 +269,15 @@ function CatalogueEditPage() {
     }
   };
 
-  const canChangeToken = (): boolean => {
-    return products.length == 0;
-  }
-
   const openAddProductModal = () => {
+    if (!canEditProducts) {
+      toast.error('Confirm a catalog payment token before adding products.');
+      return;
+    }
     setNewProduct({
       Name: '',
       Description: '',
       Price: '',
-      PriceToken: lastSelectedTokenType, // Use the last selected token
     });
     setEditingId(null);
     setShowModal(true);
@@ -267,6 +308,89 @@ function CatalogueEditPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Coins className="h-5 w-5 text-amber-500"/>
+            {isTokenConfirmed ? 'Catalog Token' : 'Step 1: Select Catalog Token'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isTokenConfirmed ? (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-100 bg-amber-50/50 p-4">
+              <div className="flex items-center gap-3">
+                <TokenIcon assetId={catalogueToken} size={36} alt={selectedCatalogueToken?.name ?? catalogueToken}/>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-amber-700">Catalog payment token</p>
+                  <p className="text-lg font-bold text-amber-900">
+                    {selectedCatalogueToken?.name ?? catalogueToken}
+                  </p>
+                </div>
+              </div>
+              {products.length === 0 && !catalogueNetworkMismatch && (
+                <Button variant="outline" size="sm" onClick={() => setIsTokenConfirmed(false)}>
+                  Change
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">All products in this catalog use one payment token.</p>
+              <div className="space-y-2">
+                <Label>Payment Token</Label>
+                <Popover open={isTokenPickerOpen} onOpenChange={setIsTokenPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-label="Payment Token"
+                      aria-expanded={isTokenPickerOpen}
+                      className="w-full justify-between"
+                      disabled={products.length > 0}
+                    >
+                      <span className="flex items-center gap-2">
+                        <TokenIcon assetId={catalogueToken} size={20} alt={selectedCatalogueToken?.name ?? catalogueToken}/>
+                        {selectedCatalogueToken?.name ?? catalogueToken}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground"/>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-1">
+                    {supportedTokens.map(token => (
+                      <button
+                        key={token.tokenId}
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-accent focus:bg-accent focus:outline-none"
+                        onClick={() => handleCatalogueTokenChange(token.tokenId)}
+                      >
+                        <TokenIcon assetId={token.tokenId} size={20} alt={token.name}/>
+                        <span className="flex-1">{token.name}</span>
+                        {catalogueToken === token.tokenId && <Check className="h-4 w-4"/>}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button onClick={handleConfirmCatalogueToken} className="w-full" disabled={!catalogueToken}>
+                Confirm Token & Continue
+                <ArrowRight className="ml-2 h-4 w-4"/>
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {catalogueNetworkMismatch && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6 text-sm text-amber-900">
+            This catalog was started on {catalogueTokenNetwork}. Switch back to that network before editing or uploading it.
+          </CardContent>
+        </Card>
+      )}
+
+      {canEditProducts && (
+        <>
       <Card>
         <CardHeader>
           <div className="flex flex-wrap  items-center justify-between gap-2">
@@ -334,6 +458,10 @@ function CatalogueEditPage() {
         </CardContent>
       </Card>
 
+        </>
+      )}
+
+      {canEditProducts && (
       <Card>
         <CardHeader>
           <CardTitle>Upload to Content Delivery Network (CDN)</CardTitle>
@@ -373,6 +501,7 @@ function CatalogueEditPage() {
           </Button>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -449,33 +578,18 @@ function CatalogueEditPage() {
                   }} placeholder="Describe your product..." maxLength={DESCRIPTION_MAX_LENGTH}/>
                 </div>
 
-                {/* Token and Price Row - Token on left, Price on right */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="token">Token</Label>
-                    <select id="token"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={!canChangeToken()} value={newProduct.PriceToken} onChange={(e) => setNewProduct({
-                      ...newProduct,
-                      PriceToken: e.target.value
-                    })}>
-                      {supportedTokens.map((token) => (
-                        <option key={token.tokenId ?? token.id} value={token.tokenId ?? ''}>{token.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price</Label>
-                    <Input id="price" type="number" step="0.01" value={newProduct.Price}
-                           onChange={(e) => setNewProduct({
-                             ...newProduct,
-                             Price: e.target.value
-                           })} placeholder="0.00"/>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">
+                    Price ({supportedTokens.find(token => token.tokenId === catalogueToken)?.name ?? catalogueToken})
+                  </Label>
+                  <Input id="price" type="number" step="0.01" value={newProduct.Price}
+                         onChange={(e) => setNewProduct({
+                           ...newProduct,
+                           Price: e.target.value
+                         })} placeholder="0.00"/>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  <strong>Note:</strong> All products in the catalog must use the same token. </p>
+                  All products use the catalog payment token selected in Step 1.</p>
               </div>
 
               {/* Right Column - Image Upload */}

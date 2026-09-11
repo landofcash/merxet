@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {loadEnsConfig} from './ens/config.ts';
 
 export const NetworkSchema = z.enum(['testnet', 'mainnet']);
 export type Network = z.infer<typeof NetworkSchema>;
@@ -20,6 +21,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const publicOrigin = origin(env.BUILDER_PUBLIC_ORIGIN || 'http://127.0.0.1:4184');
   if (origins.has(publicOrigin) || publicOrigin === previewOrigin || ['merxet.com', 'app.merxet.com', 'seller.merxet.com'].includes(new URL(publicOrigin).hostname)) throw new Error('Public origin must be dedicated to published websites');
   return {
+    ens: loadEnsConfig(env),
     port: integer('PORT', 4180, 1, 65535), host: env.HOST || '127.0.0.1', prefix,
     requireDeploymentVolume: z.enum(['true', 'false']).parse(env.BUILDER_REQUIRE_DEPLOYMENT_VOLUME ?? 'false') === 'true',
     origins,

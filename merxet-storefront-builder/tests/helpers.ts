@@ -5,6 +5,7 @@ import {ApiError} from '../src/domain/errors.ts';
 import {Journal} from '../src/storage/journal.ts';
 import type {ObjectStore} from '../src/storage/bunny.ts';
 import {createApp} from '../src/api/app.ts';
+import type {EnsChain} from '../src/ens/chain.ts';
 
 export class MemoryStore implements ObjectStore {
   files = new Map<string, Buffer>();
@@ -46,10 +47,11 @@ export class TestIdentity implements IdentityProvider {
     if (this.catalogs.get(`${network}/${catalogSeed}`) !== accountId) throw new ApiError(403, 'catalog_not_owned');
   }
 }
-export async function fixture(store = new MemoryStore(), identity = new TestIdentity(), clock = {value: Date.parse('2026-09-09T13:00:00Z')}, ready?: () => boolean, publicStore?: MemoryStore) {
+export async function fixture(store = new MemoryStore(), identity = new TestIdentity(), clock = {value: Date.parse('2026-09-09T13:00:00Z')}, ready?: () => boolean, publicStore?: MemoryStore, ensChain?: EnsChain) {
   const config = loadConfig({BUILDER_ORIGINS: `${origin},http://localhost:5174`});
+  if (ensChain) config.ens = {...config.ens, enabled: true, admin: alice.address.toLowerCase(), operator: bob.address.toLowerCase(), privateKey: bob.privateKey, registry: '0x' + '33'.repeat(20)};
   const journal = await Journal.open(store, 'test-builder');
-  const {app, auth, shops, previews, publications} = createApp({journal, identity, config, now: () => clock.value, ready, publicStore, publicReader: publicStore?.get.bind(publicStore)});
+  const {app, auth, shops, previews, publications, ens} = createApp({journal, identity, config, now: () => clock.value, ready, publicStore, publicReader: publicStore?.get.bind(publicStore), ensChain});
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', resolve));
   const address = server.address(); if (!address || typeof address === 'string') throw new Error('No address');
@@ -71,5 +73,5 @@ export async function fixture(store = new MemoryStore(), identity = new TestIden
     if (session.status !== 200) throw new Error('Login failed');
     return session.body.data.token as string;
   }
-  return {store, identity, journal, auth, shops, previews, publications, config, clock, request, login, close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))};
+  return {store, identity, journal, auth, shops, previews, publications, ens, config, clock, request, login, close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))};
 }

@@ -87,3 +87,11 @@
   .storefront-request-history { padding: 12px; }
   .storefront-notice { padding: 6px 10px; font-size: 11px; }
 }
+.storefront-ens { flex-shrink: 0; background: #fff; padding: 8px 18px; border-bottom: 1px solid #e5e7eb; font-size: 13px; max-height: 40vh; overflow-y: auto; }
+.storefront-ens p { margin: 8px 0; color: #475569; }
+.storefront-ens-details { margin-top: 8px; }
+.storefront-ens-details summary { cursor: pointer; }
+.storefront-ens-details a { color: #0f766e; text-decoration: underline; }
+.storefront-ens-form { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.storefront-ens-input { display: flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; padding-right: 10px; }
+.storefront-ens-input input { padding: 8px; min-width: 0; width: 160px; background: transparent; }

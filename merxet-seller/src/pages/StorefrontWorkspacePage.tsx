@@ -6,6 +6,7 @@ import {Textarea} from '@/components/ui/textarea';
 import WalletAuth from '@/components/WalletAuth';
 import DesignPanel from '@/components/storefront/DesignPanel';
 import PublicationControls from '@/components/storefront/PublicationControls';
+import EnsControls from '@/components/storefront/EnsControls';
 import {panelPreferences} from '@/lib/storefront/panelPreferences';
 import {useStorefrontSession} from '@/lib/storefront/sessionContext';
 import {activeJob, BuilderError, generationError, stageLabel} from '@/lib/storefront/client';
@@ -101,6 +102,7 @@ function Workspace({shopId}: {shopId: string}) {
       <div className="storefront-wallet"><WalletAuth/></div>
     </header>
     {bundle && <PublicationControls shop={bundle.shop} revisions={bundle.revisions} selected={selected} status={bundle.publications} refresh={() => setRefresh(value => value + 1)}/>}
+    {bundle && <EnsControls shop={bundle.shop}/>}
     {error && <div className="storefront-notice" role="alert">{error}<button onClick={() => setRefresh(value => value + 1)}>Retry</button></div>}
     {(expired || previewError) && <div className="storefront-notice" role="status">{expired ? 'This preview link has expired. Refresh it to keep browsing.' : previewError}<button onClick={() => setPreviewRefresh(value => value + 1)}>Refresh preview</button></div>}
     <div ref={workspace} className={`storefront-preview-workspace ${size === 'mobile' ? 'mobile-preview' : ''}`}>

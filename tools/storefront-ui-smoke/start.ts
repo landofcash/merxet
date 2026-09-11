@@ -9,15 +9,18 @@ import {Journal} from '../../merxet-storefront-builder/src/storage/journal.ts';
 import {BuildAttemptSchema, RevisionManifestSchema, type GenerationJob} from '../../merxet-storefront-builder/src/domain/records.ts';
 import {stageRevision, commitRevision} from '../../merxet-storefront-builder/src/storage/revisions.ts';
 import {sha256, jsonBytes} from '../../merxet-storefront-builder/src/storage/bunny.ts';
-import {MemoryStore, TestIdentity} from '../../merxet-storefront-builder/tests/helpers.ts';
+import {MemoryStore, TestIdentity, alice, bob} from '../../merxet-storefront-builder/tests/helpers.ts';
+import {SmokeEnsChain} from './ens.ts';
 
 const config = loadConfig({PORT: '4182', PREVIEW_PORT: '4183', BUILDER_PREVIEW_ORIGIN: 'http://127.0.0.1:4183', BUILDER_PUBLIC_ORIGIN: 'http://127.0.0.1:4185', PUBLIC_PORT: '4185', BUILDER_ORIGINS: 'http://127.0.0.1:5183', BUILDER_PREVIEW_TTL_SECONDS: '300'});
 const journal = await Journal.open(new MemoryStore(), 'ui-smoke'), identity = new TestIdentity();
+if (process.argv.includes('--ens')) config.ens = {...config.ens, enabled: true, admin: alice.address.toLowerCase(), operator: bob.address.toLowerCase(), registry: '0x' + '33'.repeat(20)};
 const publicStore = new MemoryStore();
-const {app, previews, publications} = createApp({journal, identity, config, publicStore, publicReader: publicStore.get.bind(publicStore)});
+const {app, previews, publications, ens} = createApp({journal, identity, config, publicStore, publicReader: publicStore.get.bind(publicStore), ensChain: new SmokeEnsChain()});
 const api = app.listen(4182, '127.0.0.1'), delivery = previews.app().listen(4183, '127.0.0.1');
-const publicDelivery = publications!.delivery.app().listen(4185, '127.0.0.1');
+const publicDelivery = publications!.delivery.app(ens?.redirect.bind(ens)).listen(4185, '127.0.0.1');
 publications!.start();
+ens?.start();
 const sellerRoot = fileURLToPath(new URL('../../merxet-seller/', import.meta.url));
 process.chdir(sellerRoot);
 const vite = await createServer({root: sellerRoot, configFile: `${sellerRoot}vite.config.ts`, server: {host: '127.0.0.1', port: 5183, strictPort: true},
@@ -69,5 +72,5 @@ async function tick() {
 }
 const timer = setInterval(() => void tick(), 500);
 console.log('Isolated seller smoke fixture: http://127.0.0.1:5183/storefronts');
-const close = async () => { clearInterval(timer); await publications!.stop(); api.close(); delivery.close(); publicDelivery.close(); await vite.close(); };
+const close = async () => { clearInterval(timer); await publications!.stop(); await ens?.stop(); api.close(); delivery.close(); publicDelivery.close(); await vite.close(); };
 process.once('SIGINT', () => void close()); process.once('SIGTERM', () => void close());

@@ -58,7 +58,22 @@ export const SessionSchema = z.object({
   ...common, id: Hash, ...owned, kind: z.literal('session'), origin: z.string().url(), signerAddress: Address,
   expiresAt: Timestamp, revokedAt: Timestamp.nullable(),
 }).strict();
-export const RecordSchema = z.union([ShopSchema, GenerationJobSchema, BuildAttemptSchema, RevisionManifestSchema, PublicationOperationSchema, ChallengeSchema, SessionSchema]);
+export const EnsTransactionSchema = z.object({
+  phase: z.enum(['resolver', 'register']), hash: z.string().regex(/^0x[a-f0-9]{64}$/), raw: z.string().regex(/^0x[a-f0-9]+$/).max(60000),
+  nonce: z.number().int().nonnegative(), state: z.enum(['prepared', 'confirmed', 'reverted']), blockNumber: z.number().int().nonnegative().nullable(),
+}).strict();
+export const EnsNameSchema = z.object({
+  ...common, ...scoped, kind: z.literal('ens-name'), chainId: z.literal(11155111),
+  parentName: z.string().max(100), label: z.string().min(3).max(40).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])$/), name: z.string().max(150),
+  registry: Address, admin: Address, operator: Address, signerAddress: Address,
+  catalogSeed: CatalogIdSchema, url: z.string().url().max(500), description: z.string().max(1000),
+  resolver: Address.nullable(), expiry: z.number().int().positive().nullable(),
+  state: z.enum(['requested', 'configuring', 'registering', 'confirming', 'active', 'failed', 'reconciliation', 'abandoned']),
+  transactions: z.array(EnsTransactionSchema).max(8), errorCode: z.string().max(100).nullable(), verifiedAt: Timestamp.nullable(),
+}).strict().refine(value => value.name === `${value.label}.${value.parentName}`, 'ENS name mismatch');
+export type EnsName = z.infer<typeof EnsNameSchema>;
+export type EnsTransaction = z.infer<typeof EnsTransactionSchema>;
+export const RecordSchema = z.union([ShopSchema, GenerationJobSchema, BuildAttemptSchema, RevisionManifestSchema, PublicationOperationSchema, ChallengeSchema, SessionSchema, EnsNameSchema]);
 export type RecordValue = z.infer<typeof RecordSchema>;
 export type Shop = z.infer<typeof ShopSchema>;
 export type GenerationJob = z.infer<typeof GenerationJobSchema>;
