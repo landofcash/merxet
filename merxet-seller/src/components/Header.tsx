@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Link} from "react-router-dom";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover";
-import {PackageSearch, ShoppingCart, Bug, Home, Shield} from "lucide-react";
+import {PackageSearch, ShoppingCart, Bug, Home, Shield, Store} from "lucide-react";
 import WalletAuth from "@/components/WalletAuth";
 import {useWallet} from "@/context/WalletContext";
 import {APP_NAME, APP_VERSION, isAdminWalletAddress} from "@/config";
@@ -44,11 +44,13 @@ const Header: React.FC = () => {
               <ShoppingCart className="h-5 w-5"/>
               My Orders
             </Link>
+            <Link to="/storefronts" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"><Store className="h-5 w-5"/>Storefronts</Link>
           </nav>
         )}
 
         {/* Right side */}
         <div className="flex items-center space-x-2">
+          {walletAddress && <Link to="/storefronts" className="md:hidden p-2 text-muted-foreground hover:text-foreground" aria-label="Storefronts"><Store className="h-5 w-5"/></Link>}
           {/* Admin Menu */}
           {isAdmin && (
             <Popover open={adminMenuOpen} onOpenChange={setAdminMenuOpen}>

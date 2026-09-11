@@ -204,6 +204,7 @@ const ProductCatalogueList: React.FC = () => {
                             <QrCode className="h-4 w-4"/>
                           </Button>
                         </Link>
+                        <Link to={`/storefronts?catalog=${encodeURIComponent(seed)}`} title="Create storefront from this catalog" aria-label="Create storefront from this catalog"><Button variant="outline" size="sm"><Store className="h-4 w-4"/></Button></Link>
                         <Button variant="outline" size="sm" onClick={() => handleDelete(catalogue.seed)}
                                 disabled={deletingSeed === seed}
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10">

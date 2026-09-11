@@ -1,6 +1,6 @@
 # Merxet Storefronts: Implementation Plan
 
-Updated September 9, 2026. Phase 1 is implemented and locally validated. Its standalone template extraction is complete as preparation for Phase 2; the sandbox/generation/hosting trial and phases 3-7 remain planned. This document turns the agreed [architecture overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) and [template specification](./MERXET_STOREFRONT_TEMPLATE_SPEC.md) into implementation work and acceptance criteria.
+Updated September 10, 2026. Phases 1–6 and the standalone template extraction are implemented. The seller workspace provides internal-wallet sign-in, shop creation, a floating Design panel, generation/revision history and private iframe previews. The seller reported the Phase 5 local flow working. Phase 6 adds durable publication, public delivery and rollback with seller controls; backend fault tests and isolated browser acceptance validate the implementation. Local setup and the live manual check are in [PUBLISHING.md](./merxet-storefront-builder/PUBLISHING.md). Phase 7 deployment, DNS and live delivery checks are complete; hosted acceptance remains open. Phase 4's three live draft builds and VM cleanup remain recorded separately. See [builder evidence](./merxet-storefront-builder/EVIDENCE.md), [worker operations](./merxet-storefront-builder/WORKER.md) and [Phase 2 evidence](./tools/storefront-harness/EVIDENCE.md). This document implements the agreed [architecture overview](./MERXET_STOREFRONTS_IMPLEMENTATION_OVERVIEW.md) and [template specification](./MERXET_STOREFRONT_TEMPLATE_SPEC.md).
 
 The outcome is a merchant-owned shop generated from an existing catalog and a design brief. The merchant can preview it, request design changes, publish a selected revision, and restore a previous revision. Products open in the existing buyer application, which continues to handle quantity, cart, checkout, wallet approval, and orders.
 
@@ -10,15 +10,16 @@ The outcome is a merchant-owned shop generated from an existing catalog and a de
 | --- | --- |
 | Storefront application | Maintain the complete starter in `merxet-storefront-template`, extracted from Phase 1. Preserve `merxet-promo` as the existing catalog application. |
 | Template selection | Start with one complete neutral template under `merxet-storefront-template/src/storefront/`. The AI changes its pages, sections, and styles. Additional design presets can follow after this works. |
-| Builder | Add one new Node.js/TypeScript project, `merxet-storefront-builder`, in this repository. |
+| Builder | `merxet-storefront-builder` is the independently runnable Node.js/TypeScript management backend. Phase 4 includes its generation worker. |
 | Merchant interface | Add storefront management to `merxet-seller`. |
 | Seller authentication | Use the operational internal wallet for signed login challenges and builder sessions. HashPack and other external-wallet integrations are deferred. |
-| Build execution | One disposable Railway VM sandbox per build attempt. Access is user-confirmed enabled; the integration still needs a live feasibility check. |
+| Build execution | One disposable Railway VM sandbox per build attempt. Live builds and cleanup are validated in the dedicated `storefront-builds` environment. |
 | Durable storage | JSON metadata, source archives, logs, and artifacts in Bunny Storage. No SQL database in the initial implementation. |
 | Coordination | One active coordinator owns metadata writes and schedules concurrent sandbox attempts. |
 | Hosting | Approved static output on Bunny Storage/CDN, with a shared resolver for stable shop addresses and revision selection. |
 | Purchase flow | Reuse existing product links and QR codes into `merxet-frontend`. |
-| Deferred features | World Selfie Check, ENS, marketplace discovery, automated custom domains, multiple starter templates, variants, inventory reservations, and new MCP functionality. |
+| Downloads | Static website and source downloads are outside the implementation scope. |
+| Deferred features | Backups and retention management, World Selfie Check, ENS, marketplace discovery, automated custom domains, multiple starter templates, variants, inventory reservations, and new MCP functionality. |
 
 A merchant shop is a stored identity plus a series of generated revisions. It does not become a separately maintained repository or a permanent Node.js application. The template source and builder are maintained projects; merchant source copies and compiled websites are stored artifacts.
 
@@ -31,10 +32,10 @@ A merchant shop is a stored identity plus a series of generated revisions. It do
 | 3 | Builder API, ownership, and durable records | Contracts established in phases 1–2 | An authenticated merchant can create a shop; metadata survives restart; another merchant cannot access its management records. |
 | 4 | Durable generation queue and recovery | Phases 2–3 | Configurable parallel builds, bounded retries, cancellation, and restart recovery work without accepting stale results. |
 | 5 | Seller generation and preview interface | Phases 3–4 | A merchant can generate, preview, revise, and inspect previous drafts from the seller portal. |
-| 6 | Publication, rollback, and export | Phase 5 and hosting prototype | An approved revision is publicly reachable; rollback works; source and static exports are available. |
+| 6 | Publication and rollback | Phase 5 and hosting prototype | An approved revision is publicly reachable; publication recovery and rollback work. |
 | 7 | Deployment and end-to-end acceptance | Phases 1–6 | Two independently owned shops pass the complete flow, including entry into the existing buyer app. |
 
-Finish the first storefront before building the full management interface. Use a small development harness for the feasibility trial, then move the proven integration into the builder. The harness is temporary tooling within this repository, not another deployed application.
+Finish the first storefront before building the full management interface. Use a small development harness for the feasibility trial, then move the proven integration into the builder. The harness runs locally; its small resolver module is deployed separately to prove public delivery and will move into the builder codebase.
 
 **Phase 1 — Prepare the existing promo application**
 
@@ -59,15 +60,19 @@ Current products remain the source for names, descriptions, images, prices, and 
 **Phase 2 — Prove the sandbox and hosting workflow**
 
 - [x] Extract the completed starter into `merxet-storefront-template` with its own source, public assets, lockfile, build tooling, generation contract, and browser checks. Serve it at `/`; remove the storefront entry and build mode from promo. Preserve promo seed/query routes and validate both applications independently.
-- [ ] Select a dedicated Railway execution environment and record sandbox ownership conventions. Pin the SDK version and prepare a clean template/checkpoint containing a compatible Node.js toolchain, lockfile-installed dependencies, and browser-check tooling.
-- [ ] Implement a small sandbox adapter: create, connect, transfer files, execute a fixed command, inspect its result, collect output, and destroy. Scope every operation to the attempt's explicit sandbox ID.
-- [ ] Build the unchanged starter first. Collect source, `dist/`, and validation logs, verify the collected files, then destroy the sandbox. Prove the collected website remains usable.
-- [ ] Add the generation adapter. Keep model requests and credentials in the trusted coordinator/harness; execute file edits and build tools in the VM. Send the public catalog snapshot, merchant brief, supplied assets, selected source, and template instructions.
-- [ ] Constrain editing to the template contract. Check changed files, imports, dependency manifests, and build configuration before accepting the source. Keep catalog identity, pricing, buyer-link logic, and validation tooling maintained by the platform.
-- [ ] Generate two visibly different designs from two catalogs in separate sandboxes. Run type/lint/build checks and browser acceptance checks for each. Permit a bounded repair attempt using actual validation feedback.
-- [ ] Measure provisioning, model, build, validation, collection, and cleanup time, plus artifact size. Use these results to choose the model and configure time, output, and retry budgets.
-- [ ] Prototype authenticated Bunny upload/download, checksums, JSON overwrite visibility, interrupted writes, and recovery from an incomplete upload. Keep management files private and approved website files in a separate public zone.
-- [ ] Upload sample approved builds and prove the proposed shop route, product-page refresh, asset paths, configuration loading, and revision switching against the actual hosting setup.
+- [x] Select a dedicated Railway execution environment and record sandbox ownership conventions. Pin the SDK version and prepare a clean template/checkpoint containing a compatible Node.js toolchain, lockfile-installed dependencies, and browser-check tooling.
+- [x] Implement a small sandbox adapter: create, connect, transfer files, execute a fixed command, inspect its result, collect output, and destroy. Scope every operation to the attempt's explicit sandbox ID.
+- [x] Build the unchanged starter first. Collect source, `dist/`, and validation logs, verify the collected files, then destroy the sandbox. Prove the collected website remains usable.
+- [x] Add the generation adapter. Keep model requests and credentials in the trusted coordinator/harness; execute file edits and build tools in the VM. Send the public catalog snapshot, merchant brief, supplied assets, selected source, and template instructions. The adapter is implemented; live model calls are covered by the next acceptance gate.
+- [x] Constrain editing to the template contract. Check changed files, imports, dependency manifests, and build configuration before accepting the source. Keep catalog identity, pricing, buyer-link logic, and validation tooling maintained by the platform.
+- [x] Generate two visibly different designs from two catalogs in separate sandboxes. Run type/lint/build checks and browser acceptance checks for each. Permit a bounded repair attempt using actual validation feedback. Both `gpt-5.6-luna` designs passed on the first attempt; the repair path was not needed.
+- [x] Measure provisioning, model, build, validation, collection, and cleanup time, plus artifact size. Use these results to choose the model and configure time, output, and retry budgets. Retain `gpt-5.6-luna`, 240 seconds / 16000 output tokens per model request, at most one repair, 600 seconds per command and 1800 seconds per attempt for the pilot; detailed observations are recorded in the harness evidence.
+- [x] Prototype authenticated Bunny upload/download, checksums, JSON overwrite visibility, interrupted writes, and recovery from an incomplete upload. Keep management files private and approved website files in a separate public zone. Both zones passed live probes, including a real interrupted TLS upload and verified retry; the public Pull Zone serves the public probe while the private-only probe returns 404.
+- [x] Upload sample approved builds and prove the proposed shop route, product-page refresh, asset paths, configuration loading, and revision switching against the actual hosting setup. The shared resolver is deployed in `storefront-builds`. Both shops passed public HTTP and desktop/mobile checks; pantry also passed with its live catalog and no network mocks. Publishing, rollback, incomplete-revision rejection, retained old assets and isolation of the other shop passed on the live host.
+
+Current evidence: two actual AI designs each passed type/lint/build and 7 generic browser checks, followed by local desktop/mobile checks after VM destruction. Their total attempts took 123–128 seconds, with 35–40 seconds for model generation; all ten historical trial VMs are destroyed. SDK `3.11.0`, the clean checkpoint and project-token authentication are recorded in the harness. Both Bunny zones passed live upload/read/checksum/overwrite and actual interrupted-upload recovery checks. Both designs have private source/build records and public compiled files in Bunny; all twelve compiled files passed public CDN hash and MIME checks. The shared resolver deployment reached `SUCCESS` and serves the [live pantry shop](https://storefront-resolver-storefront-builds.up.railway.app/s/merxet-demo/). Live HTTP, desktop/mobile browser and revision-switching checks passed. Studio uses a deterministic catalog fixture; pantry also passed with current Merxet Sync data and no mocks. The resolver remains running in the dedicated environment. Harness type checking and all 17 focused tests pass.
+
+The proven delivery contract reads the selected revision from authenticated primary storage on every page request, serves unchanged revision HTML with embedded configuration, and verifies compiled bytes fetched from Bunny CDN. Pages and configuration use `no-store`; immutable asset references retain old bytes across switches and permit a one-year browser cache. Changed branding assets must also use new filenames. Publication rejects asset-name collisions before changing the selected revision. See the [resolver implementation](./tools/storefront-harness/resolver/README.md).
 
 Railway command results expose exit status, timeout, and truncation; an execution call returning successfully is not proof that the command passed. Use `ISOLATED` networking, which still permits public outbound access. Keep provider idle timeout separate from command and attempt deadlines, and handle the documented need for interaction during long jobs. Do not assume a running process keeps the VM alive. Sandbox previews must use collected artifacts because the sandbox has no public website endpoint. These provider details must be covered by the adapter trial. [Railway Sandboxes documentation](https://docs.railway.com/sandboxes).
 
@@ -77,7 +82,7 @@ Bunny documents uploading Vite's `dist/` files into Storage and serving them thr
 
 **Phase 3 — Add the builder and durable management records**
 
-Create `merxet-storefront-builder` as one independently deployable backend within the monorepo. Use Node.js/TypeScript, repository-compatible HTTP conventions, validated request/record schemas, the Railway SDK behind an adapter, and a small Bunny HTTP client. Add the selected model integration after the feasibility trial. Keep the storefront browser bundle free of these backend dependencies.
+Implemented `merxet-storefront-builder` as one independently runnable backend within the monorepo, with Node.js/TypeScript, Express 5, validated request/record schemas, EIP-191 verification and a private Bunny HTTP client. The existing Railway/model adapters will join its worker in Phase 4. The storefront browser bundle remains free of backend dependencies. Deployment files are prepared; the management API has not been deployed.
 
 ```text
 merxet-storefront-builder/
@@ -91,45 +96,44 @@ merxet-storefront-builder/
     sandbox/              Railway adapter, commands, collection, cleanup
     validation/           source checks, artifact checks, validation results
     delivery/             private preview and public revision resolver
-    publishing/           publication operations, rollback, export
+    publishing/           publication operations, rollback
     config/               environment validation and operating limits
   tests/                  focused state, storage, adapter, and API checks
 ```
 
-- [ ] Define schemas for `Shop`, `GenerationJob`, `BuildAttempt`, `RevisionManifest`, `PublicationOperation`, and `PublicStorefrontConfig`. Include schema versions, IDs, timestamps, and record versions where updates occur.
-- [ ] Bind a shop to a stable ID, one catalog, owner account, and network. Keep the selected draft, job state, and published revision separate. Scope product references by network, catalog, and product ID.
-- [ ] Add wallet-authenticated management using the operational internal wallet's signing capability through [WalletContext.tsx](./merxet-seller/src/context/WalletContext.tsx). Use a single-use expiring challenge bound to account, network, and intended application origin. Verify the internal-wallet signature server-side, bind the verified signer to the owning account, and establish a builder session. HashPack and other external-wallet authentication are outside this milestone.
-- [ ] Verify catalog ownership server-side before creation and mutations. A connected-wallet address supplied by the browser is insufficient proof. Restrict previews, source exports, logs, and management actions to the authenticated owner.
-- [ ] Implement shop creation/listing, configuration editing, revision listing, and job submission/status endpoints. Reuse stable request IDs for retry-safe mutations.
-- [ ] Implement private JSON and artifact storage through one coordinator. Persist accepted jobs before acknowledging them. Preserve validated record versions for recovery and verify writes through authenticated primary-endpoint reads.
-- [ ] Add startup scanning of persisted records and a rebuildable listing cache. Do not make an in-memory queue or cache the only copy of accepted work.
+- [x] Define schemas for `Shop`, `GenerationJob`, `BuildAttempt`, `RevisionManifest`, `PublicationOperation`, and `PublicStorefrontConfig`. Include schema versions, IDs, timestamps, and record versions where updates occur. The public configuration schema is generated from the template contract with a drift check.
+- [x] Bind a shop to a stable ID, one catalog, owner account, and network. Keep the selected draft, job state, and published revision separate. Scope product references by network, catalog, and product ID.
+- [x] Add wallet-authenticated management using the operational internal wallet's signing capability through [WalletContext.tsx](./merxet-seller/src/context/WalletContext.tsx). Single-use challenges bind account, network and origin; EIP-191 signatures are checked against the current Mirror Node account key. Opaque sessions persist only token hashes. The seller's exact viem signing contract passes an integration test; UI wiring remains Phase 5. HashPack and other external wallets are deferred.
+- [x] Verify catalog ownership server-side before creation and mutations. Management endpoints require the authenticated owner; other owners receive 404. Preview, source, logs and publication endpoints remain unexposed until their later phases.
+- [x] Implement shop creation/listing, configuration editing, revision listing, and job submission/status endpoints. Stable UUID request IDs preserve the original mutation result across retries and restart; stale configuration versions return a conflict.
+- [x] Implement private JSON and artifact storage through one coordinator. Persist accepted jobs before acknowledging them. Preserve validated record versions for recovery and verify writes through authenticated primary-endpoint reads.
+- [x] Add startup scanning of persisted records and a rebuildable listing cache. The immutable operation history, completion markers and original request receipts are durable; the in-memory maps are derived.
 
-Proposed private storage layout:
+Implemented private storage layout:
 
 ```text
-<network>/<ownerAccount>/shops/<shopId>/
-  shop.json
-  jobs/<jobId>.json
-  attempts/<attemptId>/attempt.json
-  attempts/<attemptId>/input.json
-  attempts/<attemptId>/logs/
-  revisions/<revisionId>/revision.json
-  revisions/<revisionId>/catalog-snapshot.json
-  revisions/<revisionId>/source.tar.gz
-  revisions/<revisionId>/dist/
-  publications/<publicationId>.json
-  record-history/...
+builder-v1/
+  operations/<sequence>-<operationId>/
+    operation.json          complete record versions, request receipt and result
+    commit.json             verified completion marker and operation hash
+  <network>/<ownerAccount>/shops/<shopId>/revisions/<revisionId>/
+    catalog-snapshot.json
+    source.tar.gz
+    dist/
+    logs/
 ```
 
 Attempt records include job ID, attempt number, selected base revision, sandbox ID, command/session references, deadlines, cancellation state, and cleanup state. Revision manifests include parent revision, template/environment/model versions, validated public configuration, artifact paths, file hashes, and validation results. Private inputs retain the merchant brief and generation context. The public configuration excludes prompts, ownership proofs, jobs, logs, and credentials.
 
-Upload and verify artifacts before writing a completed immutable revision manifest. Keep owner/network path components server-derived and validate identifiers. Serialize updates to each shop and its records. Bunny file storage is not a transactional database: multiple-file changes need recorded operations and restart reconciliation, and a record-version field alone does not coordinate multiple writers.
+All metadata records, including jobs, attempts, publication operations, challenges and sessions, live as complete versions inside the immutable operation history. This replaces mutable per-record files and a separately updated listing index. Artifact upload and verification precede the operation that makes a revision ready. Paths are server-derived, writes are serialized, and a completion marker is verified before acknowledgment. An uncertain write stops further work until startup reconciliation. Exactly one coordinator may use the prefix; stop and drain it before starting a replacement. A replica-count setting alone is not a distributed lock.
 
 **Acceptance:** records and accepted jobs survive a process restart; partial uploads never become complete revisions; duplicate requests return the existing result; another owner cannot read or mutate private shop data. Internal-wallet authentication succeeds for the verified owner and rejects invalid signatures, account/network mismatches, and expired or replayed challenges.
 
+**Phase 3 evidence:** thirteen automated checks cover HTTP management, real test-key signatures using the seller's viem signing contract, owner isolation, session/challenge boundaries, version conflicts, retries and interrupted-write recovery. Live Bunny checks recovered a private shop, queued job and retry receipt in a fresh Node process. Read-only live Sync/Mirror Node checks validated the demo seller's catalog ownership and current ECDSA key. No user wallet signature or management deployment is claimed. See the [builder evidence](./merxet-storefront-builder/EVIDENCE.md).
+
 **Phase 4 — Automate generation, scheduling, and recovery**
 
-Make the following proposed environment settings explicit and configurable:
+Implemented startup settings:
 
 ```dotenv
 MAX_CONCURRENT_BUILDS=2
@@ -138,65 +142,87 @@ MAX_CONCURRENT_BUILDS_PER_SHOP=1
 
 `MAX_CONCURRENT_BUILDS` limits active attempts across all merchants handled by the coordinator. Two is the initial default, not a fixed system maximum. Increasing it to five allows up to five attempts, subject to provider capacity and operating budgets. The per-shop setting separately limits attempts for one shop; the effective capacity also respects the global limit. Validate both as positive integers.
 
-Read these settings at startup and document the controlled restart procedure for changing them. Initially, no administration UI or live configuration reload is needed. Count provisioning through cleanup against the limit. If a recovered workload exceeds a newly reduced limit, let it finish and admit no new work until capacity is available. Raising the per-shop limit requires preserving independent base revisions and explicit publication selection; it must never make the last completed draft automatically replace the live shop.
+Read these settings at startup and document the controlled restart procedure for changing them. Initially, no administration UI or live configuration reload is needed. Count provisioning through cleanup against the limit. If recovered cleanup/staged work exceeds a newly reduced limit, finish it and admit no new work until capacity is available. Incomplete generation/build commands are terminated and may use the remaining bounded retry in a fresh VM. Raising the per-shop limit requires preserving independent base revisions and explicit publication selection; it must never make the last completed draft automatically replace the live shop.
 
-- [ ] Implement `queued → provisioning → generating → building → validating → uploading → ready`, with `failed` and `canceled` terminal outcomes. Track cleanup independently so terminal jobs can still have pending resource cleanup.
-- [ ] Schedule the oldest eligible persisted job, skipping temporarily blocked shops. Reserve capacity before provisioning and release it only when its sandbox is confirmed stopped/destroyed or absent.
-- [ ] Pin each job's catalog input, prompt, source/base revision, and template version. Start a revision request from the merchant-selected draft rather than whichever build finishes last.
-- [ ] Give each retry a new attempt ID and VM. Accept completion only from the current authorized attempt. Keep automatic retries and model repair bounded; do not retry indefinitely on invalid output.
-- [ ] Enforce command deadlines, an overall attempt deadline, file/archive/output limits, and cancellation checks throughout the workflow. Record the configured values selected in phase 2.
-- [ ] Collect and inspect bounded source/build artifacts without executing generated code in the coordinator. Validate paths, symlinks, sizes, protected-file integrity, and required outputs before storing a ready revision.
-- [ ] Attempt sandbox destruction after every success, failure, cancellation, or timeout. Persist cleanup failures and retry cleanup separately from generation.
-- [ ] On startup, reconcile incomplete jobs with provider state before admitting replacements. Reconnect only to current attempts; terminate obsolete ones and reject late results.
-- [ ] Handle creation succeeding before the sandbox ID is saved, using the proven ownership convention or dedicated environment from phase 2. Cleanup must only target builder-owned resources.
-- [ ] Add structured status and metrics keyed by shop/job/attempt: queue wait, stage durations, active VMs, retries, output size, and pending cleanup. Keep raw private logs owner-restricted.
+- [x] Implement `queued → provisioning → generating → building → validating → uploading → ready`, with `failed` and `canceled` terminal outcomes. Track cleanup independently so terminal jobs can still have pending resource cleanup.
+- [x] Schedule the oldest eligible persisted job, skipping temporarily blocked shops. Reserve capacity before provisioning and release it only when its sandbox is confirmed stopped/destroyed or absent.
+- [x] Pin each job's catalog input, prompt, source/base revision, and template version. Start a revision request from the merchant-selected draft rather than whichever build finishes last.
+- [x] Give each retry a new attempt ID and VM. Accept completion only from the current authorized attempt. Keep automatic retries and model repair bounded; do not retry indefinitely on invalid output.
+- [x] Enforce command deadlines, an overall attempt deadline, file/archive/output limits, and cancellation checks throughout the workflow. Record the configured values selected in phase 2.
+- [x] Collect and inspect bounded source/build artifacts without executing generated code in the coordinator. Validate paths, symlinks, sizes, protected-file integrity, and required outputs before storing a ready revision.
+- [x] Attempt sandbox destruction after every success, failure, cancellation, or timeout. Persist cleanup failures and retry cleanup separately from generation.
+- [x] On startup, reconcile incomplete jobs with provider state before admitting replacements. Reconnect only to current attempts; terminate obsolete ones and reject late results.
+- [x] Handle creation succeeding before the sandbox ID is saved, using the proven ownership convention or dedicated environment from phase 2. Cleanup must only target builder-owned resources.
+- [x] Add structured status and metrics keyed by shop/job/attempt: queue wait, stage durations, active VMs, retries, output size, and pending cleanup. Keep raw private logs owner-restricted.
 
 Run one active writer during normal operation and deployment. Configure replacement so the old coordinator stops scheduling and writing before the new coordinator resumes persisted work; overlapping replicas would violate the JSON coordination model. A second API instance that also mutates records is not a supported scaling shortcut.
 
 **Acceptance:** with default settings, two different shops build while a third waits and same-shop requests serialize. Changing the global setting changes admitted concurrency. Inject build failure, upload failure, timeout, cancellation, duplicate submission, coordinator restart, and delayed completion; none may publish output, lose accepted work, overwrite a newer draft, or silently abandon a VM.
 
+**Completed September 9:** 28 automated tests cover scheduling, capacity changes, cancellation, artifact/metadata failures, source/base integrity and restart fencing. The live worker produced three private ready revisions, observed two concurrent attempts plus a waiting job, repaired one browser failure in a new VM, reopened the journal to recover all results and confirmed all four VMs destroyed. The builder API was not deployed; the existing public demo was not changed. Detailed settings and operating boundaries are in [WORKER.md](./merxet-storefront-builder/WORKER.md).
+
 **Phase 5 — Add seller management and private previews**
 
-- [ ] Add a Storefront area to [seller routing](./merxet-seller/src/main.tsx) and [navigation](./merxet-seller/src/components/Layout.tsx), with entry from the relevant catalog list/editor.
-- [ ] Build shop creation from an owned catalog, initial branding inputs, and a design-brief field. Reuse the seller's internal-wallet flow and add builder authentication. Require a fresh login when the wallet account or network changes.
-- [ ] Show queued/running/ready/failed/canceled status, useful progress, cancel/retry actions, and understandable error messages. Use bounded polling initially; preserve job identity across reloads.
-- [ ] Add draft preview, feedback for another revision, revision history, and clear draft versus published selection. A failed generation should leave the previous usable preview accessible.
-- [ ] Serve private preview artifacts through an authenticated delivery flow on an origin separate from seller/buyer applications. Scope preview access to the selected shop/revision and avoid exposing management credentials to generated JavaScript.
-- [ ] Ensure preview routing, configuration, and asset loading refer to the same immutable revision. Make preview authorization work for dependent files as well as the initial HTML, with private responses excluded from shared public caching.
-- [ ] Provide a full preview in a separate tab and a mobile-size preview option. Neither should depend on the sandbox remaining alive.
+**Implemented September 10:** a compact fixed header above a large interactive iframe preview, with a movable, collapsible Design panel floating over the preview. The workspace is inside `merxet-seller`; no additional frontend project is needed. See [setup and preview authorization](./merxet-storefront-builder/SELLER_WORKSPACE.md) and [isolated browser checks](./tools/storefront-ui-smoke/README.md).
 
-**Acceptance:** a merchant completes create → generate → preview → request changes using the seller UI. Refreshing or reopening the seller page restores progress/history. Private previews remain available after sandbox cleanup, and an unrelated merchant cannot open them.
+- [x] Add a Storefront area to [seller routing](./merxet-seller/src/main.tsx) and [navigation](./merxet-seller/src/components/Layout.tsx), with entry from the relevant catalog list/editor.
+- [x] Build shop creation from an owned catalog, initial branding inputs, and a design-brief field. Reuse the seller's internal-wallet flow and add builder authentication. Require a fresh login when the wallet account or network changes.
+- [x] Add the workspace header: Back to Storefronts, shop name, selected revision/draft selector, Desktop/Mobile controls, Open preview in new tab, and a Design panel toggle. Preserve access to seller navigation/account controls without stacking two tall toolbars. Clearly distinguish draft and published revisions when applicable.
+- [x] Place the Design panel near the lower-left initially. Include request/revision history, current job progress, the prompt textarea and generation action. Allow dragging only from its title bar, keep it inside the visible preview workspace, and preserve normal text selection and form interaction.
+- [x] Collapse the panel to a compact Design button that still indicates an active generation. Support restoring it from the header, resetting its position, and remembering position/collapse preferences locally in the browser. Clamp its position after viewport changes and keep show/collapse/reset controls keyboard accessible.
+- [x] Implement dragging with native Pointer Events and pointer capture. Temporarily shield the iframe from pointer interaction during a drag, then release capture and the shield on completion or cancellation. Moving or collapsing the panel must not remount the iframe, reset its route/scroll, discard prompt text, or interrupt progress tracking.
+- [x] On mobile, use a collapsible bottom sheet for the Design panel. Desktop/Mobile preview controls should change the iframe viewport width so the storefront's responsive layout can be checked; they do not emulate mobile hardware.
+- [x] Before the first generation, show the selected catalog, design brief and **Generate storefront** action beside a preview placeholder. Once a draft is ready, display the compiled website with working navigation, search and product links.
+- [x] Show queued/running/ready/failed/canceled status with understandable stages, elapsed time, and cancel/retry actions. Map real job progress to labels such as Waiting to start, Creating design, Checking pages and Preparing preview; avoid invented percentages or raw provider/toolchain details. Use bounded polling initially and restore durable job identity/history after reload.
+- [x] Make revision requests explicitly show **Based on Draft N** and use **Generate revision**. Allow selecting an older draft as the base. Keep the current usable preview visible while the new revision builds; add a **Draft N ready — View** history entry on completion. Show failures inline with Retry while retaining the previous preview.
+- [x] Render the header and Design panel as seller components outside the iframe. Load the selected revision's compiled static files through authenticated private preview delivery from Bunny artifacts. Preview availability must not depend on a live build VM or Vite server.
+- [x] Serve previews on a dedicated listener/origin with iframe and response-level sandbox policies. Use an unguessable, short-lived bearer preview grant scoped to one owned ready revision and bounded by the management session's lifetime/revocation. No cookies or management credentials are given to generated code. Every artifact is checked against the manifest; expired or restarted grants can be refreshed from the workspace.
+- [x] Keep HTML, configuration, routing and assets tied to the same immutable revision. Enforce preview authorization for dependent files and direct page navigation as well as the initial HTML, and exclude private responses from shared public caching.
+- [x] Provide a full preview in a separate tab with the same authorization and origin isolation. Verify delivery security independently of the parent iframe's sandbox attributes.
 
-**Phase 6 — Publish, roll back, and export**
+**Acceptance:** a merchant completes create → generate → preview → request changes using the seller UI, including requesting a revision from an older draft. Generation and failure leave the previous preview usable. Dragging, collapsing and restoring the panel preserve preview route/scroll, prompt text and job progress; resizing keeps controls reachable, and the mobile bottom sheet works. Refreshing or reopening restores durable progress/history after wallet sign-in and restores local panel preferences. Desktop/Mobile sizing and protected new-tab previews work. Private artifacts, including direct routes and dependent assets, remain available after sandbox cleanup. An unrelated merchant cannot obtain a preview grant or read the artifacts without one. A current preview URL itself grants temporary read access to that revision.
+
+Publishing and rollback are implemented in Phase 6. World and ENS integrations follow later.
+
+**Validation:** 32 builder tests, eight existing seller tests, both TypeScript checks, the seller production build and generated-contract/build-asset checks pass. All changed seller files pass ESLint; the full seller lint run has 12 pre-existing errors in untouched files. Isolated browser checks cover the complete UI flow, active-job reload, idempotent retries, pointer/collapse state preservation, mobile behavior and wallet/preview isolation. Live generation still uses the independently verified Phase 4 worker; run the [manual testnet check](./merxet-storefront-builder/SELLER_WORKSPACE.md#validation-and-manual-acceptance) with your own catalog before treating the deployed experience as accepted.
+
+**Phase 6 — Publish and roll back**
 
 Use a stable public shop path such as `/s/{shopId}/` on a dedicated storefront origin; the hostname is a deployment setting. Keep approved files under immutable revision paths in the public storage zone. Implement the shared resolver in the builder codebase: it selects the published revision and returns its HTML for shop page routes. Versioned assets and public configuration are served from Bunny with paths tied to that revision. This adds a shared delivery component, not a server per merchant; the resolver remains part of live delivery even when no builds are running.
 
-The phase 2 prototype must establish the exact CDN/origin configuration, router basename, and build asset base for this arrangement. Use the same revision for HTML, configuration, and assets so a cached page cannot accidentally load another revision's files. Generated builds must also support the private preview path. A change to `publishedRevisionId` alone does not configure CDN behavior.
+Reuse the Phase 2 prototype's verified CDN/origin configuration, router basename, build asset base and immutable asset references. Keep compiled HTML and its embedded configuration together so an open page cannot accidentally load another revision's files. Generated builds must also support the private preview path. The selected revision is read from primary storage; do not introduce a cached pointer without a corresponding invalidation strategy.
 
-- [ ] Add a merchant-triggered publish action accepting a specific ready revision. Revalidate ownership and completeness; generated code and build completion cannot invoke publication.
-- [ ] Record each publication operation, its previous revision, requested revision, and progress before applying changes. Copy only approved public output, verify it, and make retries safe for the same operation.
-- [ ] Update the resolver selection and refresh the relevant caches. Verify public HTML, assets, configuration, and a direct product URL before reporting successful publication.
-- [ ] Preserve the previous complete revision and routing selection. If switching fails, retain or restore that selection and reconcile the operation. Do not promise an instantaneous atomic change across every CDN cache.
-- [ ] Implement rollback using the same publication operation applied to a previous complete revision; do not rebuild it.
-- [ ] Add owner-authorized static and source exports. Include the template/version manifest, lockfile, public configuration, build instructions, and deployment-path requirements. Exclude private logs, prompts, tokens, and credentials from the website export.
-- [ ] Define retention and backups for JSON records, source archives, and artifacts. Preserve live revisions, pending operations, and offered rollback history. Prove restoration from a backup before enabling destructive retention cleanup.
+- [x] Add a merchant-triggered publish action accepting a specific ready revision. Revalidate ownership and completeness; generated code and build completion cannot invoke publication.
+- [x] Record each publication operation, its previous revision, requested revision, and progress before applying changes. Copy only approved public output, verify it, and make retries safe for the same operation.
+- [x] Update the resolver selection and verify public HTML, assets, configuration, and a direct product URL before reporting successful publication. Selection reads use authenticated primary storage; HTML/configuration use no-store and assets keep immutable references, so no cached pointer or pointer purge is introduced.
+- [x] Preserve the previous complete revision and routing selection. If switching fails, retain or restore that selection and reconcile the operation. A failed restoration stays durable and blocks conflicting publication until recovered. Do not promise an instantaneous atomic change across every CDN cache.
+- [x] Implement rollback using the same publication operation applied to a previous complete revision; reuse verified public files without rebuilding.
+- [x] Add seller controls for publishing the selected ready draft, confirmation/cancellation, publication progress, the published revision label, opening the live shop, and rolling back to a previous published revision.
 
-**Acceptance:** publish revision A, prepare B, confirm A remains live during generation, publish B, and roll back to A. Check the root, a direct product route, configuration, and assets after each operation. A failed upload or route switch leaves a complete working revision available. Exported source rebuilds using its recorded environment, with base-path changes documented for alternative hosting.
+Static website and source downloads are outside this scope. Backups and retention management will be added later. Keep completed revisions available for publication and rollback; this milestone adds no artifact retention cleanup. Existing build sandbox cleanup remains required.
+
+**Acceptance:** publish revision A, prepare B, confirm A remains live during generation, publish B, and roll back to A. Check the root, a direct product route, configuration, and assets after each operation. A failed upload or route switch leaves a complete working revision available.
+
+**Implementation evidence:** 39 builder tests and eight existing seller tests pass, together with builder/seller TypeScript checks, seller production build, changed-file ESLint and generated-contract/build-asset checks. The isolated browser flow passed confirm/cancel, lost accepted-response retry with identical input/key, A → B → A publication, public product-page reload, buyer links, restored publication state and mobile controls. Tests use fixture identity/storage and the compiled template; no live Bunny publication or new model/VM build was performed. Existing public Bunny settings were reused in the builder's ignored `.env.local`, and local configuration loads successfully. Public delivery defaults to port 4184. See [PUBLISHING.md](./merxet-storefront-builder/PUBLISHING.md) for the real-provider manual check and deployment boundary.
 
 **Phase 7 — Deployment and complete acceptance**
 
-- [ ] Configure the builder service, dedicated sandbox environment, private/public storage zones, delivery origins, allowed application origins, credentials, and measured limits. Keep credentials in server configuration and out of template assets and VM inputs.
-- [ ] Add a health/readiness check, startup reconciliation, controlled shutdown, and a deployment procedure that prevents simultaneous coordinators. Verify the exact Railway deployment reaches success and then check live HTTP behavior.
-- [ ] Run focused unit/integration checks for schemas, price precision, buyer-link encoding, ownership, queue limits, state transitions, idempotency, artifact completion, publication recovery, and cleanup recovery.
-- [ ] Run browser acceptance for the maintained template and generated output: loading/errors, search/collections, direct routes and refresh, removed products, buyer links/QR, keyboard navigation, and the top mobile menu at 390x844.
+**Deployment implemented September 10:** the builder and isolated seller frontend are live in `Merxet/storefront-builds`; both exact deployments reached `SUCCESS` and live API/seller checks pass. The user confirmed local Bunny publication before starting this phase. Hosted records use a separate `builder-hosted-v1` prefix. See [deployment, DNS records and acceptance ledger](./merxet-storefront-builder/DEPLOYMENT.md). DNS and live HTTPS delivery checks pass. Full hosted merchant/buyer acceptance remains open.
+
+- [x] Configure the builder service, dedicated sandbox environment, private/public storage zones, allowed application origins, credentials and pilot limits. Keep credentials in server configuration and out of template assets and VM inputs.
+- [x] Activate the configured private-preview/public-shop custom domains and verify live HTTPS delivery after DNS setup. Both health endpoints returned 200 and the unknown public shop returned 404.
+- [x] Add a health/readiness check, startup reconciliation, controlled shutdown, and a deployment procedure that prevents simultaneous coordinators. Verify the exact Railway deployment reaches success and then check live HTTP behavior. The mounted Railway volume and startup guard enforce exclusive replacement for this service; unrelated coordinators must still use different prefixes.
+- [x] Run focused unit/integration checks for schemas, price precision, buyer-link encoding, ownership, queue limits, state transitions, idempotency, artifact completion, publication recovery, and cleanup recovery. All 41 builder tests and generated-contract/build-asset checks pass.
+- [x] Run maintained-template browser checks: loading/errors, search/collections, direct routes and refresh, removed products, buyer links/QR, keyboard navigation and the top mobile menu at 390x844. All 17 applicable checks pass, including the compiled deployment path; one desktop-only mobile-menu case is intentionally skipped.
+- [ ] Complete the same browser acceptance against real generated output on the hosted preview and public origins.
 - [ ] Exercise two independently owned shops with distinct catalogs and designs. Confirm independent records, sandboxes, previews, published routes, and rollback history.
 - [ ] Complete a selected-product flow through the existing buyer app's cart, payment approval, and order process in the supported test environment. Record the result without treating untested networks as supported.
-- [ ] Record the Continuity baseline and the new work separately: pre-existing catalog/MCP/buyer/order capabilities versus new storefront template, AI customization, sandbox builder, revision storage, and publication. Keep World and ENS out of this delivery milestone.
+- [x] Record the Continuity baseline and the new work separately: pre-existing catalog/MCP/buyer/order capabilities versus new storefront template, AI customization, sandbox builder, revision storage, and publication. See [Continuity implementation record](./MERXET_STOREFRONTS_CONTINUITY.md). Keep World and ENS out of this delivery milestone; submission commit/date evidence remains to be attached when preparing the entry.
 
-**Definition of done:** a merchant can generate and revise a real shop from an owned catalog, preview it after the build VM has been destroyed, publish a selected revision, recover a previous revision, and export it. Another merchant can do the same concurrently within configurable limits. Current catalog data and existing buyer links work, and failures preserve the last usable shop and durable job history.
+**Definition of done:** a merchant can generate and revise a real shop from an owned catalog, preview it after the build VM has been destroyed, publish a selected revision, and restore a previously published revision. Another merchant can do the same concurrently within configurable limits. Current catalog data and existing buyer links work, and failures preserve the last usable shop and durable job history.
 
 **Phase 1 implementation evidence (before extraction):** [template README](./merxet-storefront-template/README.md), [generation guide](./merxet-storefront-template/template/generation-guide.md), [template manifest](./merxet-storefront-template/template/template-manifest.json), and [browser checks](./merxet-storefront-template/tests/storefront.spec.ts). The promo build and lint pass. The automated suite passed 17 applicable checks on desktop, at 390x844, and against a dedicated compiled shop under `/s/template/`; its desktop-only skip is the mobile-menu case, which passes in the mobile project. A separate browser check loaded the public demo catalog and current prices, then followed the olive-oil product link into the existing buyer app, which displayed the matching product and 3.5 HBAR price. No Railway sandbox or public deployment was created in this phase.
 
 **Standalone extraction evidence (September 9, 2026):** `merxet-storefront-template` installs from its own lockfile and builds without sibling imports. Both projects pass production builds (including TypeScript checking) and lint. The relocated storefront suite passed 17 applicable checks, including mobile and compiled deployment-subpath coverage; the desktop mobile-menu case remains intentionally skipped. The separate promo suite passed both desktop and mobile URL regression checks. The existing dependency versions were preserved, the template manifest is now version 1.1.0 with its refreshed lockfile hash, and the storefront pages and generation contract exist only in the new project.
 
-**Next milestone:** use the standalone `merxet-storefront-template` source for the Phase 2 sandbox, generation, and hosting feasibility trial.
+**Remaining Phase 7 work:** complete hosted acceptance with independently owned shops, and finish a Testnet purchase in the existing buyer app. The builder and isolated seller deployments and their live API/seller checks are complete. Follow [DEPLOYMENT.md](./merxet-storefront-builder/DEPLOYMENT.md). Downloads are outside scope; backups and retention management are deferred.

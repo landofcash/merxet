@@ -3,6 +3,7 @@ import Header from './Header'
 import {Toaster} from './ui/sonner'
 import {useWallet} from '@/context/WalletContext'
 import {Loader2} from 'lucide-react'
+import {useLocation} from 'react-router-dom'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -10,10 +11,11 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({children}) => {
   const {walletActionPending, walletActionLabel} = useWallet()
+  const workspace = /^\/storefronts\/[^/]+\/?$/.test(useLocation().pathname)
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header/>
+      {!workspace && <Header/>}
       <main className="flex-1">
         {children}
       </main>
