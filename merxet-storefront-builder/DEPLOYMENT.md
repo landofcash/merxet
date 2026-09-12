@@ -1,6 +1,10 @@
 # Storefront deployment
 
-Production service instances are staged but have not replaced the running storefront-builds services. Before applying them, stop the old builder, preserve any volume data and transfer domain routing. Never activate two coordinators for the same storage prefix. Existing deployment.json identifies the live source environment until cutover.
+The permanent services run in production. The storefront-builds environment was deleted. deployment.json targets the production builder and the public seller at https://merxet.com. Never activate two coordinators for the same storage prefix.
+
+Production uses RAILWAY_SANDBOX_ENVIRONMENT_ID=6e115024-b8a5-4ff0-826b-f6e5a0f32a16, RAILWAY_AUTH_TYPE=project-token, and BUILDER_WORKER_ENABLED=true. Its environment-scoped token is stored only in Railway service variables. The packaged checkpoint and template archive were prepared together in production. The builder validates that the checkpoint belongs to the configured environment before worker startup. The preparation harness uses the same setting, with RAILWAY_ENVIRONMENT_ID accepted as a fallback. For future checkpoint or token replacements, pause the worker until the matching assets and credential scope are verified.
+
+Production origins are https://storefront-builder-production.up.railway.app for the API, https://preview.merxet.com for previews, https://shops.merxet.com for published shops, and https://world.merxet.com for World verification. Configure these domains in Railway and maintain their returned DNS records.
 
 The storefront system deploys the builder API and seller frontend separately. The builder also exposes dedicated private-preview and public-storefront listeners.
 
@@ -46,6 +50,8 @@ If ENS is enabled, only one coordinator across all environments may use a given 
 ## GitHub deployment
 
 Connect the builder and seller to landofcash/merxet on main with root directories /merxet-storefront-builder and /merxet-seller. Scope each watch pattern to its root followed by /**. Matching commits trigger deployment after the service instance is active; a main merge alone does not activate staged service instances.
+
+For CLI uploads, preserve the merxet-storefront-builder directory inside the uploaded source because the service root is /merxet-storefront-builder. A package-only upload with --path-as-root does not satisfy that monorepo configuration. Commit build-assets/environment.json and build-assets/template.tar.gz together before the next GitHub deployment; the old metadata cannot run with the enabled production worker.
 
 Manage runtime variables and domain/port mappings in Railway. Seller VITE settings are compiled into the frontend and require rebuilding. Check the exact deployment reaches SUCCESS, then verify HTTP readiness.
 

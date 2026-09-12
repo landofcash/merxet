@@ -1,12 +1,12 @@
 {
-  "environmentId": "f38b8724-44d7-4e13-aecf-af0407339f60",
-  "checkpointId": "merxet-template-1-2-0-2e869ecd8e-50b2d20f",
-  "checkpointName": "merxet-template-1-2-0-2e869ecd8e-50b2d20f",
+  "environmentId": "6e115024-b8a5-4ff0-826b-f6e5a0f32a16",
+  "checkpointId": "merxet-template-1-2-0-2e869ecd8e-7064cda2",
+  "checkpointName": "merxet-template-1-2-0-2e869ecd8e-7064cda2",
   "sdkVersion": "3.11.0",
   "templateVersion": "1.2.0",
-  "sourceDigest": "08d6b178d53e860727c282cefcfb433c804b420b3aff84e58b2b6555734b2d7b",
+  "sourceDigest": "d71768de2f6bc40e555dccad872667e7b2567bfe1cbfb373dcd15ce7276ee536",
   "lockfileSha256": "2e869ecd8e1c16e16e7888312fd8edf659589d84bf01a0e188cf174559950d7a",
   "node": "24.11.0",
   "npm": "11.17.0",
-  "createdAt": "2026-09-12T21:07:07.115Z"
+  "createdAt": "2026-09-12T23:38:28.140Z"
 }
