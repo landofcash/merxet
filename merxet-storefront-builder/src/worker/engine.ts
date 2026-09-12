@@ -8,10 +8,16 @@ import {assertProtected, sourceDigest, safeRelative, sourcePath, validateEdits, 
 import {packSource, unpackSource} from './archive.ts';
 import {catalogInput, configureSource, parseInput, type GenerationInput} from './input.ts';
 import {generationPrompt, modelSettings, requestEdits} from './model.ts';
-import {limits, REMOTE_ROOT} from './config.ts';
+import {limits, REMOTE_ROOT, sandboxEnvironmentId} from './config.ts';
 import {BuildFailure, shellQuote, type Machine} from './provider.ts';
 
 const Environment = z.object({environmentId: z.string().uuid(), checkpointName: z.string().min(1), templateVersion: z.string(), sourceDigest: z.string(), sdkVersion: z.literal('3.11.0')}).passthrough();
+export async function loadCheckpoint(env: NodeJS.ProcessEnv = process.env) {
+  const environmentId = sandboxEnvironmentId(env);
+  const checkpoint = Environment.parse(JSON.parse(await fs.readFile(new URL('../../build-assets/environment.json', import.meta.url), 'utf8')));
+  if (checkpoint.environmentId !== environmentId) throw new BuildFailure('checkpoint_environment_mismatch');
+  return checkpoint;
+}
 export const PinnedSchema = z.object({engineVersion: z.literal(1), input: z.unknown(), source: z.string(), sourceDigest: z.string(),
   world: z.object({enabled: z.boolean(), url: z.string()}).default({enabled: false, url: ''}),
   environment: Environment, model: z.object({model: z.string(), seconds: z.number().positive(), maxTokens: z.number().int().positive()}),
@@ -32,7 +38,7 @@ export class GenerationEngine implements Engine {
   }
   async pin(job: GenerationJob, signal: AbortSignal): Promise<Pinned> {
     const settings = modelSettings();
-    const environment = Environment.parse(JSON.parse(await fs.readFile(new URL('../../build-assets/environment.json', import.meta.url), 'utf8')));
+    const environment = await loadCheckpoint();
     const template = unpackSource(await fs.readFile(new URL('../../build-assets/template.tar.gz', import.meta.url)));
     if (sourceDigest(template) !== environment.sourceDigest) throw new BuildFailure('template_checkpoint_mismatch');
     let source = template;

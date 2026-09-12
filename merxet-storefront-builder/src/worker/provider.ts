@@ -2,7 +2,7 @@ import {Sandbox, SandboxNotFoundError, type CreateOptions, type ExecHandle} from
 import {z} from 'zod';
 import {sha256} from '../storage/bunny.ts';
 import type {BuildAttempt} from '../domain/records.ts';
-import {REMOTE_ROOT, limits} from './config.ts';
+import {REMOTE_ROOT, limits, sandboxEnvironmentId} from './config.ts';
 
 export interface VirtualMachine {id: string; status: string; createdAt: string;}
 export interface Machine {
@@ -33,8 +33,7 @@ export class RailwayProvider implements Provider {
     if (!token) throw new Error('RAILWAY_API_TOKEN is required');
     // The template checkpoint and sandbox credential have their own scope,
     // independent of the environment hosting the permanent builder service.
-    this.#env = env.RAILWAY_SANDBOX_ENVIRONMENT_ID || 'f38b8724-44d7-4e13-aecf-af0407339f60';
-    if (this.#env !== 'f38b8724-44d7-4e13-aecf-af0407339f60' || (env.RAILWAY_PROJECT_ID || '76d3f9f4-f39b-4a51-96a8-2027d341f0d5') !== '76d3f9f4-f39b-4a51-96a8-2027d341f0d5') throw new Error('Build sandboxes are scoped to Merxet/storefront-builds');
+    this.#env = sandboxEnvironmentId(env);
     this.owner = sha256(`${this.#env}/${prefix}`);
     this.#transport = async (input, init) => transport(input, {...init, signal: AbortSignal.any([AbortSignal.timeout(120000), ...(init?.signal ? [init.signal] : [])])});
     this.#options = {token, authType: z.enum(['bearer', 'project-token']).parse(env.RAILWAY_AUTH_TYPE || 'project-token'),

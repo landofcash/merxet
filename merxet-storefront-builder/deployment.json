@@ -1,11 +1,11 @@
 {
   "projectId": "76d3f9f4-f39b-4a51-96a8-2027d341f0d5",
-  "environmentId": "f38b8724-44d7-4e13-aecf-af0407339f60",
+  "environmentId": "6e115024-b8a5-4ff0-826b-f6e5a0f32a16",
   "serviceId": "02111270-9797-4db0-be53-80a2c9234455",
-  "sellerServiceId": "b93cea1a-f4e4-40f7-a923-45102514342c",
+  "sellerServiceId": "c804d365-e8d5-4b4b-86af-6bec805d0008",
   "volumeId": "8184cf8f-d189-42de-a734-c87b09236140",
-  "apiOrigin": "https://storefront-builder-storefront-builds.up.railway.app",
-  "sellerOrigin": "https://storefront-seller-storefront-builds.up.railway.app",
+  "apiOrigin": "https://storefront-builder-production.up.railway.app",
+  "sellerOrigin": "https://merxet.com",
   "variables": {
     "NODE_ENV": "production",
     "HOST": "0.0.0.0",
@@ -18,8 +18,9 @@
     "RAILWAY_DEPLOYMENT_OVERLAP_SECONDS": "0",
     "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": "130",
     "BUILDER_NETWORKS": "testnet",
-    "BUILDER_WORKER_ENABLED": "true",
-    "BUILDER_ORIGINS": "https://storefront-seller-storefront-builds.up.railway.app,https://merxet.com,http://localhost:5173,http://127.0.0.1:5173",
+    "BUILDER_WORKER_ENABLED": "false",
+    "BUILDER_ORIGINS": "https://merxet.com,https://www.merxet.com,http://localhost:5173,http://127.0.0.1:5173",
+    "WORLD_API_URL": "https://world.merxet.com",
     "BUILDER_PREVIEW_ORIGIN": "https://preview.merxet.com",
     "BUILDER_PUBLIC_ORIGIN": "https://shops.merxet.com"
   }

@@ -1,3 +1,11 @@
+import {z} from 'zod';
+
+export function sandboxEnvironmentId(env: NodeJS.ProcessEnv = process.env): string {
+  const result = z.string().uuid().safeParse(env.RAILWAY_SANDBOX_ENVIRONMENT_ID);
+  if (!result.success) throw new Error('RAILWAY_SANDBOX_ENVIRONMENT_ID must be a configured Railway environment UUID');
+  return result.data;
+}
+
 // The measured Phase 2 budgets. No merchant-controlled toolchain or credentials.
 export const REMOTE_ROOT = '/workspace/shop';
 export function integerSetting(name: string, fallback: number, max = 100_000_000) {

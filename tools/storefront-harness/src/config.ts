@@ -5,13 +5,14 @@ import {fileURLToPath} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import type {CreateOptions} from 'railway';
+import {z} from 'zod';
 
 export const HARNESS_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const TEMPLATE_ROOT = path.resolve(HARNESS_ROOT, '../../merxet-storefront-template');
 export const REMOTE_ROOT = '/workspace/shop';
 export const SDK_VERSION = '3.11.0';
-export const PROJECT_ID = '76d3f9f4-f39b-4a51-96a8-2027d341f0d5';
-export const ENVIRONMENT_ID = 'f38b8724-44d7-4e13-aecf-af0407339f60';
+export const PROJECT_ID = process.env.RAILWAY_PROJECT_ID;
+export const ENVIRONMENT_ID = process.env.RAILWAY_SANDBOX_ENVIRONMENT_ID ?? process.env.RAILWAY_ENVIRONMENT_ID;
 const secrets = new Set<string>();
 async function cliToken():Promise<string> {
   // Let the CLI renew its OAuth session; never log its output or credential file.
@@ -37,18 +38,17 @@ export const limits = () => ({
   logBytes: 4 * 1024 * 1024,
 });
 
-export async function railwayOptions(useCliAuth: boolean): Promise<CreateOptions> {
-  const environmentId = process.env.RAILWAY_ENVIRONMENT_ID || ENVIRONMENT_ID;
-  if (environmentId !== ENVIRONMENT_ID || (process.env.RAILWAY_PROJECT_ID || PROJECT_ID) !== PROJECT_ID) {
-    throw new Error('This Phase 2 harness is scoped to Merxet/storefront-builds.');
-  }
-  let token = process.env.RAILWAY_API_TOKEN;
+export async function railwayOptions(useCliAuth: boolean, env: NodeJS.ProcessEnv = process.env): Promise<CreateOptions> {
+  const parsed = z.string().uuid().safeParse(env.RAILWAY_SANDBOX_ENVIRONMENT_ID ?? env.RAILWAY_ENVIRONMENT_ID);
+  if (!parsed.success) throw new Error('Set RAILWAY_SANDBOX_ENVIRONMENT_ID (or RAILWAY_ENVIRONMENT_ID) to a Railway environment UUID');
+  const environmentId = parsed.data;
+  let token = env.RAILWAY_API_TOKEN;
   const usingCli=!token&&useCliAuth;
   if (!token && useCliAuth) {
     token=await cliToken();
   }
   if (!token) throw new Error('Set RAILWAY_API_TOKEN locally, or pass --railway-cli-auth after railway login.');
-  const authType=usingCli?'bearer':process.env.RAILWAY_AUTH_TYPE||'bearer';
+  const authType=usingCli?'bearer':env.RAILWAY_AUTH_TYPE||'bearer';
   if(authType!=='bearer'&&authType!=='project-token')throw new Error('RAILWAY_AUTH_TYPE must be bearer or project-token.');
   secrets.add(token);
   return {token, authType, environmentId, networkIsolation: 'ISOLATED', idleTimeoutMinutes: 30,

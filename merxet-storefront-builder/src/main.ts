@@ -5,13 +5,14 @@ import {MerxetIdentity} from './auth/identity.ts';
 import {createApp} from './api/app.ts';
 import {Coordinator} from './worker/coordinator.ts';
 import {RailwayProvider} from './worker/provider.ts';
-import {GenerationEngine} from './worker/engine.ts';
+import {GenerationEngine, loadCheckpoint} from './worker/engine.ts';
 import {readHttp} from './publishing/delivery.ts';
 import {assertDeploymentVolume} from './deployment.ts';
 
 async function main() {
   const config = loadConfig();
   await assertDeploymentVolume(config);
+  if (config.workerEnabled) await loadCheckpoint();
   const publicationConfigured = !!(config.publicStorage.key || config.publicBaseUrl);
   if (config.ens.enabled && !publicationConfigured) throw new Error('ENS requires configured public shop delivery');
   if (publicationConfigured && (!config.publicStorage.key || !config.publicStorage.zone || !config.publicBaseUrl || config.publicStorage.zone === config.storage.zone)) throw new Error('Configure separate public Bunny storage and its CDN URL');

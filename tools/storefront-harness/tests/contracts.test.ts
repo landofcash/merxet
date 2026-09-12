@@ -40,15 +40,19 @@ test('misplaced model credentials fail locally and are redacted from errors',()=
 });
 
 test('Railway project credentials select their required auth header mode',async()=>{
-  const saved={RAILWAY_API_TOKEN:process.env.RAILWAY_API_TOKEN,RAILWAY_AUTH_TYPE:process.env.RAILWAY_AUTH_TYPE};
-  try {
-    process.env.RAILWAY_API_TOKEN='test-only-project-token';process.env.RAILWAY_AUTH_TYPE='project-token';
-    assert.equal((await railwayOptions(false)).authType,'project-token');
-    process.env.RAILWAY_AUTH_TYPE='bearer';assert.equal((await railwayOptions(false)).authType,'bearer');
-    process.env.RAILWAY_AUTH_TYPE='invalid';await assert.rejects(railwayOptions(false),/RAILWAY_AUTH_TYPE/);
-  } finally {
-    for(const [name,value] of Object.entries(saved)){if(value===undefined)delete process.env[name];else process.env[name]=value;}
-  }
+  const env={RAILWAY_API_TOKEN:'test-only-project-token',RAILWAY_SANDBOX_ENVIRONMENT_ID:'6e115024-b8a5-4ff0-826b-f6e5a0f32a16'};
+  assert.equal((await railwayOptions(false,{...env,RAILWAY_AUTH_TYPE:'project-token'})).authType,'project-token');
+  assert.equal((await railwayOptions(false,{...env,RAILWAY_AUTH_TYPE:'bearer'})).authType,'bearer');
+  await assert.rejects(railwayOptions(false,{...env,RAILWAY_AUTH_TYPE:'invalid'}),/RAILWAY_AUTH_TYPE/);
+});
+
+test('harness uses configured sandbox scope and supports the existing environment setting',async()=>{
+  const production='6e115024-b8a5-4ff0-826b-f6e5a0f32a16',other='11111111-1111-4111-8111-111111111111';
+  const env={RAILWAY_API_TOKEN:'test-only-token',RAILWAY_ENVIRONMENT_ID:other};
+  assert.equal((await railwayOptions(false,{...env,RAILWAY_SANDBOX_ENVIRONMENT_ID:production})).environmentId,production);
+  assert.equal((await railwayOptions(false,env)).environmentId,other);
+  for(const value of ['', 'invalid']) await assert.rejects(railwayOptions(false,{...env,RAILWAY_SANDBOX_ENVIRONMENT_ID:value}),/environment UUID/);
+  await assert.rejects(railwayOptions(false,{RAILWAY_API_TOKEN:'test-only-token'}),/environment UUID/);
 });
 test('two catalog fixtures use validated distinct identities and exact decimal prices',async()=>{
   const a=await readInput(undefined,'pantry'),b=await readInput(undefined,'studio');assert.notEqual(a.config.catalogSeed,b.config.catalogSeed);assert.notEqual(a.brief,b.brief);assert.equal(typeof a.products[0].Price,'string');
