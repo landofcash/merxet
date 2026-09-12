@@ -4,14 +4,14 @@ Independent World app/backend for optional seller badges. SQLite stores complete
 
 Presets: testnet `0.0.8321009` and `0.0.8305575`. Labels distinguish **Selfie Check - Demo**, **Selfie Check - Sandbox** and production **Selfie Check completed**. These badges do not certify businesses, products or fulfillment.
 
-Real phone acceptance remains blocked by World's Sandbox `invalid_token` after capture. See [APK findings](./APK_ATTESTATION_FINDINGS.md). Fixtures and presets do not prove provider acceptance.
+World Sandbox can return `invalid_token` after face capture. A successful backend provider response is required for a real verification; presets and test fixtures do not establish provider acceptance.
 
 ## Run locally
 
 Requires Node 24.11 or newer. From PowerShell:
 
 ```powershell
-cd D:\Work\projects\merxet\tools\world-selfie-check
+cd tools/world-selfie-check
 npm.cmd ci
 if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 # Set WORLD_ENABLED=true in .env.local; preserve existing credentials.
@@ -73,5 +73,5 @@ Global disable affects clients on their next status check/load/focus; idle tabs 
 
 ## Validation
 
-Run `npm.cmd test` and `npm.cmd run build`. See [acceptance evidence](./ACCEPTANCE.md) and [implementation plan](../../MERXET_WORLD_SELFIE_CHECK_IMPLEMENTATION_PLAN.md).
+Run `npm.cmd test` and `npm.cmd run build`.
 

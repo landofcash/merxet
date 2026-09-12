@@ -1,6 +1,6 @@
 # Storefront deployment
 
-Production migration is prepared as staged Railway changes. Follow [PRODUCTION_MIGRATION.md](./PRODUCTION_MIGRATION.md) after the main merge. Existing deployment.json still identifies the live source environment until cutover.
+Production service instances are staged but have not replaced the running storefront-builds services. Before applying them, stop the old builder, preserve any volume data and transfer domain routing. Never activate two coordinators for the same storage prefix. Existing deployment.json identifies the live source environment until cutover.
 
 The storefront system deploys the builder API and seller frontend separately. The builder also exposes dedicated private-preview and public-storefront listeners.
 
@@ -43,20 +43,13 @@ During shutdown, the builder stops admission, closes listeners, cancels active p
 
 If ENS is enabled, only one coordinator across all environments may use a given operator wallet.
 
-## Deployment commands
+## GitHub deployment
 
-Run from merxet-storefront-builder with an authenticated Railway CLI:
+Connect the builder and seller to landofcash/merxet on main with root directories /merxet-storefront-builder and /merxet-seller. Scope each watch pattern to its root followed by /**. Matching commits trigger deployment after the service instance is active; a main merge alone does not activate staged service instances.
 
-    node scripts/deploy-variables.mjs
-    node scripts/deploy-variables.mjs --apply
-    node scripts/deploy.mjs
-    node scripts/deploy.mjs --seller
-    node scripts/deployment-smoke.mjs
-    node scripts/deployment-smoke.mjs --delivery
+Manage runtime variables and domain/port mappings in Railway. Seller VITE settings are compiled into the frontend and require rebuilding. Check the exact deployment reaches SUCCESS, then verify HTTP readiness.
 
-The first command lists variable names and targets without changing them. The apply command updates the explicit builder service. The deploy commands upload an allowlisted builder or seller bundle.
-
-A returned deployment ID means the upload was accepted, not that the deployment succeeded. Check that exact deployment until Railway reports success, inspect its logs, and then run the HTTP smoke checks.
+RAILWAY_SANDBOX_ENVIRONMENT_ID selects the environment containing the packaged template checkpoint and sandbox token, independently of the environment hosting the builder. Keep build-assets/environment.json and that credential scope consistent. Moving the permanent service does not move its template checkpoint.
 
 ## Pre-deployment checks
 

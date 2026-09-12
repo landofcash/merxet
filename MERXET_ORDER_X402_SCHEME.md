@@ -1040,11 +1040,9 @@ buyer-side encrypted key and payload remain compatible with
 
 Fixture JSON MUST contain no production URLs, accounts, keys, or secrets.
 
-## 16. Implementation Traceability
+## 16. Shared Protocol Definitions
 
-The pilot implementation maps this specification to
-`merxet-order-protocol/TRACEABILITY.md` and the expanded conformance table in
-`MERXET_ORDER_X402_IMPLEMENTATION.md`. Machine-readable normative examples
+Machine-readable normative examples
 live under `merxet-order-protocol/fixtures/`; automated protocol, sync, server,
 frontend, and MCP validation consumes the same exported schemas and codecs
 rather than maintaining application-local wire definitions.

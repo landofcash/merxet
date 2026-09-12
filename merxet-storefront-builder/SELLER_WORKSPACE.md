@@ -2,7 +2,7 @@
 
 The seller workspace creates shops from owned catalogs, submits generation requests, previews completed revisions, publishes a selected revision, and restores durable history after authentication.
 
-## Local configuration
+## Configuration
 
 The builder and seller use these settings:
 
@@ -47,9 +47,3 @@ Each preview response:
 - contains no management token, wallet key, or provider credential.
 
 Refreshing a preview issues a new grant to the same durable revision. A restart invalidates grants but not stored revisions.
-
-## Local browser checks
-
-Build the storefront template fixture, start tools/storefront-ui-smoke/start.ts, and follow the smoke guide in tools/storefront-ui-smoke/README.md.
-
-The isolated fixture uses in-memory storage and a public deterministic test wallet. It does not call model, Railway, Bunny, or funded-wallet services.
