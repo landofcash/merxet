@@ -1,6 +1,18 @@
+/// <reference types="vite/client" />
 import type {NetworkId} from "./context/wallet/types.ts";
 
 declare const __APP_VERSION__: string;
+/** Optional World integration. Empty/invalid URL disables all World UI and requests. */
+export const worldConfig = (() => {
+  const disabled = {enabled: false, url: ''};
+  if (import.meta.env?.VITE_WORLD_ENABLED !== 'true') return disabled;
+  try {
+    const raw = (import.meta.env.VITE_WORLD_API_URL || '').trim().replace(/\/+$/, '');
+    const url = new URL(raw);
+    if (url.origin !== raw || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) return disabled;
+    return {enabled: true, url: raw};
+  } catch {return disabled;}
+})();
 
 export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'development';
 export const APP_NAME = "Merxet";

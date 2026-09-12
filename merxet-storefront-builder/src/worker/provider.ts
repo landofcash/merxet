@@ -31,8 +31,10 @@ export class RailwayProvider implements Provider {
   constructor(prefix: string, env: NodeJS.ProcessEnv = process.env, transport: typeof fetch = fetch) {
     const token = env.RAILWAY_API_TOKEN;
     if (!token) throw new Error('RAILWAY_API_TOKEN is required');
-    this.#env = env.RAILWAY_ENVIRONMENT_ID || 'f38b8724-44d7-4e13-aecf-af0407339f60';
-    if (this.#env !== 'f38b8724-44d7-4e13-aecf-af0407339f60' || (env.RAILWAY_PROJECT_ID || '76d3f9f4-f39b-4a51-96a8-2027d341f0d5') !== '76d3f9f4-f39b-4a51-96a8-2027d341f0d5') throw new Error('Worker is scoped to Merxet/storefront-builds');
+    // The template checkpoint and sandbox credential have their own scope,
+    // independent of the environment hosting the permanent builder service.
+    this.#env = env.RAILWAY_SANDBOX_ENVIRONMENT_ID || 'f38b8724-44d7-4e13-aecf-af0407339f60';
+    if (this.#env !== 'f38b8724-44d7-4e13-aecf-af0407339f60' || (env.RAILWAY_PROJECT_ID || '76d3f9f4-f39b-4a51-96a8-2027d341f0d5') !== '76d3f9f4-f39b-4a51-96a8-2027d341f0d5') throw new Error('Build sandboxes are scoped to Merxet/storefront-builds');
     this.owner = sha256(`${this.#env}/${prefix}`);
     this.#transport = async (input, init) => transport(input, {...init, signal: AbortSignal.any([AbortSignal.timeout(120000), ...(init?.signal ? [init.signal] : [])])});
     this.#options = {token, authType: z.enum(['bearer', 'project-token']).parse(env.RAILWAY_AUTH_TYPE || 'project-token'),

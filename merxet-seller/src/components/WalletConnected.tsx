@@ -16,6 +16,7 @@ import {useWallet} from "@/context/WalletContext";
 import {explorerAccountUrl, getAvailableNetworkIds, getConfig} from "@/config";
 import walletSvg from "@/assets/wallet.svg";
 import CopyableField from "@/components/CopyableField";
+import WorldWalletVerification from '@/components/WorldWalletVerification';
 import TokenIcon from "@/components/TokenIcon";
 import ConfirmModal from "@/components/wallet/ConfirmModal";
 import InternalWalletBackupModal from "@/components/wallet/InternalWalletBackupModal";
@@ -248,6 +249,7 @@ const WalletConnected: React.FC = () => {
                   <ExternalLink className="mr-1 h-3.5 w-3.5"/>
                   View on explorer
                 </a>
+                <WorldWalletVerification/>
               </div>
 
               <div className="space-y-3">

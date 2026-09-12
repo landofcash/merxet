@@ -53,6 +53,12 @@ test('publish A, keep A live during draft B, publish B and roll back with pinned
   try {
     assert.equal((await fetch(f.url)).status, 404);
     const a = await f.build('A'); assert.equal((await f.run(a)).state, 'completed');
+    const worldOrigin = 'https://world.example';
+    assert.ok(!(await fetch(f.url)).headers.get('content-security-policy')!.includes(worldOrigin));
+    f.config.world = {enabled: true, url: worldOrigin};
+    assert.ok((await fetch(f.url)).headers.get('content-security-policy')!.split(';').find(value => value.trim().startsWith('connect-src'))!.split(' ').includes(worldOrigin));
+    f.config.world.enabled = false;
+    assert.ok(!(await fetch(f.url)).headers.get('content-security-policy')!.includes(worldOrigin));
     const b = await f.build('B'); assert.match(await (await fetch(f.url)).text(), /<body>A/);
     assert.equal((await f.run(b, a.id)).state, 'completed');
     for (const route of ['', 'products', `products/${seed}`, 'about', 'collections/drinks']) {

@@ -47,6 +47,12 @@ test('private previews pin all pages/assets to a ready revision, rebase compiled
     assert.equal((await f.grant(randomUUID())).status, 404);
     const grantA = (await f.grant(a.id)).body.data, grantB = (await f.grant(b.id)).body.data;
     const base = new URL(grantA.url).pathname;
+    const worldOrigin = 'https://world.example';
+    assert.ok(!(await fetch(grantA.url)).headers.get('content-security-policy')!.includes(worldOrigin));
+    f.config.world = {enabled: true, url: worldOrigin};
+    assert.ok((await fetch(grantA.url)).headers.get('content-security-policy')!.split(';').find(value => value.trim().startsWith('connect-src'))!.split(' ').includes(worldOrigin));
+    f.config.world.enabled = false;
+    assert.ok(!(await fetch(grantA.url)).headers.get('content-security-policy')!.includes(worldOrigin));
     for (const route of ['', 'products', 'products/', `products/${seed}`, 'collections/drinks', 'about']) {
       const response = await fetch(grantA.url + route); assert.equal(response.status, 200, route);
       const html = await response.text(); assert.match(html, /Design A/); assert.ok(html.includes(`${base}assets/main.js`));

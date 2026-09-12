@@ -27,6 +27,7 @@ class FakeProvider implements Provider {
 }
 const fakePin = (job: GenerationJob): Pinned => ({engineVersion: 1, input: {config: job.config, products: [], brief: job.brief}, source: '', sourceDigest: 'b'.repeat(64),
   environment: {environmentId: randomUUID(), checkpointName: 'clean-v1', templateVersion: '1.1.0', sourceDigest: 'b'.repeat(64), sdkVersion: '3.11.0'},
+  world: {enabled: false, url: ''},
   model: {model: 'test-model', seconds: 240, maxTokens: 16000}, prompt: {instructions: 'Pinned prompt', input: {}},
   limits: {commandSeconds: 600, sourceBytes: 10485760, artifactBytes: 52428800, fileBytes: 5242880, logBytes: 4194304}});
 class FakeEngine implements Engine {

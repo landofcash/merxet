@@ -40,7 +40,7 @@ export class PreviewService {
     app.use((req, res, next) => {
       res.set({'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
         'X-Robots-Tag': 'noindex, nofollow, noarchive',
-        'Content-Security-Policy': `sandbox allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' ${config.syncOrigin} https://*.b-cdn.net; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors ${[...config.origins].join(' ')}`,
+        'Content-Security-Policy': `sandbox allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' ${config.syncOrigin} https://*.b-cdn.net${config.world.enabled ? ` ${config.world.url}` : ''}; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors ${[...config.origins].join(' ')}`,
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()'});
       // Trust the configured public Host only, never a caller-supplied forwarded host.
       if (req.get('host') !== new URL(config.previewOrigin).host) throw new ApiError(403, 'preview_host_not_allowed');

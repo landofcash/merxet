@@ -1,5 +1,7 @@
 # Storefront deployment
 
+Production migration is prepared as staged Railway changes. Follow [PRODUCTION_MIGRATION.md](./PRODUCTION_MIGRATION.md) after the main merge. Existing deployment.json still identifies the live source environment until cutover.
+
 The storefront system deploys the builder API and seller frontend separately. The builder also exposes dedicated private-preview and public-storefront listeners.
 
 ## Runtime layout

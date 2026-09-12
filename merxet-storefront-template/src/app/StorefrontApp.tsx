@@ -6,6 +6,7 @@ import {ShopContext} from '@/lib/shop/context';
 import type {StorefrontConfig} from '@/lib/shop/schema';
 import {getCatalogMetadataUrl} from '@/lib/syncService';
 import {Button} from '@/components/ui/button';
+import WorldShopVerification from '@/components/WorldShopVerification';
 import {ShopHeader} from '@/storefront/sections/ShopHeader';
 import {ShopFooter} from '@/storefront/sections/ShopFooter';
 import {ShopHomePage} from '@/storefront/pages/ShopHomePage';
@@ -44,6 +45,7 @@ export default function StorefrontApp() {
       <div className="shop-root">
         <a className="shop-skip-link" href="#shop-main">Skip to content</a>
         <ShopHeader/>
+        <WorldShopVerification/>
         <main id="shop-main" tabIndex={-1}>
           <Routes>
             <Route index element={<ShopHomePage/>}/>

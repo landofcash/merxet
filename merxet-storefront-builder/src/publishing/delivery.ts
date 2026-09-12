@@ -91,7 +91,7 @@ export class PublicDelivery {
     const app = express(); app.disable('x-powered-by'); app.disable('etag');
     app.use((req, res, next) => {
       res.set({'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
-        'Content-Security-Policy': `sandbox allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' ${this.config.syncOrigin} https://*.b-cdn.net; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+        'Content-Security-Policy': `sandbox allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https: data:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' ${this.config.syncOrigin} https://*.b-cdn.net${this.config.world.enabled ? ` ${this.config.world.url}` : ''}; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()'});
       if (req.get('host') !== new URL(this.config.publicOrigin).host) throw new ApiError(403, 'public_host_not_allowed');
       if (!['GET', 'HEAD'].includes(req.method)) throw new ApiError(405, 'method_not_allowed');

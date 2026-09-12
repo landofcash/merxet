@@ -13,6 +13,7 @@ import {BuildFailure, shellQuote, type Machine} from './provider.ts';
 
 const Environment = z.object({environmentId: z.string().uuid(), checkpointName: z.string().min(1), templateVersion: z.string(), sourceDigest: z.string(), sdkVersion: z.literal('3.11.0')}).passthrough();
 export const PinnedSchema = z.object({engineVersion: z.literal(1), input: z.unknown(), source: z.string(), sourceDigest: z.string(),
+  world: z.object({enabled: z.boolean(), url: z.string()}).default({enabled: false, url: ''}),
   environment: Environment, model: z.object({model: z.string(), seconds: z.number().positive(), maxTokens: z.number().int().positive()}),
   prompt: z.object({instructions: z.string(), input: z.unknown()}), limits: z.object({commandSeconds: z.number(), sourceBytes: z.number(), artifactBytes: z.number(), fileBytes: z.number(), logBytes: z.number()})}).strict();
 export type Pinned = z.infer<typeof PinnedSchema>;
@@ -25,8 +26,9 @@ export const revisionPrefix = (journal: Journal, revision: Revision) => `${journ
 export class GenerationEngine implements Engine {
   #journal: Journal;
   #catalog: (job: GenerationJob, signal: AbortSignal) => Promise<GenerationInput>;
+  #world: Config['world'];
   constructor(journal: Journal, config: Config, catalog = (job: GenerationJob, signal: AbortSignal) => catalogInput(config, job, signal)) {
-    this.#journal = journal; this.#catalog = catalog;
+    this.#journal = journal; this.#catalog = catalog; this.#world = config.world;
   }
   async pin(job: GenerationJob, signal: AbortSignal): Promise<Pinned> {
     const settings = modelSettings();
@@ -47,7 +49,7 @@ export class GenerationEngine implements Engine {
     signal.throwIfAborted(); const input = parseInput(await this.#catalog(job, signal));
     if (canonical(input.config) !== canonical(job.config) || input.brief !== job.brief) throw new BuildFailure('input_identity_mismatch');
     source = configureSource(source, input);
-    return {engineVersion: 1, input, source: packSource(source).toString('base64'), sourceDigest: sourceDigest(source), environment,
+    return {engineVersion: 1, world: this.#world, input, source: packSource(source).toString('base64'), sourceDigest: sourceDigest(source), environment,
       model: {model: settings.model, seconds: settings.seconds, maxTokens: settings.maxTokens}, prompt: generationPrompt(source, input), limits: limits()};
   }
   async run(_job: GenerationJob, pin: Pinned, vm: Machine, signal: AbortSignal, stage: (value: GenerationJob['state']) => Promise<void>, feedback: string): Promise<BuildResult> {
@@ -68,7 +70,7 @@ export class GenerationEngine implements Engine {
     await vm.write(`${REMOTE_ROOT}/.harness/input.json`, JSON.stringify({...input, base}));
     await stage('building');
     await vm.exec('typecheck', 'npm run typecheck'); await vm.exec('lint', 'npm run lint');
-    await vm.exec('build', `npm run build -- --base=${base}`);
+    await vm.exec('build', `VITE_WORLD_ENABLED=${pin.world?.enabled ? 'true' : 'false'} VITE_WORLD_API_URL=${shellQuote(pin.world?.url || '')} npm run build -- --base=${base}`);
     await stage('validating');
     await vm.exec('browser', 'npx --no-install playwright test --config=.harness/playwright.config.mjs');
     const collectedSource = await collect(vm, 'source', signal); assertProtected(candidate, collectedSource);
