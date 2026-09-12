@@ -102,7 +102,10 @@ export class EnsService {
   }
   async #process() {
     // One operator nonce stream, including uncertainty/reconciliation, across every seller and shop.
-    const value = this.#list().find(item => !['active', 'failed', 'abandoned'].includes(item.state));
+    const claims = this.#list();
+    // Retrying an older claim must not overtake an already signed transaction.
+    const value = claims.find(item => item.transactions.some(tx => tx.state === 'prepared')) ??
+      claims.find(item => !['active', 'failed', 'abandoned'].includes(item.state));
     if (!value) return;
     try {
       if (!this.#configured(value)) throw new ApiError(503, 'ens_configuration_changed');

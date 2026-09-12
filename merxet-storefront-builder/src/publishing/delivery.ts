@@ -44,6 +44,7 @@ export class PublicDelivery {
   readonly prefix: string;
   readonly readArtifact: Reader;
   #reads = 0;
+  #aliasReads = 0;
   constructor(store: ObjectStore, config: Config, prefix: string, readArtifact: Reader) {
     this.store = store; this.config = config; this.prefix = prefix; this.readArtifact = readArtifact;
   }
@@ -113,8 +114,8 @@ export class PublicDelivery {
       } finally { this.#reads--; }
     });
     if (alias) app.get('/{*alias}', async (req, res) => {
-      if (this.#reads >= 32) throw new ApiError(503, 'public_delivery_busy');
-      this.#reads++;
+      if (this.#aliasReads >= 32) throw new ApiError(503, 'ens_lookup_busy');
+      this.#aliasReads++;
       try {
         const [label, ...parts] = (req.params.alias as string[] | undefined) ?? [];
         if (!label) throw new ApiError(404, 'shop_not_found');
@@ -122,7 +123,7 @@ export class PublicDelivery {
         const query = new URLSearchParams();
         for (const key of ['q', 'sort']) if (typeof req.query[key] === 'string' && req.query[key].length <= 200) query.set(key, req.query[key]);
         res.redirect(302, target + (query.size ? `?${query}` : ''));
-      } finally { this.#reads--; }
+      } finally { this.#aliasReads--; }
     });
     app.use((_req, _res) => { throw new ApiError(404, 'shop_not_found'); });
     app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

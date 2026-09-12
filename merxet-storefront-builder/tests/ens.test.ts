@@ -9,8 +9,8 @@ import {recordsFor, resolverInitialization, EnsRpc, SepoliaEns, type EnsChain, t
 import {DEPLOYMENTS, resolverAbi, factoryAbi, registryAbi, resolverAdminRoles, TEXT_KEYS} from '../src/ens/contracts.ts';
 import {normalizeLabel} from '../src/ens/labels.ts';
 import {Journal} from '../src/storage/journal.ts';
-import {selectionPath} from '../src/publishing/delivery.ts';
-import {jsonBytes} from '../src/storage/bunny.ts';
+import {assetPath, publicRevisionPath, selectionPath} from '../src/publishing/delivery.ts';
+import {jsonBytes, sha256} from '../src/storage/bunny.ts';
 import {aliceId, bobId, bob, alice, design, fixture, MemoryStore, seed, TestIdentity} from './helpers.ts';
 
 class FakeChain implements EnsChain {
@@ -101,7 +101,8 @@ test('public lookup returns disabled without ENS and is rate limited independent
   } finally { await f.close(); }
 });
 async function setup(store = new MemoryStore(), chain = new FakeChain()) {
-  const f = await fixture(store, new TestIdentity(), undefined, undefined, new MemoryStore(), chain);
+  const publicStore = new MemoryStore();
+  const f = await fixture(store, new TestIdentity(), undefined, undefined, publicStore, chain);
   const token = await f.login(), otherToken = await f.login(bobId, bob);
   const shop: Shop = (await f.request('/shops', {method: 'POST', token, requestId: randomUUID(), body: {catalogSeed: seed, design}})).body.data;
   const published = {...shop, recordVersion: shop.recordVersion + 1, publishedRevisionId: randomUUID()};
@@ -110,7 +111,7 @@ async function setup(store = new MemoryStore(), chain = new FakeChain()) {
   const state = () => f.journal.list<EnsName>('ens-name', value => value.shopId === shop.id)[0];
   const claim = (label = 'coffee', key = randomUUID(), credential = token) => f.request(`/shops/${shop.id}/ens`, {method: 'POST', token: credential, requestId: key, body: {label}});
   const advance = async () => { for (let i = 0; i < 6; i++) await f.ens!.tick(); };
-  return {...f, chain, token, otherToken, shop: published, state, claim, advance};
+  return {...f, publicStore, chain, token, otherToken, shop: published, state, claim, advance};
 }
 test('ENS configuration stays disabled by default, requires Sepolia and distinct matching keys when enabled', () => {
   assert.equal(loadConfig({}).ens.enabled, false);
@@ -185,6 +186,52 @@ test('unknown nonce blocks other submissions from broadcasting; a later receipt 
     f.chain.unknown = false; await f.advance(); assert.equal(f.state().state, 'active'); assert.equal(f.chain.prepared.length, 2);
   } finally { await f.close(); }
 });
+for (const outcome of ['not broadcast', 'pending', 'unknown'] as const) {
+  test(`older retries wait for a newer prepared transaction: ${outcome}`, async () => {
+    const f = await setup();
+    try {
+      await f.claim(); await f.ens!.tick();
+      f.chain.revert = true; await f.ens!.tick(); f.chain.revert = false;
+      assert.equal(f.state().state, 'failed');
+
+      const other = {...f.shop, id: randomUUID(), recordVersion: 1};
+      other.config = {...other.config, shopId: other.id};
+      await f.journal.transact(null, async () => ({changes: [other], result: {status: 200, data: {}}}));
+      const claimed = await f.request(`/shops/${other.id}/ens`, {method: 'POST', token: f.token, requestId: randomUUID(), body: {label: 'tea'}});
+      assert.equal(claimed.status, 202);
+      const otherState = () => f.journal.list<EnsName>('ens-name', value => value.shopId === other.id)[0];
+      if (outcome === 'not broadcast') f.chain.beforeBroadcast = async () => { throw new ApiError(503, 'ens_rpc_unavailable'); };
+      await f.ens!.tick();
+      f.chain.beforeBroadcast = undefined;
+      const prepared = otherState().transactions[0];
+      assert.equal(prepared.state, 'prepared');
+      const broadcastCount = f.chain.broadcasted.length;
+      f.chain.pending = true;
+      f.chain.unknown = outcome === 'unknown';
+
+      const retried = await f.request(`/shops/${f.shop.id}/ens/retry`, {method: 'POST', token: f.token, requestId: randomUUID(), body: {}});
+      assert.equal(retried.status, 202);
+      for (let i = 0; i < 2; i++) await f.ens!.tick();
+      assert.equal(f.chain.prepared.length, 2, 'the older retry must not prepare while the newer transaction is unresolved');
+      assert.equal(f.state().state, 'requested');
+      if (outcome === 'unknown') {
+        assert.equal(otherState().state, 'reconciliation');
+        assert.equal(f.chain.broadcasted.length, broadcastCount);
+      } else {
+        assert.deepEqual(f.chain.broadcasted.slice(broadcastCount), [prepared, prepared]);
+      }
+
+      f.chain.pending = false; f.chain.unknown = false;
+      await f.ens!.tick();
+      assert.equal(otherState().transactions[0].state, 'confirmed');
+      assert.equal(f.chain.prepared.length, 2);
+      await f.ens!.tick();
+      assert.equal(f.chain.prepared.length, 3);
+      assert.equal(f.chain.prepared[2].id, f.state().id, 'the older retry resumes after settlement');
+    } finally { await f.close(); }
+  });
+}
+
 test('known reverted transactions can be retried, while revoked permissions never broadcast', async () => {
   const f = await setup();
   try {
@@ -259,6 +306,66 @@ test('the HTTP short link preserves only supported queries and never reaches pri
     assert.equal((await fetch(`${f.config.publicOrigin}/coffee`, {redirect: 'manual'})).status, 503);
   } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); await f.close(); }
 });
+
+for (const fails of [false, true]) {
+  test(`stalled deduplicated ENS lookups preserve canonical delivery and release capacity after ${fails ? 'failure' : 'success'}`, async () => {
+    const f = await setup(), delivery = f.publications!.delivery;
+    let release!: () => void, allEntered!: () => void, entered = 0, lookups = 0;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const saturated = new Promise<void>(resolve => { allEntered = resolve; });
+    const server = delivery.app((label, file) => {
+      const result = f.ens!.redirect(label, file);
+      if (++entered === 32) allEntered();
+      return result;
+    }).listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const address = server.address(); if (!address || typeof address === 'string') throw Error('Missing listener');
+    f.config.publicOrigin = `http://127.0.0.1:${address.port}`;
+    const requests: Promise<Response>[] = [];
+    const request = async (path: string) => {
+      const response = await fetch(`${f.config.publicOrigin}${path}`, {redirect: 'manual', signal: AbortSignal.timeout(5000)});
+      await response.arrayBuffer();
+      return response;
+    };
+    try {
+      await f.claim(); await f.advance();
+      const revisionId = f.shop.publishedRevisionId!, base = publicRevisionPath(f.journal.prefix, f.shop.id, revisionId);
+      const files = new Map([
+        ['index.html', Buffer.from('<html>Shop</html>')], ['storefront.json', jsonBytes(f.shop.config)],
+        ['assets/main.js', Buffer.from('export default "shop";')],
+      ]);
+      const entries = [...files].map(([path, bytes]) => ({path, size: bytes.length, sha256: sha256(bytes)}));
+      for (const [path, bytes] of files) await f.publicStore.putVerified(`${base}/${path}`, bytes);
+      await f.store.putVerified(`${base}/ready.json`, jsonBytes({schemaVersion: 1, shopId: f.shop.id, revisionId, files: entries}));
+      await f.store.putVerified(assetPath(f.journal.prefix, f.shop.id, 'assets/main.js'),
+        jsonBytes({schemaVersion: 1, shopId: f.shop.id, revisionId, ...entries[2]}));
+
+      const resolve = f.chain.resolve.bind(f.chain);
+      f.chain.resolve = async value => {
+        lookups++; await gate;
+        if (fails) throw new ApiError(503, 'ens_rpc_unavailable');
+        return resolve(value);
+      };
+      for (let i = 0; i < 32; i++) requests.push(request('/coffee'));
+      await saturated;
+      assert.equal(lookups, 1, 'all alias requests share one ENS lookup');
+      assert.equal((await request('/coffee')).status, 503, 'alias requests remain bounded');
+      for (const file of ['', 'assets/main.js']) {
+        const response = await request(`/s/${f.shop.id}/${file}`);
+        assert.equal(response.status, 200, 'stalled ENS requests must not consume canonical delivery capacity');
+        assert.equal(response.headers.get('x-merxet-revision'), revisionId);
+      }
+      release();
+      for (const response of await Promise.all(requests)) assert.equal(response.status, fails ? 503 : 302);
+      f.chain.resolve = resolve;
+      assert.equal((await request('/coffee')).status, 302, 'alias capacity is released after lookup completion');
+    } finally {
+      release(); await Promise.allSettled(requests);
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      await f.close();
+    }
+  });
+}
 
 test('transaction settlement requires canonical receipts and two confirmations; consumed unknown nonces are never called failed', async () => {
   class ReceiptRpc extends EnsRpc {
