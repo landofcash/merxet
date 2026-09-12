@@ -12,15 +12,17 @@ import {CREDIT_CARD_PAYMENTS_ENABLED} from '@/config'
 import AddressDisplay from '@/components/AddressDisplay'
 import ApprovedShopBadge from '@/components/ApprovedShopBadge'
 import ShopVerificationMessage from '@/components/ShopVerificationMessage'
-
-type GroupedCartItems = {
-  [shopWallet: string]: import('@/lib/cartStorage').CartItem[]
-}
+import {useWallet} from '@/context/WalletContext'
+import {checkoutError} from '@/lib/catalogCheckout'
+import {cartItemKey} from '@/lib/cartIdentity'
+import CatalogIdentity from '@/components/CatalogIdentity'
+import InvalidCheckout from '@/components/InvalidCheckout'
 
 function OrderPage() {
   const navigate = useNavigate()
   const {order, setOrder} = useOrder()
-  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
+  const {network} = useWallet()
+  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>(order?.deliveryInfo ?? {
     fullName: '',
     address: '',
     city: '',
@@ -37,6 +39,9 @@ function OrderPage() {
     return <Navigate to="/cart" replace />
   }
 
+  const invalidCheckout = checkoutError(order, network)
+  if (invalidCheckout) return <InvalidCheckout message={invalidCheckout}/>
+
   const {cartItems, tokenTotals} = order
 
   // Update order with delivery info whenever it changes
@@ -47,16 +52,6 @@ function OrderPage() {
       deliveryInfo: newDeliveryInfo
     })
   }
-
-  // Group cart items by shop wallet
-  const groupedItems: GroupedCartItems = cartItems.reduce((groups, item) => {
-    const shopWallet = item.shopWallet
-    if (!groups[shopWallet]) {
-      groups[shopWallet] = []
-    }
-    groups[shopWallet].push(item)
-    return groups
-  }, {} as GroupedCartItems)
 
   const shopWallet = cartItems.length > 0 ? cartItems[0].shopWallet : ''
 
@@ -99,8 +94,8 @@ function OrderPage() {
               <CardTitle className="text-lg">Order Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(groupedItems).map(([shopWallet, items]) => (
-                <div key={shopWallet} className="space-y-2">
+              <CatalogIdentity seed={cartItems[0].seed} network={cartItems[0].network} sellerWallet={cartItems[0].shopWallet}/>
+                <div className="space-y-2">
                   {/* Shop Header */}
                   <div className="flex items-center gap-2 pb-2 border-b">
                     <Store className="h-4 w-4 text-muted-foreground"/>
@@ -112,10 +107,10 @@ function OrderPage() {
 
                   {/* Items for this shop */}
                   <div className="space-y-2">
-                    {items.map(item => {
+                    {cartItems.map(item => {
                       const itemTotal = item.price * BigInt(item.quantity)
                       return (
-                        <div key={item.id} className="flex justify-between items-center text-sm">
+                        <div key={cartItemKey(item)} className="flex justify-between items-center text-sm">
                           <div className="flex-1">
                             <span className="font-medium">{item.name}</span>
                             <span className="text-muted-foreground ml-2">× {item.quantity}</span>
@@ -131,7 +126,6 @@ function OrderPage() {
                     })}
                   </div>
                 </div>
-              ))}
 
               <div className="pt-4 border-t space-y-2">
                 <div className="font-bold">Total:</div>

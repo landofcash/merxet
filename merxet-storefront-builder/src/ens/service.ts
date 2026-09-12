@@ -8,6 +8,16 @@ import {receipt} from '../storage/journal.ts';
 import type {PublicDelivery} from '../publishing/delivery.ts';
 import {recordsFor, type EnsChain, type ResolvedName} from './chain.ts';
 import {normalizeLabel, aliasSuffix} from './labels.ts';
+import {NetworkSchema, type Network} from '../config.ts';
+import {AccountId} from '../domain/records.ts';
+import {CatalogIdSchema} from '../domain/public-storefront.ts';
+
+export const PublicCatalogEnsSchema = z.object({
+  enabled: z.boolean(), network: NetworkSchema, catalogSeed: CatalogIdSchema,
+  sellerAccountId: AccountId.nullable(),
+  name: z.object({shopId: z.string().uuid(), name: z.string().max(255), shortUrl: z.string().url(), chainId: z.literal(11155111)}).nullable(),
+  validUntil: z.string().datetime().nullable(),
+});
 
 export const EnsNameResponseSchema = EnsNameSchema.omit({transactions: true, signerAddress: true}).extend({
   transactions: z.array(z.object({hash: z.string(), phase: z.enum(['resolver', 'register']), state: z.enum(['prepared', 'confirmed', 'reverted'])})),
@@ -27,6 +37,7 @@ export class EnsService {
   #running?: Promise<void>;
   #stopping = false;
   #cache = new Map<string, {until: number; value: ResolvedName | null}>();
+  #resolving = new Map<string, Promise<{until: number; value: ResolvedName | null}>>();
   constructor(auth: AuthService, shops: ShopService, chain: EnsChain, delivery: PublicDelivery) {
     this.auth = auth; this.shops = shops; this.chain = chain; this.delivery = delivery;
   }
@@ -159,17 +170,58 @@ export class EnsService {
     if (label !== labelInput) throw new ApiError(404, 'shop_not_found');
     const suffix = aliasSuffix(file), value = this.#list().find(item => item.label === label && item.state === 'active' && this.#configured(item));
     if (!value) throw new ApiError(404, 'shop_not_found');
-    const shop = this.auth.journal.get<Shop>('shop', value.network, value.ownerAccountId, value.shopId);
-    if (!shop?.publishedRevisionId || shop.catalogSeed !== value.catalogSeed || value.url !== this.delivery.url(shop.id)) throw new ApiError(404, 'shop_not_found');
+    const verified = await this.#verified(value);
+    if (!verified) throw new ApiError(404, 'shop_not_found');
+    return `/s/${value.shopId}/${suffix}`;
+  }
+  async #resolved(value: EnsName) {
     const cached = this.#cache.get(value.name);
-    const resolved = cached && cached.until > this.auth.now() ? cached.value : await this.chain.resolve(value);
-    if (!cached || cached.until <= this.auth.now()) {
+    if (cached && cached.until > this.auth.now()) return cached;
+    const pending = this.#resolving.get(value.name);
+    if (pending) return pending;
+    if (this.#resolving.size >= 32) throw new ApiError(503, 'ens_lookup_busy');
+    const started = this.auth.now();
+    const request = this.chain.resolve(value).then(resolved => {
+      const entry = {until: Math.min(started + this.auth.config.ens.cacheMs, resolved ? resolved.expiry * 1000 : Infinity), value: resolved};
       if (this.#cache.size >= 500) this.#cache.delete(this.#cache.keys().next().value!);
-      this.#cache.set(value.name, {until: this.auth.now() + this.auth.config.ens.cacheMs, value: resolved});
-    }
-    if (!resolved || !this.#matches(value, resolved)) throw new ApiError(404, 'shop_not_found');
+      this.#cache.set(value.name, entry);
+      return entry;
+    }).finally(() => this.#resolving.delete(value.name));
+    this.#resolving.set(value.name, request);
+    return request;
+  }
+  async #verified(value: EnsName) {
+    const shop = this.auth.journal.get<Shop>('shop', value.network, value.ownerAccountId, value.shopId);
+    if (!shop?.publishedRevisionId || shop.catalogSeed !== value.catalogSeed || value.url !== this.delivery.url(shop.id)) return null;
+    const entry = await this.#resolved(value);
+    if (!entry.value || !this.#matches(value, entry.value)) return null;
     if (await this.delivery.selection(shop.id) !== shop.publishedRevisionId) throw new ApiError(503, 'public_selection_mismatch');
-    // The ENS URL has been checked for exact equality. Construct locally, never redirect arbitrary record content.
-    return `/s/${shop.id}/${suffix}`;
+    const current = this.auth.journal.get<Shop>('shop', value.network, value.ownerAccountId, value.shopId);
+    if (current?.publishedRevisionId !== shop.publishedRevisionId || current.catalogSeed !== value.catalogSeed) return null;
+    return entry.until;
+  }
+  async publicCatalog(network: Network, catalogSeed: string, sellerWallet: string) {
+    const empty = {enabled: true, network, catalogSeed, sellerAccountId: null as string | null, name: null, validUntil: null};
+    const started = this.auth.now();
+    let owner: Awaited<ReturnType<typeof this.auth.identity.catalogOwner>>;
+    try { owner = await this.auth.identity.catalogOwner(network, catalogSeed); }
+    catch (error) { if (error instanceof ApiError && error.status === 404) return empty; throw new ApiError(503, 'ens_lookup_unavailable'); }
+    if (sellerWallet !== owner.accountId && sellerWallet.toLowerCase() !== owner.evmAddress.toLowerCase()) return empty;
+    empty.sellerAccountId = owner.accountId;
+    const candidates = this.#list().filter(item => item.network === network && item.catalogSeed === catalogSeed &&
+      item.ownerAccountId === owner.accountId && item.state === 'active' && this.#configured(item))
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : a.shopId.localeCompare(b.shopId));
+    if (candidates.length > 50) throw new ApiError(503, 'ens_lookup_busy');
+    for (const value of candidates) {
+      let until: number | null;
+      try { until = await this.#verified(value); }
+      catch { throw new ApiError(503, 'ens_lookup_unavailable'); }
+      if (until === null) continue;
+      until = Math.min(until, started + this.auth.config.ens.cacheMs);
+      if (until <= this.auth.now()) throw new ApiError(503, 'ens_lookup_expired');
+      return PublicCatalogEnsSchema.parse({...empty, name: {shopId: value.shopId, name: value.name,
+        shortUrl: `${this.auth.config.publicOrigin}/${value.label}`, chainId: value.chainId}, validUntil: new Date(until).toISOString()});
+    }
+    return empty;
   }
 }

@@ -3,7 +3,7 @@ import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, Navigate, useNavigate} from 'react-router-dom'
 import {useState} from 'react'
-import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens } from '@/lib/tokenUtils'
+import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import AppShellCard from '@/components/AppShellCard'
 import {useWallet} from '@/context/WalletContext'
@@ -18,7 +18,11 @@ import ExpandableData from '@/components/ExpandableData'
 import {stateToOrderData} from '@/lib/payWithUtils'
 import {useOrder} from "@/context/OrderContext.tsx";
 import ShopVerificationMessage from '@/components/ShopVerificationMessage'
-import {removeItemsByShopWallet} from '@/lib/cartStorage'
+import {removePurchasedItems, type CartItem} from '@/lib/cartStorage'
+import {checkoutError} from '@/lib/catalogCheckout'
+import CatalogIdentity from '@/components/CatalogIdentity'
+import InvalidCheckout from '@/components/InvalidCheckout'
+import type {OrderState} from '@/context/OrderContext'
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 
 
@@ -34,6 +38,7 @@ function PayWithCryptoPage() {
     walletKind,
     signMessage,
     walletAdapter,
+    network,
   } = useWallet()
   const navigate = useNavigate()
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle')
@@ -49,6 +54,8 @@ function PayWithCryptoPage() {
   const [symmetricKeyHash, setSymmetricKeyHash] = useState<string>('')
   const [payloadHash, setPayloadHash] = useState<string>('')
   const [debugExpanded, setDebugExpanded] = useState(false)
+  const [preparedOrder, setPreparedOrder] = useState<OrderState | null>(null)
+  const [purchasedItems, setPurchasedItems] = useState<CartItem[] | null>(null)
 
   const handleConnectWallet = async () => {
     navigate('/wallet?returnTo=/pay-crypto')
@@ -65,15 +72,11 @@ function PayWithCryptoPage() {
       return
     }
 
-    // Preflight: ensure all tokens in the order are supported
-    {
-      const supported = new Set(getSupportedTokens().map(t => t.tokenId))
-      const bad = Object.keys(order.tokenTotals ?? {}).filter(k => !supported.has(k))
-      if (bad.length) {
-        setError(`Unsupported token in order: ${bad.join(', ')}`)
-        setPaymentStatus('error')
-        return
-      }
+    const invalidCheckout = checkoutError(order, network)
+    if (invalidCheckout) {
+      setError(invalidCheckout)
+      setPaymentStatus('error')
+      return
     }
 
     setPaymentStatus('signing-seed')
@@ -118,6 +121,9 @@ function PayWithCryptoPage() {
       setPayloadHash(hashPayload)
 
       // Move to step 2
+      const invalidAfterSigning = checkoutError(order, network)
+      if (invalidAfterSigning) throw new Error(invalidAfterSigning)
+      setPreparedOrder(order)
       setCurrentStep(2)
       setPaymentStatus('idle')
 
@@ -145,6 +151,9 @@ function PayWithCryptoPage() {
     setError('')
 
     try {
+      const invalidCheckout = checkoutError(order, network)
+      if (invalidCheckout) throw new Error(invalidCheckout)
+      if (preparedOrder !== order) throw new Error('The order changed. Prepare the payment again.')
       setPaymentStatus('processing')
 
       // Get the seller public key from the first cart item
@@ -167,6 +176,7 @@ function PayWithCryptoPage() {
       )
 
       setTransactionId(txId)
+      setPurchasedItems(cartItems.map(item => ({...item})))
       setPaymentStatus('success')
 
     } catch (err) {
@@ -177,6 +187,7 @@ function PayWithCryptoPage() {
   }
 
   const handleRetry = () => {
+    setPreparedOrder(null)
     setPaymentStatus('idle')
     setCurrentStep(1)
     setError('')
@@ -193,10 +204,9 @@ function PayWithCryptoPage() {
   }
 
   const handleReturnToHome = () => {
-    if (order) {
-      // Remove purchased items from the cart (only for this shop)
-      const shopWallet = order.cartItems[0].shopWallet
-      removeItemsByShopWallet(shopWallet)
+    if (paymentStatus === 'success' && purchasedItems) {
+      removePurchasedItems(purchasedItems)
+      setPurchasedItems(null)
 
       // Clear the order from context and sessionStorage
       clearOrder()
@@ -214,11 +224,10 @@ function PayWithCryptoPage() {
     return <Navigate to="/cart" replace/>
   }
 
-  const {cartItems, deliveryInfo, tokenTotals} = order
+  const invalidCheckout = checkoutError(order, network)
+  if (invalidCheckout && paymentStatus !== 'success') return <InvalidCheckout message={invalidCheckout}/>
 
-  // Validate single token requirement
-  const tokenEntries = Object.entries(tokenTotals)
-  const hasMultipleTokens = tokenEntries.length > 1
+  const {cartItems, deliveryInfo, tokenTotals} = order
 
   return (
     <div className="w-full flex items-start justify-center px-4 py-8 sm:py-10">
@@ -235,22 +244,7 @@ function PayWithCryptoPage() {
           <CardTitle className="text-2xl font-bold">Pay with crypto</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Multiple Tokens Warning */}
-          {hasMultipleTokens && (
-            <Card className="border-destructive">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="h-5 w-5"/>
-                  <div>
-                    <p className="font-medium">Multiple Token Types Detected</p>
-                    <p className="text-sm">This payment method currently supports only one token type per transaction.
-                      Please pay for each token separately.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
+          <CatalogIdentity seed={cartItems[0].seed} network={cartItems[0].network} sellerWallet={cartItems[0].shopWallet}/>
           {/* Payment Summary */}
           <Card>
             <CardHeader>
@@ -303,7 +297,7 @@ function PayWithCryptoPage() {
           </Card>
 
           {/* Combined Payment Process & Status */}
-          {paymentStatus !== 'success' && !hasMultipleTokens && (
+          {paymentStatus !== 'success' && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -541,15 +535,15 @@ function PayWithCryptoPage() {
                       <ShopVerificationMessage shopWallet={cartItems[0].shopWallet}/>
                     )}
 
-                    <Button className="w-full" size="lg" onClick={handleSignSeed} disabled={hasMultipleTokens}>
+                    <Button className="w-full" size="lg" onClick={handleSignSeed}>
                       <Wallet className="mr-2 h-5 w-5"/>
-                      {hasMultipleTokens ? 'Multiple Tokens Not Supported' : 'Sign Order Seed'}
+                      Sign Order Seed
                     </Button>
                   </div>
                 ) : (
-                  <Button className="w-full" size="lg" onClick={handlePayment} disabled={hasMultipleTokens}>
+                  <Button className="w-full" size="lg" onClick={handlePayment}>
                     <Wallet className="mr-2 h-5 w-5"/>
-                    {hasMultipleTokens ? 'Multiple Tokens Not Supported' : 'Proceed with Payment'}
+                    Proceed with Payment
                   </Button>
                 )}
               </>
@@ -569,7 +563,7 @@ function PayWithCryptoPage() {
           </div>
 
           {/* Security Notice */}
-          {paymentStatus === 'idle' && walletAdapter && !hasMultipleTokens && (
+          {paymentStatus === 'idle' && walletAdapter && (
             <div className="text-xs text-muted-foreground text-center space-y-1">
               <p>🔒 Your transaction will be securely processed</p>
               <p>⚡ Fast confirmation times</p>

@@ -7,6 +7,7 @@ export const APP_VERSION = __APP_VERSION__
 export const APP_NAME='Merxet'
 export const BASE_URL='https://merxet.com'
 export const CREDIT_CARD_PAYMENTS_ENABLED = false
+export const STOREFRONT_API_ORIGIN = import.meta.env.VITE_STOREFRONT_API_ORIGIN?.trim() ?? ''
 
 // Sign prefix for encryption seed generation
 export const signPrefix = "merxet-";

@@ -36,6 +36,11 @@ export const seed = 'AAAAAAAAAAAAAAAAAAAAAA', otherSeed = 'BBBBBBBBBBBBBBBBBBBBB
 export const origin = 'http://localhost:5173';
 export const design = {branding: {name: 'Test shop', description: 'Current products', headline: 'Browse the shop'}, featuredProductIds: [], collections: [], links: []};
 export class TestIdentity implements IdentityProvider {
+  async catalogOwner(network: Network, catalogSeed: string) {
+    const accountId = this.catalogs.get(`${network}/${catalogSeed}`);
+    if (!accountId) throw new ApiError(404, 'identity_not_found');
+    return {accountId, evmAddress: accountId === aliceId ? alice.address.toLowerCase() : bob.address.toLowerCase()};
+  }
   accounts = new Map([[`testnet/${aliceId}`, alice.address.toLowerCase()], [`testnet/${bobId}`, bob.address.toLowerCase()]]);
   catalogs = new Map([[`testnet/${seed}`, aliceId], [`testnet/${otherSeed}`, bobId]]);
   async account(network: Network, accountId: string) {

@@ -1,8 +1,7 @@
 // OrderContext.tsx
-import {createContext, useContext, useState, useEffect, type ReactNode} from 'react'
+import {createContext, useContext, useState, type ReactNode} from 'react'
 import {type CartItem} from '@/lib/cartStorage'
 import {type DeliveryInfo} from '@/components/DeliveryInfoForm'
-import {getCurrentConfig} from "@/config.ts";
 
 export interface OrderState {
   cartItems: CartItem[]
@@ -48,9 +47,6 @@ function loadOrderFromStorage(): OrderState | null {
       if (key === 'price' && typeof value === 'string') {
         return BigInt(value)
       }
-      if (key === 'priceToken' && value === '0') {
-        return getCurrentConfig().supportedTokens[0].tokenId
-      }
       // Convert tokenTotals values back to bigint
       if (key === 'tokenTotals' && typeof value === 'object' && value !== null) {
         const converted: Record<string, bigint> = {}
@@ -80,15 +76,8 @@ function clearOrderFromStorage(): void {
 }
 
 export function OrderProvider({children}: { children: ReactNode }) {
-  const [order, setOrderState] = useState<OrderState | null>(null)
-
-  // Load order from sessionStorage on the component mount
-  useEffect(() => {
-    const storedOrder = loadOrderFromStorage()
-    if (storedOrder) {
-      setOrderState(storedOrder)
-    }
-  }, [])
+  // Restore before the first render so checkout routes can validate the saved order.
+  const [order, setOrderState] = useState<OrderState | null>(loadOrderFromStorage)
 
   const setOrder = (newOrder: OrderState) => {
     setOrderState(newOrder)

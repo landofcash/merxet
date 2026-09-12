@@ -4,6 +4,14 @@ import {MerxetIdentity} from '../src/auth/identity.ts';
 import {loadConfig} from '../src/config.ts';
 import {alice, aliceId, bob, seed} from './helpers.ts';
 
+test('buyer catalog identity uses the Sync owner account and wallet alias without substituting signing keys', async () => {
+  let data = {catalogSeed: seed, sellerAccountId: aliceId, sellerEvmAddress: bob.address};
+  const identity = new MerxetIdentity(loadConfig({}), (async () => Response.json({success: true, data})) as typeof fetch);
+  assert.deepEqual(await identity.catalogOwner('testnet', seed), {accountId: aliceId, evmAddress: bob.address.toLowerCase()});
+  data = {...data, catalogSeed: 'wrong'};
+  await assert.rejects(identity.catalogOwner('testnet', seed), {code: 'catalog_identity_invalid'});
+});
+
 test('identity uses current ECDSA account key and network endpoint, never the immutable EVM alias', async () => {
   const config = loadConfig({});
   const calls: Array<{url: string; init?: RequestInit}> = [];

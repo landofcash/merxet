@@ -8,7 +8,7 @@ export function loadEnsConfig(env: NodeJS.ProcessEnv) {
     parentName: env.ENS_PARENT_NAME || 'merxet.eth', rpcUrl: env.ENS_RPC_URL || '',
     admin: (env.ENS_NAMESPACE_ADMIN_ADDRESS || '').toLowerCase(), operator: (env.ENS_OPERATOR_ADDRESS || '').toLowerCase(),
     privateKey: env.ENS_OPERATOR_PRIVATE_KEY || '', registry: (env.ENS_SUBNAME_REGISTRY_ADDRESS || '').toLowerCase(),
-    cacheMs: z.coerce.number().int().min(0).max(300).parse(env.ENS_RESOLUTION_CACHE_TTL_SECONDS ?? 30) * 1000,
+    cacheMs: z.coerce.number().int().min(0).max(3600).parse(env.ENS_RESOLUTION_CACHE_TTL_SECONDS ?? 600) * 1000,
   };
   if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.eth$/.test(config.parentName)) throw new Error('ENS parent must be a normalized second-level .eth name');
   if (enabled) {

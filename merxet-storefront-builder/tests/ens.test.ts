@@ -37,6 +37,69 @@ class FakeChain implements EnsChain {
   async resolve(value: EnsName) { this.reads++; if (this.outage) throw new ApiError(503, 'ens_rpc_unavailable');
     return this.result === undefined ? {resolver: value.resolver!, expiry: value.expiry!, records: recordsFor(value)} : this.result; }
 }
+
+test('public buyer lookup accepts either seller identity, selects one name, and keeps seller APIs private', async () => {
+  const f = await setup();
+  try {
+    await f.claim('zebra'); await f.advance();
+    const secondShop = {...f.shop, id: randomUUID(), recordVersion: 1};
+    secondShop.config = {...secondShop.config, shopId: secondShop.id};
+    const secondName = {...f.state(), id: randomUUID(), shopId: secondShop.id, recordVersion: 1, label: 'alpha',
+      name: `alpha.${f.config.ens.parentName}`, url: f.publications!.delivery.url(secondShop.id)};
+    await f.journal.transact(null, async () => ({changes: [secondShop, secondName], result: {status: 200, data: {}}}));
+    await f.store.putVerified(selectionPath(f.journal.prefix, secondShop.id), jsonBytes({schemaVersion: 1, shopId: secondShop.id, revisionId: secondShop.publishedRevisionId}));
+    const path = `/public/catalogs/${seed}/ens?sellerWallet=`;
+    for (const seller of [aliceId, alice.address, alice.address.toLowerCase()]) {
+      const response = await f.request(path + seller, {origin: 'https://buyer.example'});
+      assert.equal(response.status, 200, JSON.stringify(response.body));
+      assert.equal(response.headers.get('access-control-allow-origin'), '*');
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.body.data.name.name, secondName.name);
+      assert.equal(response.body.data.sellerAccountId, aliceId);
+      assert.equal(response.body.data.name.shortUrl, `${f.config.publicOrigin}/alpha`);
+      assert.ok(Date.parse(response.body.data.validUntil) <= f.clock.value + f.config.ens.cacheMs);
+      assert.deepEqual(Object.keys(response.body.data.name).sort(), ['chainId', 'name', 'shopId', 'shortUrl']);
+      assert.ok(!JSON.stringify(response.body).includes('transactions'));
+    }
+    assert.equal((await f.request(path + bob.address)).body.data.name, null);
+    assert.equal((await f.request(path + 'bad')).status, 400);
+    assert.equal((await f.request('/public/catalogs/bad/ens?sellerWallet=' + aliceId)).status, 400);
+    assert.equal((await f.request(`/shops/${f.shop.id}/ens`, {origin: 'https://buyer.example'})).status, 403);
+    assert.equal((await f.request(path + aliceId, {origin: ''})).status, 200);
+  } finally { await f.close(); }
+});
+
+test('public ENS lookup rechecks ownership and publication and never extends expired verification during outages', async () => {
+  const f = await setup();
+  const path = `/public/catalogs/${seed}/ens?sellerWallet=${aliceId}`;
+  try {
+    await f.claim(); await f.advance();
+    const first = await f.request(path);
+    const expiry = first.body.data.validUntil;
+    f.clock.value += 1000;
+    assert.equal((await f.request(path)).body.data.validUntil, expiry);
+    f.identity.catalogs.set(`testnet/${seed}`, bobId);
+    assert.equal((await f.request(path)).body.data.name, null);
+    f.identity.catalogs.set(`testnet/${seed}`, aliceId);
+    f.chain.outage = true; f.clock.value += f.config.ens.cacheMs + 1000;
+    assert.equal((await f.request(path)).status, 503);
+    f.chain.outage = false;
+    await f.store.putVerified(selectionPath(f.journal.prefix, f.shop.id), jsonBytes({schemaVersion: 1, shopId: f.shop.id, revisionId: randomUUID()}));
+    assert.equal((await f.request(path)).status, 503);
+    await f.journal.transact(null, async () => ({changes: [{...f.shop, recordVersion: f.shop.recordVersion + 1, publishedRevisionId: null}], result: {status: 200, data: {}}}));
+    assert.equal((await f.request(path)).body.data.name, null);
+  } finally { await f.close(); }
+});
+
+test('public lookup returns disabled without ENS and is rate limited independently of seller auth', async () => {
+  const f = await fixture();
+  try {
+    const path = `/public/catalogs/${seed}/ens?sellerWallet=${aliceId}`;
+    assert.equal((await f.request(path, {origin: 'https://buyer.example'})).body.data.enabled, false);
+    for (let i = 0; i < 119; i++) assert.equal((await f.request(path)).status, 200);
+    assert.equal((await f.request(path)).status, 429);
+  } finally { await f.close(); }
+});
 async function setup(store = new MemoryStore(), chain = new FakeChain()) {
   const f = await fixture(store, new TestIdentity(), undefined, undefined, new MemoryStore(), chain);
   const token = await f.login(), otherToken = await f.login(bobId, bob);
@@ -51,6 +114,7 @@ async function setup(store = new MemoryStore(), chain = new FakeChain()) {
 }
 test('ENS configuration stays disabled by default, requires Sepolia and distinct matching keys when enabled', () => {
   assert.equal(loadConfig({}).ens.enabled, false);
+  assert.equal(loadConfig({}).ens.cacheMs, 10 * 60 * 1000);
   const env = {ENS_ENABLED: 'true', ENS_RPC_URL: 'https://example.com/rpc', ENS_NAMESPACE_ADMIN_ADDRESS: alice.address,
     ENS_OPERATOR_ADDRESS: bob.address, ENS_OPERATOR_PRIVATE_KEY: bob.privateKey, ENS_SUBNAME_REGISTRY_ADDRESS: '0x' + '33'.repeat(20)};
   assert.equal(loadConfig(env).ens.enabled, true);
@@ -139,15 +203,15 @@ test('short links use ENS records, preserve approved pages and fail closed on id
     await f.claim(); await f.advance(); const value = f.state();
     assert.equal(await f.ens!.redirect('coffee', `products/${seed}`), `/s/${f.shop.id}/products/${seed}`);
     const reads = f.chain.reads; await f.ens!.redirect('coffee', 'about'); assert.equal(f.chain.reads, reads);
-    f.chain.outage = true; f.clock.value += 31000;
+    f.chain.outage = true; f.clock.value += f.config.ens.cacheMs + 1000;
     await assert.rejects(f.ens!.redirect('coffee', ''), (e: any) => e.status === 503);
     f.chain.outage = false;
     const patches: Record<string, string>[] = [{'com.merxet.account': bobId}, {'com.merxet.network': 'mainnet'}, {'com.merxet.catalog': 'evil'}, {url: 'https://evil.example/'}, {'com.merxet.shopId': randomUUID()}];
     for (const patch of patches) {
-      f.chain.result = {resolver: value.resolver!, expiry: value.expiry!, records: {...recordsFor(value), ...patch}}; f.clock.value += 31000;
+      f.chain.result = {resolver: value.resolver!, expiry: value.expiry!, records: {...recordsFor(value), ...patch}}; f.clock.value += f.config.ens.cacheMs + 1000;
       await assert.rejects(f.ens!.redirect('coffee', ''), (e: any) => e.status === 404);
     }
-    f.chain.result = null; f.clock.value += 31000; await assert.rejects(f.ens!.redirect('coffee', ''), (e: any) => e.status === 404);
+    f.chain.result = null; f.clock.value += f.config.ens.cacheMs + 1000; await assert.rejects(f.ens!.redirect('coffee', ''), (e: any) => e.status === 404);
     for (const path of ['../api', 'assets/main.js', 'source.tar.gz', 'products/%2f%2fexample.com']) await assert.rejects(f.ens!.redirect('coffee', path));
   } finally { await f.close(); }
 });
@@ -191,7 +255,7 @@ test('the HTTP short link preserves only supported queries and never reaches pri
       assert.equal((await fetch(`${f.config.publicOrigin}/${path}`, {redirect: 'manual'})).status, 404, path);
     }
     assert.equal((await fetch(`${f.config.publicOrigin}/coffee`, {method: 'POST'})).status, 405);
-    f.chain.outage = true; f.clock.value += 31000;
+    f.chain.outage = true; f.clock.value += f.config.ens.cacheMs + 1000;
     assert.equal((await fetch(`${f.config.publicOrigin}/coffee`, {redirect: 'manual'})).status, 503);
   } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); await f.close(); }
 });

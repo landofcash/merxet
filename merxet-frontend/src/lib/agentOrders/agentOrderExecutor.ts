@@ -7,6 +7,7 @@ import {generateKeyPairFromB64} from '@/utils/keygen'
 import {generateAESKey, encryptAES, encryptWithECIES} from '@/utils/encryption'
 import {b64FromBytes, hashCryptoKeyToB64, sha256} from '@/utils/encoding'
 import {assertQuoteExecutable} from '@/lib/agentOrders/quoteExpiry'
+import {validateCatalogCheckout} from '@/lib/catalogCheckout'
 
 export type AgentOrderExecutionInput = {
   quote: MerxetOrderQuoteV1
@@ -19,6 +20,13 @@ export async function executeQuotedMerxetOrder(input: AgentOrderExecutionInput):
   const {quote, delivery, walletAdapter, signMessage} = input
   assertQuoteExecutable(quote)
   const config = getCurrentConfig()
+  const cartItems = quote.items.map(item => ({
+    id: item.productId, name: item.name, price: BigInt(item.unitAmount), priceToken: quote.payment.asset,
+    quantity: item.quantity, image: 'https://merxet.com/logo.svg', shopWallet: quote.catalog.sellerEvmAddress,
+    sellerPubKey: quote.catalog.sellerPublicKey, seed: quote.catalog.seed, network: 'testnet',
+  }))
+  const tokenTotals = {[quote.payment.asset]: BigInt(quote.payment.amount)}
+  validateCatalogCheckout(cartItems, tokenTotals, config)
   const currentTopic = await getHcsTopicId('testnet')
   if (config.name !== 'testnet' || config.contractAddress !== quote.merxet.contractId ||
       config.contractEvmAddress !== quote.merxet.contractEvmAddress ||
@@ -44,15 +52,10 @@ export async function executeQuotedMerxetOrder(input: AgentOrderExecutionInput):
   const encryptedSymKeySeller = await encryptWithECIES(quote.catalog.sellerPublicKey, aesKey)
   const symKeyHash = await hashCryptoKeyToB64(aesKey)
   const payloadHash = b64FromBytes(await sha256(new TextEncoder().encode(plaintext)))
-  const cartItems = quote.items.map(item => ({
-    id: item.productId, name: item.name, price: BigInt(item.unitAmount), priceToken: quote.payment.asset,
-    quantity: item.quantity, image: 'https://merxet.com/logo.svg', shopWallet: quote.catalog.sellerEvmAddress,
-    sellerPubKey: quote.catalog.sellerPublicKey, seed: quote.catalog.seed, network: 'testnet',
-  }))
   assertQuoteExecutable(quote)
   return getChainAdapter().createOrderPaidOnBlockchain(
     walletAdapter,
-    {[quote.payment.asset]: BigInt(quote.payment.amount)},
+    tokenTotals,
     cartItems,
     quote.orderSeed,
     keyPair.publicKey,

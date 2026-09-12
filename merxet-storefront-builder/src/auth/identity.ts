@@ -6,6 +6,7 @@ import {ApiError} from '../domain/errors.ts';
 
 export interface AccountIdentity {accountId: string; signerAddress: string;}
 export interface IdentityProvider {
+  catalogOwner(network: Network, catalogSeed: string): Promise<{accountId: string; evmAddress: string}>;
   account(network: Network, accountId: string): Promise<AccountIdentity>;
   assertCatalogOwner(network: Network, catalogSeed: string, ownerAccountId: string): Promise<void>;
 }
@@ -40,5 +41,12 @@ export class MerxetIdentity implements IdentityProvider {
     const parsed = z.object({success: z.literal(true), data: z.object({catalogSeed: z.string(), sellerAccountId: AccountId})}).safeParse(body);
     if (!parsed.success || parsed.data.data.catalogSeed !== catalogSeed) throw new ApiError(503, 'catalog_identity_invalid');
     if (parsed.data.data.sellerAccountId !== ownerAccountId) throw new ApiError(403, 'catalog_not_owned');
+  }
+  async catalogOwner(network: Network, catalogSeed: string) {
+    const body = await this.#json(`${this.#config.syncOrigin}/api/v1/${network}/catalogs/seed/${encodeURIComponent(catalogSeed)}`);
+    const parsed = z.object({success: z.literal(true), data: z.object({catalogSeed: z.string(), sellerAccountId: AccountId,
+      sellerEvmAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/)})}).safeParse(body);
+    if (!parsed.success || parsed.data.data.catalogSeed !== catalogSeed) throw new ApiError(503, 'catalog_identity_invalid');
+    return {accountId: parsed.data.data.sellerAccountId, evmAddress: parsed.data.data.sellerEvmAddress.toLowerCase()};
   }
 }

@@ -14,7 +14,8 @@ import type {ObjectStore} from '../storage/bunny.ts';
 import {PublicDelivery, type Reader} from '../publishing/delivery.ts';
 import {PublicationService, PublishRequestSchema} from '../publishing/service.ts';
 import {SepoliaEns, type EnsChain} from '../ens/chain.ts';
-import {EnsService} from '../ens/service.ts';
+import {EnsService, PublicCatalogEnsSchema} from '../ens/service.ts';
+import {CatalogIdSchema} from '../domain/public-storefront.ts';
 import {ClaimNameSchema} from '../ens/labels.ts';
 
 const ChallengeRequest = z.object({accountId: AccountId}).strict();
@@ -32,6 +33,30 @@ export function createApp(deps: {journal: Journal; identity: IdentityProvider; c
   app.use((_req, res, next) => { res.set({'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Request-Id': randomUUID()}); next(); });
   app.use((_req, _res, next) => { if (deps.ready && !deps.ready()) throw new ApiError(503, 'coordinator_recovering'); next(); });
   app.get('/healthz', (_req, res) => { journal.assertHealthy(); res.json({success: true, data: {status: 'ok'}}); });
+  const publicWindows = new Map<string, {start: number; count: number}>();
+  let publicLookups = 0;
+  app.all('/api/v1/:network/public/catalogs/:catalogSeed/ens', async (req, res) => {
+    res.set({'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS'});
+    if (req.method === 'OPTIONS') { res.sendStatus(204); return; }
+    if (req.method !== 'GET') throw new ApiError(405, 'method_not_allowed');
+    const time = now(), key = req.ip ?? 'unknown';
+    for (const [id, entry] of publicWindows) if (time - entry.start >= 60000) publicWindows.delete(id);
+    if (publicWindows.size >= 2000 && !publicWindows.has(key)) throw new ApiError(429, 'rate_limited');
+    const window = publicWindows.get(key) ?? {start: time, count: 0};
+    window.count++; publicWindows.set(key, window);
+    if (window.count > 120) { res.set('Retry-After', '60'); throw new ApiError(429, 'rate_limited'); }
+    journal.assertHealthy();
+    const network = NetworkSchema.parse(req.params.network), catalogSeed = CatalogIdSchema.parse(req.params.catalogSeed);
+    if (!config.networks.has(network)) throw new ApiError(400, 'unsupported_network');
+    const sellerWallet = z.string().max(64).regex(/^(?:0x[a-fA-F0-9]{40}|\d+\.\d+\.\d+)$/).parse(req.query.sellerWallet);
+    if (publicLookups >= 32) throw new ApiError(503, 'ens_lookup_busy');
+    publicLookups++;
+    try {
+      const data = ens ? await ens.publicCatalog(network, catalogSeed, sellerWallet) :
+        {enabled: false, network, catalogSeed, sellerAccountId: null, name: null, validUntil: null};
+      res.json({success: true, data: PublicCatalogEnsSchema.parse(data)});
+    } finally { publicLookups--; }
+  });
   app.use((req, res, next) => {
     const origin = req.get('Origin');
     if (!origin || !config.origins.has(origin)) throw new ApiError(403, 'origin_not_allowed');

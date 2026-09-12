@@ -4,6 +4,7 @@ import {getCurrentConfig} from "@/config";
 import type {OrderMessageRef, ProductData} from "@/lib/syncService.ts";
 import type {GetStorageResult} from "@/lib/crypto/types/GetStorageResult.ts";
 import type {CartItem} from "@/lib/cartStorage.ts";
+import {validateCatalogCheckout} from '@/lib/catalogCheckout';
 import {hexToBytes, b64ToBytes} from "@/utils/encoding.ts";
 import type {InternalAccount} from "@/lib/crypto/types/InternalAccount.ts";
 import * as hederaUtils from "@/lib/hedera/hederaUtils.ts";
@@ -431,14 +432,12 @@ export const hederaAdapter: ChainAdapter = {
     encryptedData: string
   ): Promise<string> {
     const config = getCurrentConfig();
+    if (tokenTotals === undefined) throw new Error('Missing checkout total');
+    const {items, tokenId, amount} = validateCatalogCheckout(cartItems, tokenTotals, config);
     const topicId = await hederaUtils.requireHcsTopicId();
-    if (!cartItems?.length) throw new Error("Cart is empty");
-    const first = cartItems[0];
-
-    const tokenIds = Object.keys(tokenTotals || {});
-    const tokenId = tokenIds[0] || "0.0.0";
-    const amount = tokenTotals[tokenId] ?? 0n;
+    const first = items[0];
     const tokenAddress = tokenIdToContractAddress(tokenId);
+    validateCatalogCheckout(items, tokenTotals);
     const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedData);
 
     const batch: TransactionPayload[] = [
@@ -474,6 +473,7 @@ export const hederaAdapter: ChainAdapter = {
       }
     ];
 
+    validateCatalogCheckout(items, tokenTotals);
     const result = await walletAdapter.executeBatch(batch);
     return result.hash;
   },
@@ -491,15 +491,13 @@ export const hederaAdapter: ChainAdapter = {
     encryptedData: string
   ): Promise<string> {
     const config = getCurrentConfig();
+    if (tokenTotals === undefined) throw new Error('Missing checkout total');
+    const {items, tokenId, amount} = validateCatalogCheckout(cartItems, tokenTotals, config);
     const topicId = await hederaUtils.requireHcsTopicId();
-    if (!cartItems?.length) throw new Error("Cart is empty");
-    const first = cartItems[0];
-
-    const tokenIds = Object.keys(tokenTotals || {});
-    const tokenId = tokenIds[0] || "0.0.0";
-    const amount = tokenTotals[tokenId] ?? 0n;
+    const first = items[0];
     const tokenAddress = tokenIdToContractAddress(tokenId);
     const contractEvmAddress = hederaUtils.getContractEvmAddress();
+    validateCatalogCheckout(items, tokenTotals);
     const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedData);
 
     const batch: TransactionPayload[] = [
@@ -551,6 +549,7 @@ export const hederaAdapter: ChainAdapter = {
       }
     });
 
+    validateCatalogCheckout(items, tokenTotals);
     const result = await walletAdapter.executeBatch(batch);
     return result.hash;
   },

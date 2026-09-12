@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
+import CatalogIdentity from '@/components/CatalogIdentity'
 import {CheckCircle2, Clock3} from 'lucide-react'
 import {formatUnits} from 'viem'
 import {Link} from 'react-router-dom'
@@ -231,6 +232,7 @@ export default function AgentOrderApprovalPage() {
               <div>
                 <h2 id="agent-order-items" className="text-sm font-semibold text-slate-950">Order</h2>
                 <p className="text-xs text-muted-foreground">Seller {intent.quote.catalog.sellerAccountId}</p>
+                <CatalogIdentity seed={intent.quote.catalog.seed} network="testnet" sellerWallet={intent.quote.catalog.sellerEvmAddress}/>
               </div>
               <span className="text-xs text-muted-foreground">
                 {intent.quote.items.length} {intent.quote.items.length === 1 ? 'item' : 'items'}

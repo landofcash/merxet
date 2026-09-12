@@ -1,5 +1,6 @@
 import {z} from "zod"
 import {APP_KEY_PREFIX} from "@/config.ts";
+import {cartItemKey} from './cartIdentity'
 
 export const CartItemSchema = z.object({
   id: z.string(),
@@ -63,7 +64,7 @@ export function clearCart(): void {
 export function addItemToCart(item: CartItem): void {
   try {
     const currentItems = getCartItems()
-    const existingItemIndex = currentItems.findIndex(i => i.id === item.id && i.network === item.network)
+    const existingItemIndex = currentItems.findIndex(i => cartItemKey(i) === cartItemKey(item))
 
     if (existingItemIndex !== -1) {
       // Item exists on same network, update quantity
@@ -79,13 +80,20 @@ export function addItemToCart(item: CartItem): void {
   }
 }
 
-export function removeItemsByShopWallet(shopWallet: string): void {
-  try {
-    const currentItems = getCartItems()
-    // Filter out all items that belong to the specified shop wallet
-    const remainingItems = currentItems.filter(item => item.shopWallet !== shopWallet)
-    saveCartItems(remainingItems)
-  } catch (error) {
-    console.error('Error removing items by shop wallet:', error)
+export function subtractPurchasedItems(current: CartItem[], purchased: CartItem[]): CartItem[] {
+  const quantities = new Map<string, number>()
+  for (const item of purchased) {
+    const key = cartItemKey(item)
+    quantities.set(key, (quantities.get(key) ?? 0) + item.quantity)
   }
+  return current.flatMap(item => {
+    const key = cartItemKey(item)
+    const bought = Math.min(item.quantity, quantities.get(key) ?? 0)
+    quantities.set(key, (quantities.get(key) ?? 0) - bought)
+    return item.quantity > bought ? [{...item, quantity: item.quantity - bought}] : []
+  })
+}
+
+export function removePurchasedItems(purchased: CartItem[]): void {
+  saveCartItems(subtractPurchasedItems(getCartItems(), purchased))
 }

@@ -5,6 +5,8 @@ import {Link, useLocation, Navigate, useNavigate} from 'react-router-dom'
 import {useEffect, useState} from 'react'
 import {ProductCatalogueSchema, type Product} from '@/lib/productSchemas'
 import {addItemToCart} from '@/lib/cartStorage'
+import {cartItemKey} from '@/lib/cartIdentity'
+import CatalogIdentity from '@/components/CatalogIdentity'
 import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import AppShellCard from '@/components/AppShellCard'
@@ -124,7 +126,9 @@ function ProductDetailPage() {
       })
 
       // Navigate to the cart page with the highlighted item ID
-      navigate('/cart', {state: {highlightedItemId: product.ProductId}})
+      navigate('/cart', {state: {highlightedItemKey: cartItemKey({
+        id: product.ProductId, seed: productData.seed, shopWallet: productData.shopWallet, network: state.network,
+      })}})
     } catch (err) {
       console.error('Error adding to cart:', err)
       alert('Failed to add product to cart')
@@ -170,6 +174,7 @@ function ProductDetailPage() {
 
           {product && !loading && (
             <div className="space-y-4">
+              {productData && <CatalogIdentity seed={productData.seed} network={state.network} sellerWallet={productData.shopWallet}/>}
               {/* Product Image */}
               <div className="aspect-square overflow-hidden rounded-lg bg-muted">
                 <img src={product.Image} alt={product.Name} className="w-full h-full object-cover" onError={(e) => {

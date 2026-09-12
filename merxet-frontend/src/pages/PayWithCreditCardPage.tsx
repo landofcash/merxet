@@ -3,11 +3,11 @@ import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Link, Navigate, useNavigate} from 'react-router-dom'
 import {useState} from 'react'
-import { safePriceToDisplayString as priceToDisplayString, getSupportedTokens, getTokenByType } from '@/lib/tokenUtils'
+import { safePriceToDisplayString as priceToDisplayString } from '@/lib/tokenUtils'
 import TokenIcon from '@/components/TokenIcon'
 import AppShellCard from '@/components/AppShellCard'
 import {encodeBase64Uuid} from "@/lib/uuidUtils.ts";
-import {signPrefix} from "@/config.ts";
+import {getConfig, signPrefix} from "@/config.ts";
 import {useWallet} from "@/context/WalletContext.tsx";
 import {generateKeyPairFromB64} from '@/utils/keygen'
 import {encryptAES, encryptWithECIES, generateAESKey} from '@/utils/encryption'
@@ -16,7 +16,11 @@ import {stateToOrderData} from '@/lib/payWithUtils'
 import ExpandableData from "@/components/ExpandableData.tsx";
 import {useOrder} from '@/context/OrderContext'
 import ShopVerificationMessage from '@/components/ShopVerificationMessage'
-import {removeItemsByShopWallet} from '@/lib/cartStorage'
+import {removePurchasedItems, type CartItem} from '@/lib/cartStorage'
+import {checkoutError} from '@/lib/catalogCheckout'
+import CatalogIdentity from '@/components/CatalogIdentity'
+import InvalidCheckout from '@/components/InvalidCheckout'
+import AddressDisplay from '@/components/AddressDisplay'
 import {getChainAdapter} from "@/lib/crypto/cryptoUtils.ts";
 
 type PaymentStatus = 'idle' | 'processing' | 'success' | 'error'
@@ -31,7 +35,7 @@ interface CreditCardInfo {
 
 function PayWithCreditCardPage() {
   const {order, clearOrder} = useOrder()
-  const {walletKind, signMessage, walletAdapter} = useWallet()
+  const {walletKind, signMessage, walletAdapter, network} = useWallet()
   const navigate = useNavigate()
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle')
   const [error, setError] = useState<string>('')
@@ -46,6 +50,7 @@ function PayWithCreditCardPage() {
   const [encryptedDeliveryInfo, setEncryptedDeliveryInfo] = useState<string>('')
   const [payloadHash, setPayloadHash] = useState<string>('')
   const [debugExpanded, setDebugExpanded] = useState(false)
+  const [purchasedItems, setPurchasedItems] = useState<CartItem[] | null>(null)
 
   const [cardInfo, setCardInfo] = useState<CreditCardInfo>({
     cardNumber: '',
@@ -126,15 +131,8 @@ function PayWithCreditCardPage() {
         return
       }
 
-      // Preflight: ensure all tokens in the order are supported
-      {
-        const supported = new Set(getSupportedTokens().map(t => t.tokenId))
-        const bad = Object.keys(order.tokenTotals ?? {}).filter(k => !supported.has(k))
-        if (bad.length) {
-          logError(`Unsupported token in order: ${bad.join(', ')}`)
-          return
-        }
-      }
+      const invalidCheckout = checkoutError(order, network)
+      if (invalidCheckout) throw new Error(invalidCheckout)
 
       const {tokenTotals, cartItems} = order
       const sellerPublicKey = cartItems[0].sellerPubKey
@@ -186,6 +184,7 @@ function PayWithCreditCardPage() {
       await new Promise(resolve => setTimeout(resolve, 3000))
       setTransactionId('CC_' + Math.random().toString(36).substring(2, 9).toUpperCase())
       setPaymentStatus('success')
+      setPurchasedItems(cartItems.map(item => ({...item})))
 
     } catch (err) {
       logError(err instanceof Error ? err.message : 'Payment failed')
@@ -208,10 +207,9 @@ function PayWithCreditCardPage() {
   }
 
   const handleReturnToHome = () => {
-    if (order) {
-      // Remove purchased items from the cart (only for this shop)
-      const shopWallet = order.cartItems[0].shopWallet
-      removeItemsByShopWallet(shopWallet)
+    if (paymentStatus === 'success' && purchasedItems) {
+      removePurchasedItems(purchasedItems)
+      setPurchasedItems(null)
 
       // Clear the order from context and sessionStorage
       clearOrder()
@@ -225,6 +223,9 @@ function PayWithCreditCardPage() {
     return <Navigate to="/cart" replace/>
   }
 
+  const invalidCheckout = checkoutError(order, network)
+  if (invalidCheckout && paymentStatus !== 'success') return <InvalidCheckout message={invalidCheckout}/>
+
   const {cartItems, deliveryInfo, tokenTotals} = order
 
   // Calculate total in USD (simplified conversion)
@@ -236,7 +237,7 @@ function PayWithCreditCardPage() {
       '0.0.429274': 1.0, // USDC to USD placeholder
     }
 
-    const token = getTokenByType(tokenType)
+    const token = getConfig(cartItems[0].network).supportedTokens.find(candidate => candidate.tokenId === tokenType)!
     const rate = conversionRates[tokenType] || 1.0
     const amount = Number(total) / (10 ** token.decimals)
     return sum + (amount * rate)
@@ -257,6 +258,8 @@ function PayWithCreditCardPage() {
           <CardTitle className="text-2xl font-bold">Pay with Credit Card</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <CatalogIdentity seed={cartItems[0].seed} network={cartItems[0].network} sellerWallet={cartItems[0].shopWallet}/>
+          <AddressDisplay value={cartItems[0].shopWallet} length={20} preferAccountId/>
           {/* Payment Status */}
           {paymentStatus !== 'idle' && (
             <Card>
