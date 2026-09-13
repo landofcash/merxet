@@ -1,3 +1,4 @@
+import worldLogo from './assets/worldcoinlogo.svg';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {IDKitRequestWidget, selfieCheckLegacy, type IDKitResult} from '@worldcoin/idkit';
 import type {RequestContext, SessionStatus} from '../shared/contracts';
@@ -57,7 +58,7 @@ export default function App() {
     if (!status?.expiresAt) return;
     const timer = window.setTimeout(() => {
       setStatus(null); setContext(null); setOpen(false);
-      setError('This temporary demo session expired. Reconnect to start again.');
+      setError('This session expired. Reconnect to start again.');
     }, Math.max(0, Date.parse(status.expiresAt) - Date.now()));
     return () => clearTimeout(timer);
   }, [status?.expiresAt]);
@@ -110,29 +111,29 @@ export default function App() {
   const result = status?.verification;
   const busy = starting || checking || status?.request?.state === 'verifying';
   return <div className="page">
-    <header className="topbar"><a href="/" className="wordmark">merxet<span> / lab</span></a><span className="tag">{environment === 'sandbox' ? 'Sandbox demo' : 'Production provider · demo app'}</span></header>
+    <header className="topbar"><a href="/" className="wordmark">merxet</a><span className="tag">World Selfie Check</span></header>
     <main>
       <section className="intro"><p className="eyebrow">WORLD SELFIE CHECK</p><h1>A quick check.<br/><span>A human moment.</span></h1>
         <p className="lede">Try the optional Selfie Check flow with World ID. Complete the check on your phone, then see the verified result here.</p>
         <ol className="steps"><li><span>01</span><div><strong>Start here</strong><p>Prepare a secure, temporary request.</p></div></li><li><span>02</span><div><strong>Continue on your phone</strong><p>World ID guides you through the selfie check.</p></div></li><li><span>03</span><div><strong>See your result</strong><p>Our backend verifies the proof with World.</p></div></li></ol>
-        <p className="privacy">Your camera stays in World ID. This demo receives proof data, not your selfie images.</p>
+        <p className="privacy">Your camera stays in World ID. Merxet receives proof data, not your selfie images.</p>
       </section>
       <section className="card" aria-labelledby="check-title">
-        <div className="orb" aria-hidden="true"><span/></div>
+        <div className="orb" aria-hidden="true"><img src={worldLogo} alt=""/></div>
         <p className="eyebrow">{result ? 'CHECK COMPLETED' : 'YOUR OPTIONAL CHECK'}</p>
         <h2 id="check-title">{result ? 'Selfie Check completed' : 'Ready when you are.'}</h2>
-        <p className="card-copy">{environment === 'sandbox' ? 'Use the World ID Sandbox app on your phone. Sandbox results are for testing only.' : 'Use the World ID app on your phone to complete your optional check.'}</p>
+        <p className="card-copy">{environment === 'sandbox' ? 'Use the World ID Sandbox app on your phone.' : 'Use the World ID app on your phone to complete your optional check.'}</p>
         {status?.account && <p>Account {status.account.accountId} · {status.account.network}</p>}
         {status && !status.config.enabled && <p role="status">Selfie Check is currently disabled.</p>}
-        {!status && !error && <p role="status">Connecting to the demo…</p>}
+        {!status && !error && <p role="status">Connecting…</p>}
         {status && !status.config.configured && <div className="notice"><strong>One-time setup needed</strong><p>Add your World credentials to <code>.env.local</code> and restart the server.</p><p className="missing">Missing: {status.config.missing.join(', ')}</p><a href="https://developer.world.org" target="_blank" rel="noreferrer">Open World Developer Portal ↗</a></div>}
         {requestState && <p className={`flow-status ${requestState}`} role="status">{messages[requestState]}</p>}
-        {result && <div className="result"><span className="result-mark" aria-hidden="true">✓</span><div><strong>{result.environment === 'sandbox' ? 'Selfie Check — Sandbox demo' : 'Selfie Check completed'}</strong><p>{new Date(result.completedAt).toLocaleString()}</p><p>Confirmed by the backend</p></div></div>}
+        {result && <div className="result"><img className="result-mark" src={worldLogo} alt="" aria-hidden="true"/><div><strong>Selfie Check completed</strong><p>{new Date(result.completedAt).toLocaleString()}</p><p>Confirmed by the backend</p></div></div>}
         {error && <p role="alert" className="error">{error}</p>}
         <button className="primary" disabled={!status?.config.enabled || !status?.config.configured || busy || open} onClick={() => void start()}>{starting ? 'Preparing your request…' : checking ? 'Checking with World…' : result ? 'Run another check' : 'Verify with World'}<span aria-hidden="true">↗</span></button>
         {status?.request && <button className="secondary" onClick={() => void refresh().then(() => setError(null)).catch(failure => setError(failure.message))}>Refresh result</button>}
         {!status && error && <button className="secondary" onClick={() => window.location.reload()}>Reconnect</button>}
-        <p className="fine">{status?.account ? 'Voluntary. Return to the seller app after completion.' : 'Standalone test. Start from the seller app to link a wallet.'}</p>
+        <p className="fine">{status?.account ? 'Voluntary. Return to the seller app after completion.' : 'Start from the seller app to link a wallet.'}</p>
         {status?.request?.observation && <details><summary>Provider response details</summary><dl>
           <dt>HTTP status</dt><dd>{status.request.observation.httpStatus}</dd>
           <dt>Environment returned</dt><dd>{status.request.observation.environment || 'Not returned'}</dd>
@@ -141,7 +142,7 @@ export default function App() {
         </dl><p className="fine">Proofs and private identifiers are omitted.</p></details>}
       </section>
     </main>
-    <footer><p>A person-presence signal. It does not verify a business, products, or fulfillment.</p><p>{status?.account ? 'Completed account checks are saved by the verification service.' : 'Standalone test results last for this temporary session.'}</p></footer>
+    <footer><p>A person-presence signal. It does not verify a business, products, or fulfillment.</p><p>{status?.account ? 'Completed account checks are saved by the verification service.' : 'Unlinked results last for this session.'}</p></footer>
     {context && <IDKitRequestWidget key={context.id} open={open} onOpenChange={value => {if (value) setOpen(true); else void close();}}
       app_id={context.appId} action={context.action} rp_context={context.rpContext} environment={context.environment}
       allow_legacy_proofs={true} preset={preset} handleVerify={verify} autoClose={true}

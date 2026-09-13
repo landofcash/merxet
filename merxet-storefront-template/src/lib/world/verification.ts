@@ -19,7 +19,7 @@ export function parseWorldStatus(input: unknown, network: string, accountId: str
   return v;
 }
 export function worldLabel(status: WorldStatus) {
-  return status.source === 'preset' ? 'Selfie Check - Demo' : status.environment === 'sandbox' ? 'Selfie Check - Sandbox' : 'Selfie Check completed';
+  return status.verified ? 'Selfie Check completed' : 'Selfie Check';
 }
 export function useWorldVerification(network: string, accountId: string, pollUntil = 0) {
   const identity = network + ':' + accountId;

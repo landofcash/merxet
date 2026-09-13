@@ -4,10 +4,10 @@ import {parseWorldStatus, worldLabel} from './verification';
 const preset = {enabled: true, network: 'testnet', accountId: '0.0.8321009', verified: true, source: 'preset', environment: null, verifiedAt: null, expiresAt: null};
 afterEach(() => {vi.unstubAllEnvs(); vi.resetModules();});
 describe('optional World status', () => {
- it('distinguishes preset, Sandbox and production evidence', () => {
-  expect(worldLabel(parseWorldStatus(preset, 'testnet', preset.accountId))).toBe('Selfie Check - Demo');
+ it('keeps one badge label for preset, Sandbox and production statuses', () => {
+  expect(worldLabel(parseWorldStatus(preset, 'testnet', preset.accountId))).toBe('Selfie Check completed');
   const real = {...preset, source:'world', environment:'sandbox', verifiedAt:'2026-09-12T10:00:00Z', expiresAt:'2026-10-12T10:00:00Z'};
-  expect(worldLabel(parseWorldStatus(real, 'testnet', preset.accountId))).toBe('Selfie Check - Sandbox');
+  expect(worldLabel(parseWorldStatus(real, 'testnet', preset.accountId))).toBe('Selfie Check completed');
   expect(worldLabel(parseWorldStatus({...real, environment:'production'}, 'testnet', preset.accountId))).toBe('Selfie Check completed');
  });
  it('rejects a different account/network and malformed positive evidence', () => {

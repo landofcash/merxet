@@ -1,3 +1,4 @@
+import worldLogo from '@/assets/worldcoinlogo.svg';
 import {useEffect, useRef, useState} from 'react';
 import {worldConfig} from '@/config';
 import {useWallet} from '@/context/WalletContext';
@@ -75,7 +76,7 @@ function WalletCheck({network, accountId, sign}: {network: string; accountId: st
   if (status?.enabled === false) return null;
   return <div className="space-y-2" data-world-verification>
     {status?.verified ? <WorldStatusBadge status={status}/> : <>
-      <Button size="sm" variant="outline" disabled={busy || until > 0} onClick={() => void start()}>{busy ? 'Preparing Selfie Check…' : until ? 'Waiting for Selfie Check…' : 'Verify with World'}</Button>
+      <Button size="sm" variant="outline" disabled={busy || until > 0} onClick={() => void start()}><img src={worldLogo} alt="" aria-hidden="true" className="h-6 w-8 shrink-0 object-contain"/>{busy ? 'Preparing Selfie Check…' : until ? 'Waiting for Selfie Check…' : 'Verify with World'}</Button>
       {handoff && <div className="flex gap-3 text-xs"><a className="underline" href={handoff} target="_blank" rel="noreferrer">Open Selfie Check</a><button type="button" className="underline" onClick={() => {cancelRequest(); setUntil(0); setHandoff(''); closePopup(); refresh();}}>Cancel</button></div>}
       {error && <p role="status" className="text-xs text-muted-foreground">{error}</p>}
     </>}

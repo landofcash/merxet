@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "templateId": "merxet-neutral-storefront",
-  "templateVersion": "1.2.0",
+  "templateVersion": "1.2.1",
   "sourceProject": "merxet-storefront-template",
   "buildMode": "production",
   "outputDirectory": "dist",
@@ -13,6 +13,7 @@
   ],
   "protectedPaths": [
     "src/app/**",
+    "src/assets/**",
     "src/lib/**",
     "src/components/**",
     "src/context/**",
@@ -40,7 +41,7 @@
     "node": "24.11.0",
     "npm": "11.17.0",
     "lockfile": "package-lock.json",
-    "lockfileSha256": "2e869ecd8e1c16e16e7888312fd8edf659589d84bf01a0e188cf174559950d7a",
+    "lockfileSha256": "11af1b5e70b8f96e1631cfb0112fac4bf6bdf06cc9971015f4a93dd22a66a00e",
     "lockfileHashNormalization": "UTF-8 with LF line endings",
     "playwright": "1.63.0",
     "browser": "chromium",
