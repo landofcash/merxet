@@ -496,7 +496,6 @@ export const hederaAdapter: ChainAdapter = {
     const topicId = await hederaUtils.requireHcsTopicId();
     const first = items[0];
     const tokenAddress = tokenIdToContractAddress(tokenId);
-    const contractEvmAddress = hederaUtils.getContractEvmAddress();
     validateCatalogCheckout(items, tokenTotals);
     const {fileId, payloadHash: encryptedPayloadHash} = await uploadEncryptedPayloadToHfs(walletAdapter, encryptedData);
 
@@ -516,15 +515,13 @@ export const hederaAdapter: ChainAdapter = {
     ];
 
     if (!isHbarTokenId(tokenId)) {
+      // Hedera batches allow only one contract call, which must be last.
       batch.push({
-        type: 'contract',
+        type: 'tokenAllowance',
         data: {
-          contractId: tokenAddress,
-          function: "approve",
-          arguments: [
-            addressArg(contractEvmAddress),
-            uint256Arg(amount)
-          ]
+          tokenId,
+          spender: config.contractAddress,
+          amount,
         }
       });
     }

@@ -24,6 +24,7 @@ export type HCSMessagePayload = {
 
 export type TransactionPayload = 
   | { type: 'contract', data: ContractFunctionPayload }
+  | { type: 'tokenAllowance', data: { tokenId: string; spender: string; amount: bigint } }
   | { type: 'hcs', data: HCSMessagePayload };
 
 export interface WalletAdapter {

@@ -1,5 +1,6 @@
 import {
   AccountId,
+  AccountAllowanceApproveTransaction,
   BatchTransaction,
   ContractFunctionParameters,
   ContractId,
@@ -325,7 +326,16 @@ function toSdkContractId(contractId: string): ContractId | string {
   return contractId;
 }
 
-function buildSdkTransaction(payload: TransactionPayload) {
+function buildSdkTransaction(payload: TransactionPayload, accountId: AccountId) {
+  if (payload.type === "tokenAllowance") {
+    return new AccountAllowanceApproveTransaction().approveTokenAllowance(
+      payload.data.tokenId,
+      accountId,
+      toSdkContractId(payload.data.spender),
+      new BigNumber(payload.data.amount.toString()),
+    );
+  }
+
   if (payload.type === "contract") {
     const transaction = new ContractExecuteTransaction()
       .setContractId(toSdkContractId(payload.data.contractId))
@@ -382,7 +392,7 @@ async function executeBatchWithSecret(
   const innerTransactions = [];
 
   for (const payload of payloads) {
-    const transaction = buildSdkTransaction(payload);
+    const transaction = buildSdkTransaction(payload, accountId);
     await transaction.batchify(sdkClient, batchKey);
     innerTransactions.push(transaction);
   }

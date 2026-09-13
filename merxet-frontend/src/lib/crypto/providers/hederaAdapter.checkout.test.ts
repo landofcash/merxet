@@ -4,6 +4,7 @@ import type {CartItem} from '@/lib/cartStorage'
 import {hederaAdapter} from './hederaAdapter'
 import {uploadEncryptedPayloadToHfs} from '@/lib/hedera/hfsStorage'
 import {requireHcsTopicId} from '@/lib/hedera/hederaUtils'
+import {getCurrentConfig} from '@/config'
 
 vi.mock('@/lib/hedera/hfsStorage', () => ({uploadEncryptedPayloadToHfs: vi.fn()}))
 vi.mock('@/lib/hedera/hederaUtils', () => ({
@@ -29,6 +30,25 @@ beforeEach(() => {
   executeBatch.mockResolvedValue({hash: 'transaction'})
 })
 afterEach(() => vi.unstubAllGlobals())
+
+describe('paid checkout transaction batch', () => {
+  it.each(['0.0.0', '0.0.429274'])('uses one final contract call when paying with %s', async tokenId => {
+    await hederaAdapter.createOrderPaidOnBlockchain(
+      wallet, {[tokenId]: 200n}, [{...line, priceToken: tokenId}],
+      '1234567890123456789012', publicKey, 'AA==', 'AA==', hash, hash, 'ciphertext',
+    )
+
+    const batch = executeBatch.mock.calls[0][0]
+    expect(batch.map((entry: {type: string}) => entry.type)).toEqual(
+      tokenId === '0.0.0' ? ['hcs', 'contract'] : ['hcs', 'tokenAllowance', 'contract'],
+    )
+    if (tokenId !== '0.0.0') {
+      expect(batch[1].data).toEqual({tokenId, spender: getCurrentConfig().contractAddress, amount: 200n})
+    }
+    expect(batch.at(-1).data.function).toBe('createOrderPaid')
+    expect(batch.at(-1).data.amount).toBe(tokenId === '0.0.0' ? 200n : 0n)
+  })
+})
 
 describe.each(['createOrderInitialOnBlockchain', 'createOrderPaidOnBlockchain'] as const)('%s catalog boundary', method => {
   const submit = (items: CartItem[], totals: Record<string, bigint> = {'0.0.0': 200n}) =>
